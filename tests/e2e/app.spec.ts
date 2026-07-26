@@ -1,0 +1,14 @@
+import { test,expect,type Page } from "@playwright/test";
+
+async function login(page:Page){await page.goto("/login");await page.getByLabel("דוא״ל").fill("admin@example.com");await page.getByLabel("סיסמה").fill("TestAdmin!12345");await page.getByRole("button",{name:"כניסה מאובטחת"}).click();}
+
+test("כניסה מאובטחת וממשק RTL",async({page})=>{await page.goto("/");await expect(page).toHaveURL(/\/login$/);await expect(page.locator("html")).toHaveAttribute("dir","rtl");await login(page);await expect(page.getByRole("heading",{name:/שלום מנהל בדיקה/})).toBeVisible();await expect(page.getByRole("link",{name:"משמרות",exact:true})).toBeVisible();});
+
+test("כניסה שגויה אינה חושפת אם המשתמש קיים",async({page})=>{await page.goto("/login");await page.getByLabel("דוא״ל").fill("missing@example.com");await page.getByLabel("סיסמה").fill("incorrect-password");await page.getByRole("button",{name:"כניסה מאובטחת"}).click();await expect(page.locator("p.alert[role=alert]")).toHaveText("פרטי ההתחברות שגויים");});
+
+test("מנהל יוצר, עורך ומפרסם משמרת",async({page},testInfo)=>{
+ await login(page);await page.goto("/admin/shifts");
+ const now=new Date();const shiftDate=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()+1,1)).toISOString().slice(0,10);const slot=testInfo.project.name==="mobile"?"EVENING":"MORNING";const slotName=slot==="MORNING"?"בוקר":"ערב";
+ await page.getByLabel("תאריך").fill(shiftDate);await page.getByLabel("חלק יום").selectOption(slot);await page.getByLabel("עונה").selectOption({label:"משק בדיקה · תפוחים"});await page.getByLabel("מוביל").selectOption({label:"קוטף בדיקה"});await page.getByLabel("קוטפים (בחירה מרובה)").selectOption({label:"קוטף בדיקה"});await page.getByLabel("רכבים (בחירה מרובה)").selectOption({label:"123-45-678 · רכב בדיקה"});await page.getByLabel("יעד").fill("12");await page.getByRole("button",{name:"יצירת טיוטה"}).click();
+ const row=page.getByRole("row").filter({hasText:"משק בדיקה · תפוחים"}).filter({hasText:slotName});await expect(row).toContainText("טיוטה");await row.getByRole("link",{name:"עריכה"}).click();await expect(page.getByRole("heading",{name:/עריכת משמרת/})).toBeVisible();await page.getByLabel("יעד").fill("15");const editForm=page.locator("form").filter({has:page.getByRole("heading",{name:/עריכת משמרת/})});const invalid=await editForm.locator(":invalid").evaluateAll(nodes=>nodes.map(node=>(node as HTMLInputElement).name));expect(invalid).toEqual([]);await editForm.getByRole("button",{name:"שמירת שינויים"}).click();await expect(page).toHaveURL(/saved=1/);const updated=page.getByRole("row").filter({hasText:"משק בדיקה · תפוחים"}).filter({hasText:slotName});await expect(updated).toContainText("15 / 0");await updated.getByRole("button",{name:"פרסום"}).click();await expect(page.getByRole("row").filter({hasText:"משק בדיקה · תפוחים"}).filter({hasText:slotName})).toContainText("פורסמה");
+});
