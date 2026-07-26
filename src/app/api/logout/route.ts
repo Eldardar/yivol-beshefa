@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { AuthService } from "@/lib/services/auth";
 import { db } from "@/lib/server";
-import { requestBodyIssue } from "@/lib/http";
+import { requestBodyIssue, requestUrl } from "@/lib/http";
 
 export const runtime = "nodejs";
 export async function POST(req: Request) {
@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   try { auth.assertCsrf(token, String(form.get("csrf") ?? "")); }
   catch { return NextResponse.json({ error: "בקשה לא תקינה" }, { status: 403 }); }
   auth.logout(token);
-  const res = NextResponse.redirect(new URL("/login", req.url), 303);
+  const res = NextResponse.redirect(requestUrl("/login", req), 303);
   res.cookies.delete("yivol_session");
   res.cookies.delete("yivol_csrf");
   return res;

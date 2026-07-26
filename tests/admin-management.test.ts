@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type Database from "better-sqlite3";
-import { createTestDb } from "@/lib/db";
+import Database from "better-sqlite3";
+import fs from "node:fs";
+import { createTestDb, migrate } from "@/lib/db";
 import { AdminService } from "@/lib/services/admin";
 import { SchedulingService } from "@/lib/services/scheduling";
 
@@ -18,6 +19,11 @@ function setup() {
   for (const id of [p1,p2]) db.prepare("INSERT INTO availability(user_id,date,status) VALUES(?,?,?)").run(id,"2026-08-10","AVAILABLE");
   return { admin,p1,p2,farm,season,vehicle };
 }
+
+describe("זהות קוטף",()=>{
+  it("שומר תעודת זהות ייחודית ומאפשר רשומות מורשת ללא תעודה",()=>{expect((db.prepare("PRAGMA table_info(users)").all() as Array<{name:string}>).some(column=>column.name==="national_id")).toBe(true);db.prepare("INSERT INTO users(name,email,phone,national_id,role,password_hash) VALUES(?,?,?,?,?,?)").run("א","id-a@example.com","0500000000","316250257","PICKER","x");expect(()=>db.prepare("INSERT INTO users(name,email,phone,national_id,role,password_hash) VALUES(?,?,?,?,?,?)").run("ב","id-b@example.com","0500000001","316250257","PICKER","x")).toThrow(/UNIQUE/);expect(()=>db.prepare("INSERT INTO users(name,email,phone,role,password_hash) VALUES(?,?,?,?,?)").run("מורשת","legacy@example.com","0500000002","PICKER","x")).not.toThrow();});
+  it("משדרג מסד גרסה 2 בלי לפגוע בקוטף קיים",()=>{const legacy=new Database(":memory:");try{legacy.exec("CREATE TABLE schema_migrations(version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)");for(const [version,file] of [[1,"migrations/001_initial.sql"],[2,"migrations/002_password_rotation.sql"]] as const){legacy.exec(fs.readFileSync(file,"utf8"));legacy.prepare("INSERT INTO schema_migrations(version) VALUES(?)").run(version);}legacy.prepare("INSERT INTO users(name,email,phone,role,password_hash) VALUES(?,?,?,?,?)").run("קוטף ותיק","legacy-v2@example.com","0502223344","PICKER","x");migrate(legacy);expect(legacy.prepare("SELECT name,national_id FROM users WHERE email=?").get("legacy-v2@example.com")).toEqual({name:"קוטף ותיק",national_id:null});expect(legacy.prepare("SELECT 1 FROM schema_migrations WHERE version=3").get()).toEqual({1:1});}finally{legacy.close();}});
+});
 
 describe("ניהול וארכוב", () => {
   it("מנהל מעביר קוטף לארכיון, מבטל הפעלות ושומר אירוע ביקורת", () => {

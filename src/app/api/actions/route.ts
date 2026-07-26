@@ -8,7 +8,7 @@ import { PickerService } from "@/lib/services/picker";
 import { SchedulingService } from "@/lib/services/scheduling";
 import { ShiftService } from "@/lib/services/shifts";
 import { farmSchema, seasonSchema, shiftSchema, vehicleSchema } from "@/lib/schemas";
-import { requestBodyIssue } from "@/lib/http";
+import { requestBodyIssue, requestUrl } from "@/lib/http";
 
 export const runtime="nodejs";
 const positiveId=z.coerce.number().int().positive();
@@ -27,8 +27,8 @@ function destination(action:string,form:FormData):string {
 export async function POST(req:Request){
   const jar=await cookies();const token=jar.get("yivol_session")?.value??"";
   const database=db();const auth=new AuthService(database);const user=auth.authenticate(token);
-  if(!user)return NextResponse.redirect(new URL("/login",req.url),303);
-  if(user.mustChangePassword)return NextResponse.redirect(new URL("/change-password",req.url),303);
+  if(!user)return NextResponse.redirect(requestUrl("/login",req),303);
+  if(user.mustChangePassword)return NextResponse.redirect(requestUrl("/change-password",req),303);
   const bodyIssue=requestBodyIssue(req,65_536,["application/x-www-form-urlencoded","multipart/form-data"]);if(bodyIssue)return NextResponse.json({error:bodyIssue.message},{status:bodyIssue.status});
   const form=await req.formData();const action=String(form.get("action")??"");const csrf=String(form.get("csrf")??"");
   let warning="";try{
@@ -65,9 +65,9 @@ export async function POST(req:Request){
     }else if(action==="readNotification"){
       new PickerService(database).markRead(user.id,positiveId.parse(form.get("notificationId")));
     }else throw new Error("פעולה אינה מוכרת");
-    const redirect=new URL(destination(action,form),req.url);if(warning)redirect.searchParams.set("warning",warning);return NextResponse.redirect(redirect,303);
+    const redirect=requestUrl(destination(action,form),req);if(warning)redirect.searchParams.set("warning",warning);return NextResponse.redirect(redirect,303);
   }catch(error){
     const message=error instanceof z.ZodError?(error.issues[0]?.message??"קלט אינו תקין"):error instanceof Error?error.message:"הפעולה נכשלה";
-    return NextResponse.redirect(new URL(`${destination(action,form).split("?")[0]}?error=${encodeURIComponent(message)}`,req.url),303);
+    return NextResponse.redirect(requestUrl(`${destination(action,form).split("?")[0]}?error=${encodeURIComponent(message)}`,req),303);
   }
 }

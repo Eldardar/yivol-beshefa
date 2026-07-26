@@ -3,9 +3,59 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/server";
 import { AuthService } from "@/lib/services/auth";
-import { generateInitialPassword,hashPassword } from "@/lib/security";
-import { userCreateSchema } from "@/lib/schemas";
+import { generateInitialPassword, hashPassword } from "@/lib/security";
+import { pickerCreateSchema } from "@/lib/schemas";
 import { requestBodyIssue } from "@/lib/http";
-export const runtime="nodejs";
-const headers={"Cache-Control":"no-store"};
-export async function POST(req:Request){const jar=await cookies(),token=jar.get("yivol_session")?.value??"",database=db(),auth=new AuthService(database),user=auth.authenticate(token);if(!user||user.role!=="ADMIN"||user.mustChangePassword)return NextResponse.json({error:"אין הרשאה"},{status:403,headers});try{const issue=requestBodyIssue(req,16_384,["application/json"]);if(issue)throw new Error(issue.message);const body=await req.json() as Record<string,unknown>;auth.assertCsrf(token,String(body.csrf??""));const password=generateInitialPassword(),input=userCreateSchema.parse({name:body.name,email:body.email,phone:body.phone,role:body.role,password,active:true,notes:body.notes??""}),hash=await hashPassword(password);database.transaction(()=>{const result=database.prepare("INSERT INTO users(name,email,phone,notes,role,password_hash,active,must_change_password) VALUES(?,?,?,?,?,?,1,1)").run(input.name,input.email,input.phone,input.notes,input.role,hash);database.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(user.id,"CREATE","USER",Number(result.lastInsertRowid));})();return NextResponse.json({initialPassword:password},{headers});}catch(error){const message=error instanceof z.ZodError?(error.issues[0]?.message??"קלט אינו תקין"):error instanceof Error&&["בקשה לא תקינה","בקשה גדולה מדי או ללא אורך תקין","סוג תוכן אינו נתמך"].includes(error.message)?error.message:"לא ניתן ליצור משתמש";return NextResponse.json({error:message},{status:400,headers});}}
+import { maskNationalId } from "@/lib/privacy";
+
+export const runtime = "nodejs";
+const noStoreHeaders = { "Cache-Control": "no-store" };
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!);
+}
+
+function htmlPage(title: string, content: string, status: number): NextResponse {
+  return new NextResponse(`<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · יבול בשפע</title></head><body><main><h1>${escapeHtml(title)}</h1>${content}<p><a href="/admin/users">חזרה לרשימת הקוטפים</a></p></main></body></html>`, {
+    status,
+    headers: { ...noStoreHeaders, "Content-Type": "text/html; charset=utf-8", "X-Content-Type-Options": "nosniff" }
+  });
+}
+
+export async function POST(req: Request) {
+  const jar = await cookies();
+  const token = jar.get("yivol_session")?.value ?? "";
+  const database = db();
+  const auth = new AuthService(database);
+  const user = auth.authenticate(token);
+  if (!user || user.role !== "ADMIN" || user.mustChangePassword) return NextResponse.json({ error: "אין הרשאה" }, { status: 403, headers: noStoreHeaders });
+  const isJson = req.headers.get("content-type")?.toLowerCase().startsWith("application/json") ?? false;
+
+  try {
+    const issue = requestBodyIssue(req, 16_384, ["application/json", "application/x-www-form-urlencoded"]);
+    if (issue) throw new Error(issue.message);
+    const body = isJson ? await req.json() as Record<string, unknown> : Object.fromEntries(await req.formData());
+    auth.assertCsrf(token, String(body.csrf ?? ""));
+    const candidate = { ...body };
+    delete candidate.csrf;
+    const input = pickerCreateSchema.parse(candidate);
+    const password = generateInitialPassword();
+    const hash = await hashPassword(password);
+    database.transaction(() => {
+      const result = database.prepare("INSERT INTO users(name,email,phone,national_id,notes,role,password_hash,active,must_change_password) VALUES(?,?,?,?,?,'PICKER',?,1,1)").run(input.name, input.email, input.phone, input.nationalId, input.notes, hash);
+      database.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(user.id, "CREATE", "USER", Number(result.lastInsertRowid));
+    })();
+    if (isJson) return NextResponse.json({ initialPassword: password }, { headers: noStoreHeaders });
+    return htmlPage("הקוטף נוצר בהצלחה", `<dl><dt>שם</dt><dd>${escapeHtml(input.name)}</dd><dt>תעודת זהות</dt><dd>${escapeHtml(maskNationalId(input.nationalId))}</dd></dl><p><strong>הסיסמה מוצגת פעם אחת בלבד:</strong></p><p><code>${escapeHtml(password)}</code></p><p>יש להעתיק ולמסור לקוטף בערוץ מאובטח. היא אינה נשמרת בטקסט גלוי.</p>`, 201);
+  } catch (error) {
+    const message = error instanceof z.ZodError
+      ? (error.issues[0]?.message ?? "קלט אינו תקין")
+      : error instanceof Error && ["בקשה לא תקינה", "בקשה גדולה מדי או ללא אורך תקין", "סוג תוכן אינו נתמך"].includes(error.message)
+        ? error.message
+        : error instanceof Error && error.message.includes("UNIQUE constraint failed")
+          ? "תעודת הזהות או הדוא״ל כבר קיימים"
+          : "לא ניתן ליצור קוטף";
+    if (!isJson) return htmlPage("יצירת הקוטף נכשלה", `<p role="alert">${escapeHtml(message)}</p>`, 400);
+    return NextResponse.json({ error: message }, { status: 400, headers: noStoreHeaders });
+  }
+}
