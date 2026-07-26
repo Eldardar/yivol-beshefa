@@ -3,16 +3,18 @@ import { z } from "zod";
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "תאריך אינו תקין").refine(value=>{const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(value);if(!match)return false;const year=Number(match[1]!),month=Number(match[2]!),day=Number(match[3]!);const date=new Date(Date.UTC(year,month-1,day));return date.getUTCFullYear()===year&&date.getUTCMonth()===month-1&&date.getUTCDate()===day;},"תאריך אינו תקין");
 const id = z.coerce.number().int().positive();
 const text = (max: number) => z.string().trim().min(1).max(max);
+export const passwordSchema=z.string().min(12,"הסיסמה חייבת להכיל לפחות 12 תווים").max(128).regex(/[a-z]/,"נדרשת אות קטנה באנגלית").regex(/[A-Z]/,"נדרשת אות גדולה באנגלית").regex(/\d/,"נדרשת ספרה").regex(/[^A-Za-z0-9]/,"נדרש תו מיוחד");
 
 export const userCreateSchema = z.object({
   name: text(100),
   email: z.string().trim().toLowerCase().email().max(254),
   phone: text(30),
   role: z.enum(["ADMIN", "PICKER"]),
-  password: z.string().min(12).max(128),
+  password: passwordSchema,
   active: z.boolean(),
   notes: z.string().trim().max(2000).default("")
 }).strict();
+export const passwordChangeSchema=z.object({password:passwordSchema,confirmation:z.string()}).strict().refine(x=>x.password===x.confirmation,{message:"הסיסמאות אינן זהות",path:["confirmation"]});
 
 export const availabilitySchema = z.object({
   date: isoDate,

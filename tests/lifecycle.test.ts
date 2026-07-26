@@ -15,11 +15,12 @@ function setup() {
   const season = Number(db.prepare("INSERT INTO seasons(farm_id,crop,start_date,end_date) VALUES(?,?,?,?)").run(farm, "תות", "2026-08-01", "2026-09-01").lastInsertRowid);
   const shift = Number(db.prepare("INSERT INTO shifts(date,slot,season_id,leader_id,goal,notes,created_by) VALUES(?,?,?,?,?,?,?)").run("2026-08-10", "MORNING", season, p1, 10.5, "", admin).lastInsertRowid);
   db.prepare("INSERT INTO shift_pickers(shift_id,user_id) VALUES(?,?),(?,?)").run(shift, p1, shift, p2);
-  return { admin, p1, p2, shift };
+  db.prepare("INSERT INTO availability(user_id,date,status) VALUES(?,?,?),(?,?,?)").run(p1,"2026-08-10","AVAILABLE",p2,"2026-08-10","AVAILABLE");
+  return { admin, p1, p2, shift, season };
 }
 
 describe("מחזור משמרת ודיווח", () => {
-  it("מוביל אינו רואה או מעדכן דוח של טיוטה",()=>{const x=setup();expect(()=>new ShiftService(db).saveQuantities(x.p1,x.shift,[{userId:x.p1,quantity:1}])).toThrow("אין הרשאה");});
+  it("מוביל אינו רואה או מעדכן דוח של טיוטה",()=>{const x=setup();expect(()=>new ShiftService(db).saveQuantities(x.p1,x.shift,[{userId:x.p1,quantity:1}])).toThrow("מצב המשמרת");});
   it("רק מנהל מפרסם ויוצר התראה לכל קוטף", () => {
     const x = setup(); const service = new ShiftService(db);
     expect(() => service.transition(x.p1, x.shift, "PUBLISHED")).toThrow("אין הרשאה");
@@ -34,9 +35,14 @@ describe("מחזור משמרת ודיווח", () => {
     expect(service.total(x.admin, x.shift)).toBe(9.75);
   });
 
-  it("דוחה כמות עבור מי שאינו משובץ וכמות שלילית", () => {
+  it("דוחה כמות עבור מי שאינו משובץ, דוח חלקי וכמות שלילית", () => {
     const x = setup(); const service = new ShiftService(db); db.prepare("UPDATE shifts SET status='PUBLISHED' WHERE id=?").run(x.shift);
-    expect(() => service.saveQuantities(x.p1, x.shift, [{ userId: 999, quantity: 2 }])).toThrow("אינו משובץ");
-    expect(() => service.saveQuantities(x.p1, x.shift, [{ userId: x.p1, quantity: -1 }])).toThrow("כמות");
+    expect(() => service.saveQuantities(x.p1, x.shift, [{ userId: 999, quantity: 2 }, { userId: x.p2, quantity: 1 }])).toThrow("אינו משובץ");
+    expect(() => service.saveQuantities(x.p1, x.shift, [{ userId: x.p1, quantity: 1 }])).toThrow("כל הקוטפים");
+    expect(() => service.saveQuantities(x.p1, x.shift, [{ userId: x.p1, quantity: -1 }, { userId: x.p2, quantity: 1 }])).toThrow("כמות");
   });
+  it("פרסום ופתיחה מחדש מאמתים מחדש משאבים והתנגשויות",()=>{const x=setup();const service=new ShiftService(db);db.prepare("UPDATE users SET active=0 WHERE id=?").run(x.p2);expect(()=>service.transition(x.admin,x.shift,"PUBLISHED")).toThrow("קוטף אינו פעיל");db.prepare("UPDATE users SET active=1 WHERE id=?").run(x.p2);db.prepare("UPDATE shifts SET status='CANCELLED' WHERE id=?").run(x.shift);const other=Number(db.prepare("INSERT INTO shifts(date,slot,season_id,leader_id,goal,created_by) VALUES(?,?,?,?,?,?)").run("2026-08-10","MORNING",x.season,x.p1,1,x.admin).lastInsertRowid);db.prepare("INSERT INTO shift_pickers(shift_id,user_id) VALUES(?,?)").run(other,x.p1);expect(()=>service.transition(x.admin,x.shift,"DRAFT")).toThrow("שיבוץ כפול");});
+  it("אינו משלים משמרת בלי דוח מלא ומדויק לכל הקוטפים",()=>{const x=setup();const service=new ShiftService(db);service.transition(x.admin,x.shift,"PUBLISHED");expect(()=>service.transition(x.admin,x.shift,"COMPLETED")).toThrow("דיווח מלא");db.prepare("INSERT INTO quantities(shift_id,user_id,quantity,updated_by) VALUES(?,?,?,?)").run(x.shift,x.p1,1,x.admin);expect(()=>service.transition(x.admin,x.shift,"COMPLETED")).toThrow("דיווח מלא");db.prepare("INSERT INTO quantities(shift_id,user_id,quantity,updated_by) VALUES(?,?,?,?)").run(x.shift,x.p2,2,x.admin);expect(()=>service.transition(x.admin,x.shift,"COMPLETED")).not.toThrow();});
+  it("השלמה סופית ומשיכת פרסום מודיעה לצוות",()=>{const x=setup();const service=new ShiftService(db);service.transition(x.admin,x.shift,"PUBLISHED");db.prepare("DELETE FROM notifications").run();service.transition(x.admin,x.shift,"DRAFT");expect(db.prepare("SELECT count(*) count FROM notifications").get()).toEqual({count:2});service.transition(x.admin,x.shift,"PUBLISHED");service.saveQuantities(x.admin,x.shift,[{userId:x.p1,quantity:1},{userId:x.p2,quantity:2}]);service.transition(x.admin,x.shift,"COMPLETED");expect(()=>service.transition(x.admin,x.shift,"PUBLISHED")).toThrow("מעבר מצב");});
+  it("גם מנהל אינו מדווח בטיוטה או בביטול",()=>{const x=setup();const service=new ShiftService(db);expect(()=>service.saveQuantities(x.admin,x.shift,[{userId:x.p1,quantity:1},{userId:x.p2,quantity:2}])).toThrow("מצב");db.prepare("UPDATE shifts SET status='CANCELLED' WHERE id=?").run(x.shift);expect(()=>service.saveQuantities(x.admin,x.shift,[{userId:x.p1,quantity:1},{userId:x.p2,quantity:2}])).toThrow("מצב");});
 });

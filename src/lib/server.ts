@@ -11,6 +11,6 @@ export async function currentUser(): Promise<SessionUser|undefined> {
  const token=(await cookies()).get("yivol_session")?.value ?? "";
  return new AuthService(db()).authenticate(token);
 }
-export async function requireUser():Promise<SessionUser>{const user=await currentUser();if(!user)redirect("/login");return user;}
+export async function requireUser():Promise<SessionUser>{const user=await currentUser();if(!user)redirect("/login");if(user.mustChangePassword)redirect("/change-password");return user;}
 export async function requireAdmin():Promise<SessionUser>{const user=await requireUser();if(user.role!=="ADMIN")redirect("/");return user;}
 export async function csrfValue():Promise<string>{return (await cookies()).get("yivol_csrf")?.value ?? "";}

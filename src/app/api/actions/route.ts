@@ -8,6 +8,7 @@ import { PickerService } from "@/lib/services/picker";
 import { SchedulingService } from "@/lib/services/scheduling";
 import { ShiftService } from "@/lib/services/shifts";
 import { farmSchema, seasonSchema, shiftSchema, vehicleSchema } from "@/lib/schemas";
+import { requestBodyIssue } from "@/lib/http";
 
 export const runtime="nodejs";
 const positiveId=z.coerce.number().int().positive();
@@ -24,11 +25,13 @@ function destination(action:string,form:FormData):string {
 }
 
 export async function POST(req:Request){
-  const form=await req.formData();const action=String(form.get("action")??"");
-  const jar=await cookies();const token=jar.get("yivol_session")?.value??"";const csrf=String(form.get("csrf")??"");
+  const jar=await cookies();const token=jar.get("yivol_session")?.value??"";
   const database=db();const auth=new AuthService(database);const user=auth.authenticate(token);
   if(!user)return NextResponse.redirect(new URL("/login",req.url),303);
-  try{
+  if(user.mustChangePassword)return NextResponse.redirect(new URL("/change-password",req.url),303);
+  const bodyIssue=requestBodyIssue(req,65_536,["application/x-www-form-urlencoded","multipart/form-data"]);if(bodyIssue)return NextResponse.json({error:bodyIssue.message},{status:bodyIssue.status});
+  const form=await req.formData();const action=String(form.get("action")??"");const csrf=String(form.get("csrf")??"");
+  let warning="";try{
     auth.assertCsrf(token,csrf);
     if(action==="availability"){
       new PickerService(database).setAvailability(user.id,{date:String(form.get("date")),status:String(form.get("status"))});
@@ -51,18 +54,18 @@ export async function POST(req:Request){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
       const input=shiftSchema.parse({date:form.get("date"),slot:form.get("slot"),seasonId:form.get("seasonId"),pickerIds:form.getAll("pickerIds"),leaderId:form.get("leaderId"),vehicleIds:form.getAll("vehicleIds"),goal:form.get("goal"),notes:form.get("notes")??""});
       const scheduling=new SchedulingService(database);
-      if(action==="shiftCreate")scheduling.createShift(user.id,input);else scheduling.updateShift(user.id,positiveId.parse(form.get("shiftId")),input);
+      const result=action==="shiftCreate"?scheduling.createShift(user.id,input):scheduling.updateShift(user.id,positiveId.parse(form.get("shiftId")),input);warning=result.warnings.join(" · ");
     }else if(action==="shiftTransition"){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
-      const target=z.enum(["DRAFT","PUBLISHED","COMPLETED","CANCELLED"]).parse(form.get("target"));new ShiftService(database).transition(user.id,positiveId.parse(form.get("shiftId")),target);
+      const target=z.enum(["DRAFT","PUBLISHED","COMPLETED","CANCELLED"]).parse(form.get("target"));warning=new ShiftService(database).transition(user.id,positiveId.parse(form.get("shiftId")),target).join(" · ");
     }else if(action==="quantities"){
       const shiftId=positiveId.parse(form.get("shiftId"));const entries:Array<{userId:number;quantity:number}>=[];
-      for(const [key,value] of form.entries()){const match=/^q_(\d+)$/.exec(key);if(match)entries.push({userId:positiveId.parse(match[1]),quantity:z.coerce.number().finite().nonnegative().parse(value)});}
+      for(const [key,value] of form.entries()){const match=/^quantity_(\d+)$/.exec(key);if(match)entries.push({userId:positiveId.parse(match[1]),quantity:z.coerce.number().finite().nonnegative().max(1_000_000).parse(value)});}
       new ShiftService(database).saveQuantities(user.id,shiftId,entries);
     }else if(action==="readNotification"){
       new PickerService(database).markRead(user.id,positiveId.parse(form.get("notificationId")));
     }else throw new Error("פעולה אינה מוכרת");
-    return NextResponse.redirect(new URL(destination(action,form),req.url),303);
+    const redirect=new URL(destination(action,form),req.url);if(warning)redirect.searchParams.set("warning",warning);return NextResponse.redirect(redirect,303);
   }catch(error){
     const message=error instanceof z.ZodError?(error.issues[0]?.message??"קלט אינו תקין"):error instanceof Error?error.message:"הפעולה נכשלה";
     return NextResponse.redirect(new URL(`${destination(action,form).split("?")[0]}?error=${encodeURIComponent(message)}`,req.url),303);

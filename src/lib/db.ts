@@ -20,6 +20,7 @@ export function migrate(db: AppDb): void {
 }
 
 export function openDb(filename = process.env.DATABASE_PATH || "./data/yivol.sqlite"): AppDb {
+  if(process.env.NODE_ENV==="production"&&(!process.env.DATABASE_PATH||!path.isAbsolute(process.env.DATABASE_PATH)))throw new Error("בייצור נדרש DATABASE_PATH מוחלט על אחסון מתמיד");
   const resolved = path.resolve(filename);
   fs.mkdirSync(path.dirname(resolved), { recursive: true, mode: 0o700 });
   const database = new Database(resolved);
