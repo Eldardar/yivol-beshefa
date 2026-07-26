@@ -15,3 +15,5 @@ export default async function setup(){
  db.prepare("INSERT INTO availability(user_id,date,status) VALUES(?,?,?)").run(pickerId,start,"AVAILABLE");
  const past=new Date(Date.now()-86_400_000).toISOString().slice(0,10);const draftId=Number(db.prepare("INSERT INTO shifts(date,slot,season_id,leader_id,status,goal,created_by) VALUES(?,?,?,?,?,?,?)").run(past,"EVENING",1,pickerId,"DRAFT",1,pickerId).lastInsertRowid);db.prepare("INSERT INTO shift_pickers(shift_id,user_id) VALUES(?,?)").run(draftId,pickerId);db.close();
 }
+
+setup().catch((error:unknown)=>{console.error(error);process.exitCode=1;});
