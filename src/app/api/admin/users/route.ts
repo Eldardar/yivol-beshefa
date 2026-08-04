@@ -5,22 +5,11 @@ import { db } from "@/lib/server";
 import { AuthService } from "@/lib/services/auth";
 import { generateInitialPassword, hashPassword } from "@/lib/security";
 import { pickerCreateSchema } from "@/lib/schemas";
-import { requestBodyIssue } from "@/lib/http";
+import { escapeHtml, htmlPage, requestBodyIssue } from "@/lib/http";
 import { maskNationalId } from "@/lib/privacy";
 
 export const runtime = "nodejs";
 const noStoreHeaders = { "Cache-Control": "no-store" };
-
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!);
-}
-
-function htmlPage(title: string, content: string, status: number): NextResponse {
-  return new NextResponse(`<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · יבול בשפע</title></head><body><main><h1>${escapeHtml(title)}</h1>${content}<p><a href="/admin/users">חזרה לרשימת הקוטפים</a></p></main></body></html>`, {
-    status,
-    headers: { ...noStoreHeaders, "Content-Type": "text/html; charset=utf-8", "X-Content-Type-Options": "nosniff" }
-  });
-}
 
 export async function POST(req: Request) {
   const jar = await cookies();

@@ -9,14 +9,20 @@ import { SchedulingService } from "@/lib/services/scheduling";
 import { ShiftService } from "@/lib/services/shifts";
 import { farmSchema, seasonSchema, shiftSchema, vehicleSchema } from "@/lib/schemas";
 import { requestBodyIssue, requestUrl } from "@/lib/http";
+import { availabilityWindow, monthEditableDates } from "@/lib/dates";
 
 export const runtime="nodejs";
 const positiveId=z.coerce.number().int().positive();
 const activeSchema=z.enum(["0","1"]);
 const entitySchema=z.enum(["USER","FARM","SEASON","VEHICLE"]);
 
+function monthQueryParam(form:FormData):string{
+  const value=String(form.get("month")??"");
+  return /^\d{4}-\d{2}$/.test(value)?`&month=${value}`:"";
+}
+
 function destination(action:string,form:FormData):string {
-  if(action==="availability")return "/availability?saved=1";
+  if(action==="availability")return `/availability?saved=1${monthQueryParam(form)}`;
   if(action==="setActive")return form.get("entity")==="USER"?"/admin/users?saved=1":"/admin/resources?saved=1";
   if(action.startsWith("farm")||action.startsWith("season")||action.startsWith("vehicle"))return "/admin/resources?saved=1";
   if(action.startsWith("shift")||action==="quantities")return "/admin/shifts?saved=1";
@@ -34,7 +40,12 @@ export async function POST(req:Request){
   let warning="";try{
     auth.assertCsrf(token,csrf);
     if(action==="availability"){
-      new PickerService(database).setAvailability(user.id,{date:String(form.get("date")),status:String(form.get("status"))});
+      const window=availabilityWindow();
+      const monthParam=String(form.get("month")??"");
+      const monthKey=/^\d{4}-\d{2}$/.test(monthParam)?monthParam:window.start.slice(0,7);
+      const [y,m]=monthKey.split("-").map(Number) as [number,number];
+      const entries=monthEditableDates(y,m,window).map(date=>({date,status:form.get(`available_${date}`)?"AVAILABLE":form.get(`maybe_${date}`)?"MAYBE":"UNAVAILABLE"}));
+      new PickerService(database).setAvailability(user.id,{entries});
     }else if(action==="farmCreate"){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
       const input=farmSchema.parse({name:form.get("name"),contactPerson:form.get("contact"),phone:form.get("phone"),address:form.get("address"),navigationUrl:form.get("navigation")??"",notes:form.get("notes")??""});
@@ -68,6 +79,6 @@ export async function POST(req:Request){
     const redirect=requestUrl(destination(action,form),req);if(warning)redirect.searchParams.set("warning",warning);return NextResponse.redirect(redirect,303);
   }catch(error){
     const message=error instanceof z.ZodError?(error.issues[0]?.message??"קלט אינו תקין"):error instanceof Error?error.message:"הפעולה נכשלה";
-    return NextResponse.redirect(requestUrl(`${destination(action,form).split("?")[0]}?error=${encodeURIComponent(message)}`,req),303);
+    return NextResponse.redirect(requestUrl(`${destination(action,form).split("?")[0]}?error=${encodeURIComponent(message)}${action==="availability"?monthQueryParam(form):""}`,req),303);
   }
 }

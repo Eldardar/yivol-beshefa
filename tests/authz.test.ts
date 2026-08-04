@@ -16,5 +16,42 @@ describe("הרשאות והפעלות",()=>{
  it("כשלונות בחשבונות נפרדים אינם נועלים את כל המערכת",async()=>{await users();const auth=new AuthService(db);for(let i=0;i<100;i++)await expect(auth.login(`spray-${i}@example.com`,"")).rejects.toThrow("פרטי ההתחברות");await expect(auth.login("one@example.com","Strong!Pass123")).resolves.toBeTruthy();});
  it("כופה סיסמה חדשה השונה מהזמנית ומבטל את כל ההפעלות",async()=>{const {p1}=await users();db.prepare("UPDATE users SET must_change_password=1 WHERE id=?").run(p1);const auth=new AuthService(db),session=await auth.login("one@example.com","Strong!Pass123","10.0.0.1");expect(session.user.mustChangePassword).toBe(true);await expect(auth.changePassword(p1,"Strong!Pass123")).rejects.toThrow("שונה");expect(db.prepare("SELECT must_change_password FROM users WHERE id=?").get(p1)).toEqual({must_change_password:1});expect(auth.authenticate(session.token)).toBeTruthy();await auth.changePassword(p1,"NewStrong!Pass456");expect(auth.authenticate(session.token)).toBeUndefined();await expect(auth.login("one@example.com","NewStrong!Pass456","10.0.0.2")).resolves.toBeTruthy();});
  it("מונע IDOR בפרופיל ובהודעות",async()=>{const {p1,p2}=await users();const notificationId=Number(db.prepare("INSERT INTO notifications(user_id,title,body) VALUES(?,?,?)").run(p2,"סודי","תוכן").lastInsertRowid);const p=new PickerService(db);expect(()=>p.profile(p1,p2)).toThrow("אין הרשאה");expect(p.notifications(p1).some(x=>x.title==="סודי")).toBe(false);expect(()=>p.markRead(p1,notificationId)).toThrow("לא נמצאה");expect(()=>p.markRead(p2,notificationId)).not.toThrow();});
- it("מקבל זמינות רק בחודש הבא בירושלים",async()=>{const {p1}=await users();const p=new PickerService(db);expect(()=>p.setAvailability(p1,{date:"2026-09-01",status:"AVAILABLE"},new Date("2026-07-15T12:00:00Z"))).toThrow("החודש הבא");expect(()=>p.setAvailability(p1,{date:"2026-08-01",status:"AVAILABLE"},new Date("2026-07-15T12:00:00Z"))).not.toThrow();});
+ it("מקבל זמינות רק בטווח 60 הימים הקרובים בירושלים, כולל חסימת היום",async()=>{
+  const {p1}=await users();const p=new PickerService(db);const now=new Date("2026-07-15T12:00:00Z");
+  expect(()=>p.setAvailability(p1,{entries:[{date:"2026-07-14",status:"AVAILABLE"}]},now)).toThrow("60");
+  expect(()=>p.setAvailability(p1,{entries:[{date:"2026-07-15",status:"AVAILABLE"}]},now)).toThrow("60");
+  expect(()=>p.setAvailability(p1,{entries:[{date:"2026-09-14",status:"AVAILABLE"}]},now)).toThrow("60");
+  expect(()=>p.setAvailability(p1,{entries:[{date:"2026-07-16",status:"AVAILABLE"}]},now)).not.toThrow();
+  expect(()=>p.setAvailability(p1,{entries:[{date:"2026-09-13",status:"AVAILABLE"}]},now)).not.toThrow();
+ });
+ it("שומר קבוצת ימים באופן אטומי ומחליף רק תאריכים שנשלחו",async()=>{
+  const {p1}=await users();const p=new PickerService(db);const now=new Date("2026-07-15T12:00:00Z");
+  db.prepare("INSERT INTO availability(user_id,date,status) VALUES(?,?,?)").run(p1,"2026-08-05","AVAILABLE");
+  p.setAvailability(p1,{entries:[{date:"2026-08-01",status:"AVAILABLE"},{date:"2026-08-02",status:"MAYBE"},{date:"2026-08-03",status:"UNAVAILABLE"}]},now);
+  expect(db.prepare("SELECT date,status FROM availability WHERE user_id=? ORDER BY date").all(p1)).toEqual([
+   {date:"2026-08-01",status:"AVAILABLE"},{date:"2026-08-02",status:"MAYBE"},{date:"2026-08-03",status:"UNAVAILABLE"},{date:"2026-08-05",status:"AVAILABLE"}
+  ]);
+ });
+ it("דוחה תאריך כפול באותה בקשה ואינו כותב דבר",async()=>{
+  const {p1}=await users();const p=new PickerService(db);const now=new Date("2026-07-15T12:00:00Z");
+  expect(()=>p.setAvailability(p1,{entries:[{date:"2026-08-01",status:"AVAILABLE"},{date:"2026-08-01",status:"MAYBE"}]},now)).toThrow("תאריך כפול");
+  expect(db.prepare("SELECT count(*) count FROM availability WHERE user_id=?").get(p1)).toEqual({count:0});
+ });
+ it("דוחה קבוצה עם תאריך מחוץ לטווח 60 הימים ואינו מיישם חלקית",async()=>{
+  const {p1}=await users();const p=new PickerService(db);const now=new Date("2026-07-15T12:00:00Z");
+  expect(()=>p.setAvailability(p1,{entries:[{date:"2026-08-01",status:"AVAILABLE"},{date:"2026-09-14",status:"AVAILABLE"}]},now)).toThrow("60");
+  expect(db.prepare("SELECT count(*) count FROM availability WHERE user_id=?").get(p1)).toEqual({count:0});
+ });
+ it("שינוי זמינות אינו משנה שיבוץ קיים",async()=>{
+  const {p1}=await users();
+  const admin=Number(db.prepare("INSERT INTO users(name,email,phone,role,password_hash) VALUES(?,?,?,?,?)").run("מנהל","admin2@example.com","0500000009","ADMIN","x").lastInsertRowid);
+  const farm=Number(db.prepare("INSERT INTO farms(name,contact_person,phone,address) VALUES(?,?,?,?)").run("משק","איש","0500000003","כתובת").lastInsertRowid);
+  const season=Number(db.prepare("INSERT INTO seasons(farm_id,crop,start_date,end_date) VALUES(?,?,?,?)").run(farm,"תות","2026-08-01","2026-08-31").lastInsertRowid);
+  db.prepare("INSERT INTO availability(user_id,date,status) VALUES(?,?,?)").run(p1,"2026-08-01","AVAILABLE");
+  const shift=Number(db.prepare("INSERT INTO shifts(date,slot,season_id,leader_id,goal,created_by) VALUES(?,?,?,?,?,?)").run("2026-08-01","MORNING",season,p1,1,admin).lastInsertRowid);
+  db.prepare("INSERT INTO shift_pickers(shift_id,user_id) VALUES(?,?)").run(shift,p1);
+  new PickerService(db).setAvailability(p1,{entries:[{date:"2026-08-01",status:"UNAVAILABLE"}]},new Date("2026-07-15T12:00:00Z"));
+  expect(db.prepare("SELECT status FROM availability WHERE user_id=? AND date=?").get(p1,"2026-08-01")).toEqual({status:"UNAVAILABLE"});
+  expect(db.prepare("SELECT count(*) count FROM shift_pickers WHERE shift_id=? AND user_id=?").get(shift,p1)).toEqual({count:1});
+ });
 });

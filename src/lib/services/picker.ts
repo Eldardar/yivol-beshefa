@@ -1,11 +1,8 @@
 import type Database from "better-sqlite3";
-import { availabilitySchema } from "@/lib/schemas";
+import { availabilityMonthSchema } from "@/lib/schemas";
+import { availabilityWindow } from "@/lib/dates";
 
 type Notification={id:number;title:string;body:string;read_at:string|null;created_at:string};
-function monthInJerusalem(date:Date):{year:number;month:number}{
- const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Jerusalem",year:"numeric",month:"numeric"}).formatToParts(date);
- return {year:Number(parts.find(p=>p.type==="year")?.value),month:Number(parts.find(p=>p.type==="month")?.value)};
-}
 export class PickerService{
  constructor(private readonly db:Database.Database){}
  profile(actorId:number,targetId:number){
@@ -20,12 +17,19 @@ export class PickerService{
   if(result.changes!==1)throw new Error("ההודעה לא נמצאה");
  }
  setAvailability(actorId:number,raw:unknown,now=new Date()){
-  const input=availabilitySchema.parse(raw); const user=this.db.prepare("SELECT role,active FROM users WHERE id=?").get(actorId) as {role:string;active:number}|undefined;
+  const input=availabilityMonthSchema.parse(raw); const user=this.db.prepare("SELECT role,active FROM users WHERE id=?").get(actorId) as {role:string;active:number}|undefined;
   if(!user?.active || user.role!=="PICKER") throw new Error("אין הרשאה");
-  const current=monthInJerusalem(now); const next=current.month===12?{year:current.year+1,month:1}:{year:current.year,month:current.month+1};
-  const [year,month]=input.date.split("-").map(Number);
-  if(year!==next.year || month!==next.month) throw new Error("ניתן לעדכן רק את החודש הבא");
-  this.db.prepare(`INSERT INTO availability(user_id,date,status) VALUES(?,?,?)
-    ON CONFLICT(user_id,date) DO UPDATE SET status=excluded.status`).run(actorId,input.date,input.status);
+  const window=availabilityWindow(now);
+  const seen=new Set<string>();
+  for(const entry of input.entries){
+   if(seen.has(entry.date)) throw new Error("תאריך כפול בבקשה");
+   seen.add(entry.date);
+   if(entry.date<window.start || entry.date>=window.end) throw new Error("ניתן לעדכן זמינות רק ל-60 הימים הקרובים");
+  }
+  this.db.transaction(()=>{
+   const upsert=this.db.prepare(`INSERT INTO availability(user_id,date,status) VALUES(?,?,?)
+     ON CONFLICT(user_id,date) DO UPDATE SET status=excluded.status`);
+   for(const entry of input.entries) upsert.run(actorId,entry.date,entry.status);
+  }).immediate();
  }
 }

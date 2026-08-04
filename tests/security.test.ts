@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { hashPassword, verifyPassword, createSessionToken, hashToken, safeReturnPath } from "@/lib/security";
 import { availabilitySchema, israeliIdSchema, passwordSchema, pickerCreateSchema, shiftSchema } from "@/lib/schemas";
-import { jerusalemDate,nextJerusalemMonth } from "@/lib/dates";
+import { jerusalemDate,nextJerusalemMonth,availabilityWindow,monthEditableDates,shiftMonthKey } from "@/lib/dates";
 import { requestBodyIssue, requestUrl } from "@/lib/http";
 import { maskNationalId } from "@/lib/privacy";
 
@@ -16,6 +16,14 @@ describe("אבטחה", () => {
   it("דוחה תאריך לוח שנה שאינו קיים",()=>{expect(()=>availabilitySchema.parse({date:"2026-02-30",status:"AVAILABLE"})).toThrow("תאריך אינו תקין");});
   it("דוחה כמויות שליליות", () => { expect(() => shiftSchema.parse({date:"2026-08-10",slot:"MORNING",seasonId:1,pickerIds:[1],leaderId:1,vehicleIds:[],goal:-1,notes:""})).toThrow(); });
   it("מחשב יום וחודש לפי ירושלים גם בגבול UTC",()=>{const instant=new Date("2026-07-31T21:30:00Z");expect(jerusalemDate(instant)).toBe("2026-08-01");expect(nextJerusalemMonth(instant)).toEqual({start:"2026-09-01",end:"2026-10-01"});});
+  it("מחשב טווח 60 יום החל ממחר לפי ירושלים",()=>{expect(availabilityWindow(new Date("2026-07-31T21:30:00Z"))).toEqual({start:"2026-08-02",end:"2026-10-01"});});
+  it("מחשב ימים ניתנים לעריכה בתוך חודש חלקי ומחוץ לטווח",()=>{
+    const window={start:"2026-08-01",end:"2026-09-30"};
+    expect(monthEditableDates(2026,8,window)).toHaveLength(31);
+    expect(monthEditableDates(2026,9,window)).toEqual(Array.from({length:29},(_,i)=>`2026-09-${String(i+1).padStart(2,"0")}`));
+    expect(monthEditableDates(2026,10,window)).toEqual([]);
+  });
+  it("מזיז מפתח חודש קדימה ואחורה כולל מעבר שנה",()=>{expect(shiftMonthKey("2026-08",1)).toBe("2026-09");expect(shiftMonthKey("2026-12",1)).toBe("2027-01");expect(shiftMonthKey("2026-01",-1)).toBe("2025-12");});
   it("דוחה גוף ללא אורך, גוף גדול וסוג תוכן שגוי לפני פענוח",()=>{const allowed=["application/json"] as const;expect(requestBodyIssue(new Request("http://local"),100,allowed)?.status).toBe(413);expect(requestBodyIssue(new Request("http://local",{headers:{"content-length":"101","content-type":"application/json"}}),100,allowed)?.status).toBe(413);expect(requestBodyIssue(new Request("http://local",{headers:{"content-length":"2","content-type":"text/plain"}}),100,allowed)?.status).toBe(415);expect(requestBodyIssue(new Request("http://local",{headers:{"content-length":"2","content-type":"application/json; charset=utf-8"}}),100,allowed)).toBeUndefined();});
   it("משתמש במקור ציבורי מפורש להפניות מאחורי פרוקסי ודוחה מקור לא בטוח",()=>{const previous=process.env.PUBLIC_ORIGIN;try{delete process.env.PUBLIC_ORIGIN;const req=new Request("http://127.0.0.1:3100/api/login");expect(requestUrl("/",req).href).toBe("http://127.0.0.1:3100/");process.env.PUBLIC_ORIGIN="https://demo.example";expect(requestUrl("/login",req).href).toBe("https://demo.example/login");for(const invalid of ["javascript:alert(1)","https://user:pass@demo.example","https://demo.example/path","https://demo.example?query=1","https://demo.example#fragment"]){process.env.PUBLIC_ORIGIN=invalid;expect(()=>requestUrl("/",req)).toThrow("PUBLIC_ORIGIN");}}finally{if(previous===undefined)delete process.env.PUBLIC_ORIGIN;else process.env.PUBLIC_ORIGIN=previous;}});
 });

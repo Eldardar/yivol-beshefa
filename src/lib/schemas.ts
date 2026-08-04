@@ -19,6 +19,9 @@ export const availabilitySchema = z.object({
   date: isoDate,
   status: z.enum(["AVAILABLE", "MAYBE", "UNAVAILABLE"])
 }).strict();
+export const availabilityMonthSchema = z.object({
+  entries: z.array(availabilitySchema).min(1)
+}).strict();
 
 export const shiftSchema = z.object({
   date: isoDate,

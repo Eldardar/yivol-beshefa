@@ -11,3 +11,5 @@ test-results/
 coverage/
 *.log
 *.tsbuildinfo
+.DS_Store
+.claude/settings.local.json

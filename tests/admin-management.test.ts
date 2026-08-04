@@ -39,6 +39,24 @@ describe("ניהול וארכוב", () => {
   it("ארכוב משאב אינו מוחק היסטוריה",()=>{const x=setup();new AdminService(db).setActive(x.admin,"FARM",x.farm,false);expect(db.prepare("SELECT active FROM farms WHERE id=?").get(x.farm)).toEqual({active:0});expect(db.prepare("SELECT count(*) count FROM seasons WHERE farm_id=?").get(x.farm)).toEqual({count:1});});
 });
 
+describe("איפוס סיסמה לקוטף",()=>{
+  it("מנהל מאפס סיסמה לקוטף פעיל, מבטל הפעלות וכופה החלפה",async()=>{
+    const x=setup();
+    db.prepare("INSERT INTO sessions(user_id,token_hash,expires_at,csrf_hash) VALUES(?,?,?,?)").run(x.p1,"t","2099-01-01","c");
+    const before=(db.prepare("SELECT password_hash FROM users WHERE id=?").get(x.p1) as {password_hash:string}).password_hash;
+    const password=await new AdminService(db).resetPickerPassword(x.admin,x.p1);
+    expect(password.length).toBeGreaterThanOrEqual(8);
+    const after=db.prepare("SELECT password_hash,must_change_password FROM users WHERE id=?").get(x.p1) as {password_hash:string;must_change_password:number};
+    expect(after.password_hash).not.toBe(before);
+    expect(after.must_change_password).toBe(1);
+    expect(db.prepare("SELECT count(*) count FROM sessions WHERE user_id=?").get(x.p1)).toEqual({count:0});
+    expect(db.prepare("SELECT action FROM audit_events WHERE entity_type='USER' AND entity_id=? AND action='PASSWORD_RESET'").get(x.p1)).toEqual({action:"PASSWORD_RESET"});
+  });
+  it("דוחה איפוס עבור מנהל שאינו קוטף",async()=>{const x=setup();await expect(new AdminService(db).resetPickerPassword(x.admin,x.admin)).rejects.toThrow("קוטף פעיל");});
+  it("דוחה איפוס עבור קוטף בארכיון",async()=>{const x=setup();new AdminService(db).setActive(x.admin,"USER",x.p1,false);await expect(new AdminService(db).resetPickerPassword(x.admin,x.p1)).rejects.toThrow("קוטף פעיל");});
+  it("דוחה מזהה מזויף ומשתמש שאינו מנהל",async()=>{const x=setup();await expect(new AdminService(db).resetPickerPassword(x.admin,-1)).rejects.toThrow("מזהה אינו תקין");await expect(new AdminService(db).resetPickerPassword(x.p1,x.p2)).rejects.toThrow("אין הרשאה");});
+});
+
 describe("עריכת משמרת",()=>{
   it("מעדכן טיוטה ומונע התנגשות מול משמרת אחרת",()=>{const x=setup();const service=new SchedulingService(db);const first=service.createShift(x.admin,{date:"2026-08-10",slot:"MORNING",seasonId:x.season,pickerIds:[x.p1],leaderId:x.p1,vehicleIds:[x.vehicle],goal:10,notes:""}).shiftId;expect(()=>service.updateShift(x.admin,first,{date:"2026-08-10",slot:"MORNING",seasonId:x.season,pickerIds:[x.p1,x.p2],leaderId:x.p1,vehicleIds:[x.vehicle],goal:12,notes:"עודכן"})).not.toThrow();expect(db.prepare("SELECT goal,notes FROM shifts WHERE id=?").get(first)).toEqual({goal:12,notes:"עודכן"});});
   it("עריכה חומרית של משמרת שפורסמה מודיעה לקוטפים המושפעים",()=>{const x=setup();const scheduling=new SchedulingService(db);const shift=scheduling.createShift(x.admin,{date:"2026-08-10",slot:"MORNING",seasonId:x.season,pickerIds:[x.p1],leaderId:x.p1,vehicleIds:[],goal:10,notes:""}).shiftId;db.prepare("UPDATE shifts SET status='PUBLISHED' WHERE id=?").run(shift);scheduling.updateShift(x.admin,shift,{date:"2026-08-10",slot:"MORNING",seasonId:x.season,pickerIds:[x.p2],leaderId:x.p2,vehicleIds:[],goal:20,notes:"שינוי"});expect(db.prepare("SELECT count(*) count FROM notifications WHERE user_id IN (?,?)").get(x.p1,x.p2)).toEqual({count:2});});
