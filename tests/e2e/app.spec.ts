@@ -13,7 +13,7 @@ test("מנהל יוצר, עורך ומפרסם משמרת",async({page},testInfo
  await login(page);await page.goto("/admin/shifts");
  const now=new Date();const shiftDate=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()+1,1)).toISOString().slice(0,10);const slot=testInfo.project.name==="mobile"?"EVENING":"MORNING";const slotName=slot==="MORNING"?"בוקר":"ערב";
  await page.getByLabel("תאריך").fill(shiftDate);await page.getByLabel("חלק יום").selectOption(slot);await page.getByLabel("עונה").selectOption({label:"משק בדיקה · תפוחים"});await page.getByLabel("מוביל משמרת").selectOption({label:"קוטף בדיקה"});await page.getByLabel("קוטפים (בחירה מרובה)").selectOption({label:"קוטף בדיקה"});await page.getByLabel("רכבים (בחירה מרובה)").selectOption({label:"123-45-678 · רכב בדיקה"});await page.getByLabel("יעד").fill("12");await page.getByRole("button",{name:"יצירת טיוטה"}).click();
- const row=page.getByRole("row").filter({hasText:"משק בדיקה · תפוחים"}).filter({hasText:"12 / 0"});await expect(row).toContainText("טיוטה");await row.getByRole("link",{name:"עריכה"}).click();await expect(page.getByRole("heading",{name:/עריכת משמרת/})).toBeVisible();await page.getByLabel("יעד").fill("15");const editForm=page.locator("form").filter({has:page.getByRole("heading",{name:/עריכת משמרת/})});const invalid=await editForm.locator(":invalid").evaluateAll(nodes=>nodes.map(node=>(node as HTMLInputElement).name));expect(invalid).toEqual([]);await editForm.getByRole("button",{name:"שמירת שינויים"}).click();await expect(page).toHaveURL(/saved=1/);const updated=page.getByRole("row").filter({hasText:"משק בדיקה · תפוחים"}).filter({hasText:"15 / 0"}).filter({hasText:slotName});await expect(updated).toContainText("15 / 0");
+ const row=page.getByRole("row").filter({hasText:"משק בדיקה · תפוחים"}).filter({hasText:"12 / 0"}).filter({hasText:slotName});await expect(row).toContainText("טיוטה");await row.getByRole("link",{name:"עריכה"}).click();await expect(page.getByRole("heading",{name:/עריכת משמרת/})).toBeVisible();await page.getByLabel("יעד").fill("15");const editForm=page.locator("form").filter({has:page.getByRole("heading",{name:/עריכת משמרת/})});const invalid=await editForm.locator(":invalid").evaluateAll(nodes=>nodes.map(node=>(node as HTMLInputElement).name));expect(invalid).toEqual([]);await editForm.getByRole("button",{name:"שמירת שינויים"}).click();await expect(page).toHaveURL(/saved=1/);const updated=page.getByRole("row").filter({hasText:"משק בדיקה · תפוחים"}).filter({hasText:"15 / 0"}).filter({hasText:slotName});await expect(updated).toContainText("15 / 0");
  await updated.getByRole("button",{name:"פרסום"}).click();const published=page.getByRole("row").filter({hasText:"משק בדיקה · תפוחים"}).filter({hasText:"15 / 0"}).filter({hasText:slotName});await expect(published).toContainText("פורסמה");await published.getByRole("link",{name:"דוח"}).click();await page.locator('input[name^="quantity_"]').fill("7");await page.getByRole("button",{name:"שמירת הדיווח"}).click();await expect(page).toHaveURL(/saved=1/);await expect(page.getByRole("row").filter({hasText:"משק בדיקה · תפוחים"}).filter({hasText:"15 / 7"}).filter({hasText:slotName})).toContainText("15 / 7");
 });
 
@@ -82,15 +82,15 @@ test("לוח זמינות: טווח 60 יום, נעילת ימים שעברו, �
 
   const firstWantToWork=pickerPage.getByRole("radio",{name:"רוצה לעבוד"}).first();
   await firstWantToWork.click();await expect(firstWantToWork).toHaveAttribute("aria-checked","true");
-  await pickerPage.waitForLoadState("networkidle");
+  await expect(pickerPage.locator(".calendar-day--saving")).toHaveCount(0);
   await firstWantToWork.click();await expect(firstWantToWork).toHaveAttribute("aria-checked","false");
-  await pickerPage.waitForLoadState("networkidle");
+  await expect(pickerPage.locator(".calendar-day--saving")).toHaveCount(0);
 
-  await pickerPage.getByRole("button",{name:/סימון הכל/}).click();await pickerPage.waitForLoadState("networkidle");
+  await pickerPage.getByRole("button",{name:/סימון הכל/}).click();await expect(pickerPage.locator(".calendar-day--saving")).toHaveCount(0);
   await expect(pickerPage.getByRole("radio",{name:"רוצה לעבוד"}).first()).toHaveAttribute("aria-checked","true");await expect(pickerPage.getByRole("radio",{name:"רוצה לעבוד"}).last()).toHaveAttribute("aria-checked","true");
   await pickerPage.reload();await expect(pickerPage.getByRole("radio",{name:"רוצה לעבוד"}).first()).toHaveAttribute("aria-checked","true");
 
-  await pickerPage.getByRole("button",{name:"ניקוי הכל"}).click();await pickerPage.waitForLoadState("networkidle");
+  await pickerPage.getByRole("button",{name:"ניקוי הכל"}).click();await expect(pickerPage.locator(".calendar-day--saving")).toHaveCount(0);
   await pickerPage.reload();await expect(pickerPage.getByRole("radio",{name:"רוצה לעבוד"}).first()).toHaveAttribute("aria-checked","false");await expect(pickerPage.getByRole("radio",{name:"אולי יש לי תוכניות אחרות"}).first()).toHaveAttribute("aria-checked","false");
 
   const monthLabelBefore=await pickerPage.locator("strong.label").first().textContent();
