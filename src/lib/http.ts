@@ -29,3 +29,16 @@ export function requestBodyIssue(req:Request,maxBytes:number,allowedTypes:readon
  const type=(req.headers.get("content-type")??"").split(";",1)[0]!.trim().toLowerCase();
  if(!allowedTypes.includes(type))return {status:415,message:"סוג תוכן אינו נתמך"};
 }
+
+export function trustedClientIp(req:Request):string|undefined{
+ if(process.env.TRUST_PROXY!=="1")return undefined;
+ const chain=req.headers.get("x-forwarded-for")?.split(",").map(x=>x.trim()).filter(Boolean);
+ return chain?.at(-1);
+}
+
+export function isSameSite(req:Request):boolean{
+ if(req.headers.get("sec-fetch-site")==="cross-site")return false;
+ const origin=req.headers.get("origin");
+ if(!origin)return true;
+ try{return new URL(origin).origin===requestUrl("/",req).origin;}catch{return false;}
+}

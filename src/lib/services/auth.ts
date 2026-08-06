@@ -40,5 +40,30 @@ export class AuthService{
  authenticate(token:string|undefined):SessionUser|undefined{if(!token)return undefined;const row=this.db.prepare(`SELECT u.id,u.email,u.name,u.role,u.must_change_password FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>? AND u.active=1`).get(hashToken(token),new Date().toISOString()) as {id:number;email:string;name:string;role:"ADMIN"|"PICKER";must_change_password:number}|undefined;return row?{id:row.id,email:row.email,name:row.name,role:row.role,mustChangePassword:Boolean(row.must_change_password)}:undefined;}
  assertCsrf(token:string,csrf:string):void{const row=this.db.prepare("SELECT csrf_hash FROM sessions WHERE token_hash=? AND expires_at>?").get(hashToken(token),new Date().toISOString()) as {csrf_hash:string}|undefined;const supplied=Buffer.from(hashToken(csrf),"hex"),expected=row?Buffer.from(row.csrf_hash,"hex"):Buffer.alloc(32);if(!row||supplied.length!==expected.length||!timingSafeEqual(supplied,expected))throw new Error("בקשה לא תקינה");}
  async changePassword(userId:number,password:string):Promise<void>{const keys=[globalKdfKey()];reserve(keys,Date.now());try{const row=this.db.prepare("SELECT password_hash FROM users WHERE id=? AND active=1").get(userId) as {password_hash:string}|undefined;if(!row)throw new Error("המשתמש לא נמצא");if(await verifyPassword(password,row.password_hash))throw new Error("הסיסמה החדשה חייבת להיות שונה מהסיסמה הזמנית");const hash=await hashPassword(password);this.db.transaction(()=>{const result=this.db.prepare("UPDATE users SET password_hash=?,must_change_password=0 WHERE id=? AND active=1 AND password_hash=?").run(hash,userId,row.password_hash);if(result.changes!==1)throw new Error("הסיסמה השתנתה, יש לנסות שוב");this.db.prepare("DELETE FROM sessions WHERE user_id=?").run(userId);this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(userId,"PASSWORD_CHANGE","USER",userId);}).immediate();}finally{finish(keys,false);}}
+ async changePasswordSelf(userId:number,currentPassword:string,newPassword:string):Promise<void>{const keys=[globalKdfKey()];reserve(keys,Date.now());let succeeded=false;try{const row=this.db.prepare("SELECT password_hash FROM users WHERE id=? AND active=1").get(userId) as {password_hash:string}|undefined;if(!row)throw new Error("המשתמש לא נמצא");if(!await verifyPassword(currentPassword,row.password_hash))throw new Error("הסיסמה הנוכחית שגויה");if(await verifyPassword(newPassword,row.password_hash))throw new Error("הסיסמה החדשה חייבת להיות שונה מהנוכחית");succeeded=true;const hash=await hashPassword(newPassword);this.db.transaction(()=>{const result=this.db.prepare("UPDATE users SET password_hash=? WHERE id=? AND active=1 AND password_hash=?").run(hash,userId,row.password_hash);if(result.changes!==1)throw new Error("הסיסמה השתנתה, יש לנסות שוב");this.db.prepare("DELETE FROM sessions WHERE user_id=?").run(userId);this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(userId,"PASSWORD_CHANGE","USER",userId);}).immediate();}finally{finish(keys,!succeeded);}}
+ async requestPasswordReset(emailRaw:string,ip?:string):Promise<{token:string;userId:number}|undefined>{
+  const now=Date.now(),email=normalizeEmail(emailRaw);
+  const keys:LimitKey[]=[{key:`reset:${email}`,failureLimit:LIMIT,inFlightLimit:LIMIT,clearOnSuccess:false},...(ip?[{key:`reset-ip:${ip}`,failureLimit:LIMIT,inFlightLimit:LIMIT,clearOnSuccess:false}]:[]),globalKdfKey()];
+  reserve(keys,now);
+  try{
+   const row=this.db.prepare("SELECT id FROM users WHERE email=? AND active=1").get(email) as {id:number}|undefined;
+   if(!row)return undefined;
+   const token=createSessionToken(),expires=new Date(now+30*60_000).toISOString();
+   this.db.transaction(()=>{this.db.prepare("DELETE FROM password_reset_tokens WHERE user_id=? OR expires_at<=?").run(row.id,new Date(now).toISOString());this.db.prepare("INSERT INTO password_reset_tokens(user_id,token_hash,expires_at) VALUES(?,?,?)").run(row.id,hashToken(token),expires);})();
+   return {token,userId:row.id};
+  }finally{finish(keys,true);}
+ }
+ async resetPasswordWithToken(rawToken:string,newPassword:string):Promise<void>{
+  const row=this.db.prepare("SELECT id,user_id FROM password_reset_tokens WHERE token_hash=? AND expires_at>? AND used_at IS NULL").get(hashToken(rawToken),new Date().toISOString()) as {id:number;user_id:number}|undefined;
+  if(!row)throw new Error("קישור האיפוס אינו תקין או שפג תוקפו");
+  const hash=await hashPassword(newPassword);
+  this.db.transaction(()=>{
+   const consumed=this.db.prepare("UPDATE password_reset_tokens SET used_at=? WHERE id=? AND used_at IS NULL").run(new Date().toISOString(),row.id);
+   if(consumed.changes!==1)throw new Error("קישור האיפוס כבר נוצל");
+   this.db.prepare("UPDATE users SET password_hash=?,must_change_password=0 WHERE id=? AND active=1").run(hash,row.user_id);
+   this.db.prepare("DELETE FROM sessions WHERE user_id=?").run(row.user_id);
+   this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(row.user_id,"PASSWORD_RESET","USER",row.user_id);
+  }).immediate();
+ }
  logout(token:string):void{if(token)this.db.prepare("DELETE FROM sessions WHERE token_hash=?").run(hashToken(token));}
 }

@@ -1,4 +1,7 @@
+import path from "node:path";
 import { test,expect,type Page } from "@playwright/test";
+import { openDb } from "../../src/lib/db";
+import { AuthService } from "../../src/lib/services/auth";
 
 async function login(page:Page){await page.goto("/login");await page.getByLabel("דוא״ל").fill("admin@example.com");await page.getByLabel("סיסמה").fill("TestAdmin!12345");await page.getByRole("button",{name:"כניסה מאובטחת"}).click();}
 
@@ -95,6 +98,73 @@ test("לוח זמינות: טווח 60 יום, נעילת ימים שעברו, �
   await expect(pickerPage.locator("button.prev")).toBeEnabled();
   await expect(pickerPage.locator("strong.label").first()).not.toHaveText(monthLabelBefore!);
  }finally{await context.close();}
+});
+
+async function createPickerWithKnownPassword(page:Page,context:import("@playwright/test").BrowserContext,name:string,email:string,phone:string,nationalId:string,knownPassword:string){
+ await login(page);await page.goto("/admin/users");
+ await page.getByLabel("שם").fill(name);await page.getByLabel("דוא״ל").fill(email);await page.getByLabel("טלפון").fill(phone);await page.getByLabel("תעודת זהות").fill(nationalId);await page.getByRole("button",{name:"יצירת קוטף וסיסמה זמנית"}).click();
+ const temporaryPassword=(await page.locator("code").first().textContent())!;
+ await context.clearCookies();
+ await page.goto("/login");await page.getByLabel("דוא״ל").fill(email);await page.getByLabel("סיסמה").fill(temporaryPassword);await page.getByRole("button",{name:"כניסה מאובטחת"}).click();
+ await expect(page).toHaveURL(/\/change-password$/);
+ await page.getByLabel("סיסמה חדשה").fill(knownPassword);await page.getByLabel("אימות סיסמה").fill(knownPassword);await page.getByRole("button",{name:"שמירה וכניסה מחדש"}).click();
+ await expect(page).toHaveURL(/\/login\?changed=1$/);
+}
+
+test("שחזור סיסמה: קישור מהטופס מבטל הפעלות וקישור שנוצל אינו קביל שוב",async({page,context},testInfo)=>{
+ const mobile=testInfo.project.name==="mobile",suffix=mobile?"mobile":"desktop",name=`קוטף שחזור ${suffix}`,email=`forgot-${suffix}@example.com`,nationalId=mobile?"316250505":"316250497",knownPassword="Aa1!bcde";
+ await createPickerWithKnownPassword(page,context,name,email,"0502223333",nationalId,knownPassword);
+ await context.clearCookies();
+
+ await page.goto("/forgot-password");await page.getByLabel("דוא״ל").fill(email);await page.getByRole("button",{name:"שליחת קישור לאיפוס"}).click();
+ await expect(page).toHaveURL(/\/forgot-password\?sent=1$/);
+ await expect(page.locator("p.alert[role=status]")).toBeVisible();
+
+ const db=openDb(path.resolve("./data/e2e.sqlite"));
+ const {token}=(await new AuthService(db).requestPasswordReset(email))!;
+ db.close();
+
+ await page.goto(`/reset-password?token=${encodeURIComponent(token)}`);
+ const newPassword="Bb2@fghij";
+ await page.getByLabel("סיסמה חדשה").fill(newPassword);await page.getByLabel("אימות סיסמה").fill(newPassword);
+ await page.getByRole("button",{name:"שמירת סיסמה"}).click();
+ await expect(page).toHaveURL(/\/login\?reset=1$/);
+ await expect(page.locator("p.alert[role=status]")).toBeVisible();
+
+ await page.goto(`/reset-password?token=${encodeURIComponent(token)}`);
+ await page.getByLabel("סיסמה חדשה").fill("Cc3#klmno");await page.getByLabel("אימות סיסמה").fill("Cc3#klmno");
+ await page.getByRole("button",{name:"שמירת סיסמה"}).click();
+ await expect(page.locator("p.alert[role=alert]")).toBeVisible();
+
+ await page.goto("/login");
+ await page.getByLabel("דוא״ל").fill(email);await page.getByLabel("סיסמה").fill(knownPassword);await page.getByRole("button",{name:"כניסה מאובטחת"}).click();
+ await expect(page.locator("p.alert[role=alert]")).toHaveText("פרטי ההתחברות שגויים");
+ await page.getByLabel("דוא״ל").fill(email);await page.getByLabel("סיסמה").fill(newPassword);await page.getByRole("button",{name:"כניסה מאובטחת"}).click();
+ await expect(page.getByRole("heading",{name:new RegExp(name.split(" ")[0]!)})).toBeVisible();
+});
+
+test("החלפת סיסמה עצמאית מדף החשבון מחייבת סיסמה נוכחית ומבטלת הפעלה",async({page,context},testInfo)=>{
+ const mobile=testInfo.project.name==="mobile",suffix=mobile?"mobile":"desktop",name=`קוטף חשבון ${suffix}`,email=`account-${suffix}@example.com`,nationalId=mobile?"316250547":"316250539",knownPassword="Aa1!bcde";
+ await createPickerWithKnownPassword(page,context,name,email,"0504445555",nationalId,knownPassword);
+ await page.getByLabel("דוא״ל").fill(email);await page.getByLabel("סיסמה").fill(knownPassword);await page.getByRole("button",{name:"כניסה מאובטחת"}).click();
+ await expect(page.getByRole("heading",{name:new RegExp(name.split(" ")[0]!)})).toBeVisible();
+
+ await page.goto("/account");
+ await page.getByLabel("סיסמה נוכחית").fill("wrong-password");
+ const attempted="Dd4$pqrst";
+ await page.getByLabel("סיסמה חדשה").fill(attempted);await page.getByLabel("אימות סיסמה").fill(attempted);
+ await page.getByRole("button",{name:"עדכון סיסמה"}).click();
+ await expect(page.locator("p.alert[role=alert]")).toBeVisible();
+
+ await page.getByLabel("סיסמה נוכחית").fill(knownPassword);
+ await page.getByLabel("סיסמה חדשה").fill(attempted);await page.getByLabel("אימות סיסמה").fill(attempted);
+ await page.getByRole("button",{name:"עדכון סיסמה"}).click();
+ await expect(page).toHaveURL(/\/login\?changed=1$/);
+
+ await page.getByLabel("דוא״ל").fill(email);await page.getByLabel("סיסמה").fill(knownPassword);await page.getByRole("button",{name:"כניסה מאובטחת"}).click();
+ await expect(page.locator("p.alert[role=alert]")).toHaveText("פרטי ההתחברות שגויים");
+ await page.getByLabel("דוא״ל").fill(email);await page.getByLabel("סיסמה").fill(attempted);await page.getByRole("button",{name:"כניסה מאובטחת"}).click();
+ await expect(page.getByRole("heading",{name:new RegExp(name.split(" ")[0]!)})).toBeVisible();
 });
 
 test("API יצירת קוטף דוחה זיוף תפקיד מנהל",async({page},testInfo)=>{await login(page);await page.goto("/admin/users");const mobile=testInfo.project.name==="mobile",email=`forged-role-${mobile?"mobile":"desktop"}@example.com`,nationalId=mobile?"316250323":"316250315",csrf=await page.locator('input[name="csrf"]').first().inputValue();const result=await page.evaluate(async input=>{const response=await fetch("/api/admin/users",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(input)});return {status:response.status,body:await response.json()};},{csrf,name:"מנהל מזויף",email,phone:"0501112233",nationalId,notes:"",role:"ADMIN"});expect(result.status).toBe(400);expect(result.body.error).toBeTruthy();await page.reload();await expect(page.getByText(email,{exact:true})).toHaveCount(0);});

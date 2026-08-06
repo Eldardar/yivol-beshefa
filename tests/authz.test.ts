@@ -15,6 +15,36 @@ describe("הרשאות והפעלות",()=>{
  it("שומר מקום לניסיונות מקבילים לפני חישוב scrypt",async()=>{const results=await Promise.all(Array.from({length:10},()=>new AuthService(db).login("burst@example.com","bad","203.0.113.77").then(()=>"ok",e=>String((e as Error).message))));expect(results.filter(x=>x.includes("ניסיונות רבים"))).toHaveLength(5);expect(results.filter(x=>x.includes("פרטי ההתחברות"))).toHaveLength(5);});
  it("כשלונות בחשבונות נפרדים אינם נועלים את כל המערכת",async()=>{await users();const auth=new AuthService(db);for(let i=0;i<100;i++)await expect(auth.login(`spray-${i}@example.com`,"")).rejects.toThrow("פרטי ההתחברות");await expect(auth.login("one@example.com","Strong!Pass123")).resolves.toBeTruthy();});
  it("כופה סיסמה חדשה השונה מהזמנית ומבטל את כל ההפעלות",async()=>{const {p1}=await users();db.prepare("UPDATE users SET must_change_password=1 WHERE id=?").run(p1);const auth=new AuthService(db),session=await auth.login("one@example.com","Strong!Pass123","10.0.0.1");expect(session.user.mustChangePassword).toBe(true);await expect(auth.changePassword(p1,"Strong!Pass123")).rejects.toThrow("שונה");expect(db.prepare("SELECT must_change_password FROM users WHERE id=?").get(p1)).toEqual({must_change_password:1});expect(auth.authenticate(session.token)).toBeTruthy();await auth.changePassword(p1,"NewStrong!Pass456");expect(auth.authenticate(session.token)).toBeUndefined();await expect(auth.login("one@example.com","NewStrong!Pass456","10.0.0.2")).resolves.toBeTruthy();});
+ it("איפוס סיסמה: מנפיק אסימון רק למשתמש פעיל קיים ומגביל ניסיונות",async()=>{
+  const {p1}=await users();const auth=new AuthService(db);
+  const result=await auth.requestPasswordReset("one@example.com","1.2.3.4");
+  expect(result?.userId).toBe(p1);
+  const row=db.prepare("SELECT token_hash FROM password_reset_tokens WHERE user_id=?").get(p1) as {token_hash:string};
+  expect(row.token_hash).not.toBe(result!.token);
+  expect(await auth.requestPasswordReset("missing@example.com","1.2.3.4")).toBeUndefined();
+  for(let i=0;i<5;i++)await auth.requestPasswordReset(`spray-${i}@example.com`,"9.9.9.9");
+  await expect(auth.requestPasswordReset("one@example.com","9.9.9.9")).rejects.toThrow("ניסיונות רבים");
+ });
+ it("איפוס סיסמה: מחליף סיסמה פעם אחת בלבד ומבטל הפעלות",async()=>{
+  const {p1}=await users();const auth=new AuthService(db);
+  const session=await auth.login("one@example.com","Strong!Pass123","10.0.0.1");
+  const {token}=(await auth.requestPasswordReset("one@example.com"))!;
+  await auth.resetPasswordWithToken(token,"NewStrong!Pass456");
+  expect(auth.authenticate(session.token)).toBeUndefined();
+  await expect(auth.login("one@example.com","NewStrong!Pass456","10.0.0.2")).resolves.toBeTruthy();
+  await expect(auth.resetPasswordWithToken(token,"AnotherStrong!789")).rejects.toThrow("אינו תקין");
+  await expect(auth.resetPasswordWithToken("bad-token","AnotherStrong!789")).rejects.toThrow("אינו תקין");
+  expect(p1).toBeGreaterThan(0);
+ });
+ it("החלפת סיסמה עצמאית: דורשת סיסמה נוכחית נכונה ושונה מהחדשה",async()=>{
+  const {p1}=await users();const auth=new AuthService(db);
+  const session=await auth.login("one@example.com","Strong!Pass123","10.0.0.3");
+  await expect(auth.changePasswordSelf(p1,"wrong","NewStrong!Pass456")).rejects.toThrow("שגויה");
+  await expect(auth.changePasswordSelf(p1,"Strong!Pass123","Strong!Pass123")).rejects.toThrow("שונה");
+  await auth.changePasswordSelf(p1,"Strong!Pass123","NewStrong!Pass456");
+  expect(auth.authenticate(session.token)).toBeUndefined();
+  await expect(auth.login("one@example.com","NewStrong!Pass456","10.0.0.4")).resolves.toBeTruthy();
+ });
  it("מונע IDOR בפרופיל ובהודעות",async()=>{const {p1,p2}=await users();const notificationId=Number(db.prepare("INSERT INTO notifications(user_id,title,body) VALUES(?,?,?)").run(p2,"סודי","תוכן").lastInsertRowid);const p=new PickerService(db);expect(()=>p.profile(p1,p2)).toThrow("אין הרשאה");expect(p.notifications(p1).some(x=>x.title==="סודי")).toBe(false);expect(()=>p.markRead(p1,notificationId)).toThrow("לא נמצאה");expect(()=>p.markRead(p2,notificationId)).not.toThrow();});
  it("מקבל זמינות רק בטווח 60 הימים הקרובים בירושלים, כולל חסימת היום",async()=>{
   const {p1}=await users();const p=new PickerService(db);const now=new Date("2026-07-15T12:00:00Z");
