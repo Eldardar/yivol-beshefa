@@ -42,6 +42,12 @@ describe("הרשאות והפעלות",()=>{
   expect(()=>p.setAvailability(p1,{entries:[{date:"2026-08-01",status:"AVAILABLE"},{date:"2026-09-14",status:"AVAILABLE"}]},now)).toThrow("60");
   expect(db.prepare("SELECT count(*) count FROM availability WHERE user_id=?").get(p1)).toEqual({count:0});
  });
+ it("שליחת סטטוס ריק מוחקת רשומת זמינות קיימת",async()=>{
+  const {p1}=await users();const p=new PickerService(db);const now=new Date("2026-07-15T12:00:00Z");
+  p.setAvailability(p1,{entries:[{date:"2026-08-01",status:"AVAILABLE"},{date:"2026-08-02",status:"MAYBE"}]},now);
+  p.setAvailability(p1,{entries:[{date:"2026-08-01",status:null}]},now);
+  expect(db.prepare("SELECT date,status FROM availability WHERE user_id=? ORDER BY date").all(p1)).toEqual([{date:"2026-08-02",status:"MAYBE"}]);
+ });
  it("שינוי זמינות אינו משנה שיבוץ קיים",async()=>{
   const {p1}=await users();
   const admin=Number(db.prepare("INSERT INTO users(name,email,phone,role,password_hash) VALUES(?,?,?,?,?)").run("מנהל","admin2@example.com","0500000009","ADMIN","x").lastInsertRowid);

@@ -29,7 +29,8 @@ export class PickerService{
   this.db.transaction(()=>{
    const upsert=this.db.prepare(`INSERT INTO availability(user_id,date,status) VALUES(?,?,?)
      ON CONFLICT(user_id,date) DO UPDATE SET status=excluded.status`);
-   for(const entry of input.entries) upsert.run(actorId,entry.date,entry.status);
+   const clear=this.db.prepare("DELETE FROM availability WHERE user_id=? AND date=?");
+   for(const entry of input.entries){if(entry.status===null)clear.run(actorId,entry.date);else upsert.run(actorId,entry.date,entry.status);}
   }).immediate();
  }
 }

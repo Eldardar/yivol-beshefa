@@ -17,7 +17,7 @@ export const passwordChangeSchema=z.object({password:passwordSchema,confirmation
 
 export const availabilitySchema = z.object({
   date: isoDate,
-  status: z.enum(["AVAILABLE", "MAYBE", "UNAVAILABLE"])
+  status: z.enum(["AVAILABLE", "MAYBE", "UNAVAILABLE"]).nullable()
 }).strict();
 export const availabilityMonthSchema = z.object({
   entries: z.array(availabilitySchema).min(1)

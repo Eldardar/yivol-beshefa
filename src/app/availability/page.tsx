@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { AppShell } from "@/components/nav";
 import { AvailabilityPicker, type AvailabilityDay } from "@/components/availability-picker";
 import { csrfValue, db, requireUser } from "@/lib/server";
@@ -31,7 +30,7 @@ export default async function Availability({ searchParams }: { searchParams: Pro
     const date = `${monthKey}-${String(day).padStart(2, "0")}`;
     const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
     const locked = !editableDates.has(date);
-    const status = (map.get(date) as "AVAILABLE" | "MAYBE" | "UNAVAILABLE" | undefined) ?? "UNAVAILABLE";
+    const status = (map.get(date) as "AVAILABLE" | "MAYBE" | "UNAVAILABLE" | undefined) ?? null;
     return { date, day, weekday, status, locked };
   });
   const monthLabel = new Intl.DateTimeFormat("he-IL", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${monthStart}T12:00:00Z`));
@@ -43,21 +42,10 @@ export default async function Availability({ searchParams }: { searchParams: Pro
   return (
     <AppShell user={user}>
       <h1>הזמינות שלי</h1>
-      <p className="muted">ניתן לעדכן זמינות ל-60 הימים הבאים החל ממחר.</p>
+      <p className="muted">ניתן לעדכן זמינות ל-60 הימים הבאים החל ממחר. נא לסמן תשובה לכל יום, כולל ימים שבהם אין כוונה לעבוד.</p>
       {saved && <p className="alert">הזמינות נשמרה</p>}
       {error && <p className="alert" role="alert">{error}</p>}
-      <div className="stack">
-        <div className="calendar-nav">
-          {hasPrev
-            ? <Link className="btn secondary prev" href={`/availability?month=${prevKey}`}>→ חודש קודם</Link>
-            : <button className="btn secondary prev" type="button" disabled>→ חודש קודם</button>}
-          <strong className="label">{monthLabel}</strong>
-          {hasNext
-            ? <Link className="btn secondary next" href={`/availability?month=${nextKey}`}>חודש הבא ←</Link>
-            : <button className="btn secondary next" type="button" disabled>חודש הבא ←</button>}
-        </div>
-        <AvailabilityPicker csrf={csrf} days={days} monthLabel={monthLabel} monthKey={monthKey} />
-      </div>
+      <AvailabilityPicker csrf={csrf} days={days} monthLabel={monthLabel} prevKey={prevKey} nextKey={nextKey} hasPrev={hasPrev} hasNext={hasNext} />
     </AppShell>
   );
 }

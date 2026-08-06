@@ -53,7 +53,7 @@ test("איפוס סיסמה פועל גם ללא JavaScript ודוחה מטרה 
  }finally{await context.close();}
 });
 
-test("לוח זמינות: טווח 60 יום, נעילת ימים שעברו, ניווט בין חודשים ושמירה אטומית",async({page,browser},testInfo)=>{
+test("לוח זמינות: טווח 60 יום, נעילת ימים שעברו, ללא שבת, ניווט בין חודשים ושמירה אוטומטית",async({page,browser},testInfo)=>{
  await login(page);await page.goto("/admin/users");
  const mobile=testInfo.project.name==="mobile",suffix=mobile?"mobile":"desktop",name=`קוטף זמינות ${suffix}`,email=`availability-${suffix}@example.com`,nationalId=mobile?"316250422":"316250406";
  await page.getByLabel("שם").fill(name);await page.getByLabel("דוא״ל").fill(email);await page.getByLabel("טלפון").fill("0503334444");await page.getByLabel("תעודת זהות").fill(nationalId);await page.getByRole("button",{name:"יצירת קוטף וסיסמה זמנית"}).click();
@@ -65,30 +65,34 @@ test("לוח זמינות: טווח 60 יום, נעילת ימים שעברו, �
   await pickerPage.getByLabel("דוא״ל").fill(email);await pickerPage.getByLabel("סיסמה").fill(replacement);await pickerPage.getByRole("button",{name:"כניסה מאובטחת"}).click();
   await pickerPage.goto("/availability");
 
-  const todayDay=Number(new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Jerusalem",day:"2-digit"}).format(new Date()));
-  const headers=pickerPage.locator(".calendar-head");await expect(headers.first()).toHaveText("ראשון");await expect(headers.last()).toHaveText("שבת");
-  await expect(pickerPage.getByRole("link",{name:/חודש קודם/})).toHaveCount(0);
+  const now=new Date();
+  const todayDay=Number(new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Jerusalem",day:"2-digit"}).format(now));
+  const [todayYear,todayMonth]=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Jerusalem",year:"numeric",month:"2-digit"}).format(now).split("-").map(Number) as [number,number];
+  let lockedExpected=0;for(let d=1;d<=todayDay;d++){if(new Date(Date.UTC(todayYear,todayMonth-1,d,12)).getUTCDay()!==6)lockedExpected++;}
+  const headers=pickerPage.locator(".calendar-head");await expect(headers).toHaveCount(6);await expect(headers.first()).toHaveText("ראשון");await expect(headers.last()).toHaveText("שישי");
   await expect(pickerPage.locator("button.prev")).toBeDisabled();
-  await expect(pickerPage.getByRole("link",{name:/חודש הבא/})).toBeVisible();
-  await expect(pickerPage.locator(".calendar-day--locked")).toHaveCount(todayDay);
-  await expect(pickerPage.locator(".calendar-day--locked input")).toHaveCount(0);
+  await expect(pickerPage.locator("button.next")).toBeEnabled();
+  await expect(pickerPage.locator(".calendar-day--locked")).toHaveCount(lockedExpected);
+  await expect(pickerPage.locator(".calendar-day--locked .status-option")).toHaveCount(0);
 
-  if(await pickerPage.locator('input[name^="available_"]').count()===0) await pickerPage.getByRole("link",{name:/חודש הבא/}).click();
+  if(await pickerPage.getByRole("radio",{name:"רוצה לעבוד"}).count()===0) await pickerPage.locator("button.next").click();
 
-  const firstAvailable=pickerPage.locator('input[name^="available_"]').first();
-  await firstAvailable.focus();await pickerPage.keyboard.press("Space");await expect(firstAvailable).toBeChecked();await pickerPage.keyboard.press("Space");await expect(firstAvailable).not.toBeChecked();
-  await pickerPage.getByRole("button",{name:"בחירת הכל כפנוי"}).click();
-  await expect(pickerPage.locator('input[name^="available_"]').first()).toBeChecked();await expect(pickerPage.locator('input[name^="available_"]').last()).toBeChecked();
-  const monthKeyValue=await pickerPage.locator('input[name="month"]').inputValue();
-  await pickerPage.getByRole("button",{name:/שמירת זמינות ל/}).click();await expect(pickerPage).toHaveURL(/saved=1/);
-  await pickerPage.reload();await expect(pickerPage.locator('input[name^="available_"]').first()).toBeChecked();await expect(pickerPage.locator('input[name="month"]')).toHaveValue(monthKeyValue);
+  const firstWantToWork=pickerPage.getByRole("radio",{name:"רוצה לעבוד"}).first();
+  await firstWantToWork.click();await expect(firstWantToWork).toHaveAttribute("aria-checked","true");
+  await pickerPage.waitForLoadState("networkidle");
+  await firstWantToWork.click();await expect(firstWantToWork).toHaveAttribute("aria-checked","false");
+  await pickerPage.waitForLoadState("networkidle");
 
-  await pickerPage.getByRole("button",{name:"ניקוי הכל"}).click();await pickerPage.getByRole("button",{name:/שמירת זמינות ל/}).click();await expect(pickerPage).toHaveURL(/saved=1/);
-  await pickerPage.reload();await expect(pickerPage.locator('input[name^="available_"]').first()).not.toBeChecked();await expect(pickerPage.locator('input[name^="maybe_"]').first()).not.toBeChecked();
+  await pickerPage.getByRole("button",{name:/סימון הכל/}).click();await pickerPage.waitForLoadState("networkidle");
+  await expect(pickerPage.getByRole("radio",{name:"רוצה לעבוד"}).first()).toHaveAttribute("aria-checked","true");await expect(pickerPage.getByRole("radio",{name:"רוצה לעבוד"}).last()).toHaveAttribute("aria-checked","true");
+  await pickerPage.reload();await expect(pickerPage.getByRole("radio",{name:"רוצה לעבוד"}).first()).toHaveAttribute("aria-checked","true");
+
+  await pickerPage.getByRole("button",{name:"ניקוי הכל"}).click();await pickerPage.waitForLoadState("networkidle");
+  await pickerPage.reload();await expect(pickerPage.getByRole("radio",{name:"רוצה לעבוד"}).first()).toHaveAttribute("aria-checked","false");await expect(pickerPage.getByRole("radio",{name:"אולי יש לי תוכניות אחרות"}).first()).toHaveAttribute("aria-checked","false");
 
   const monthLabelBefore=await pickerPage.locator("strong.label").first().textContent();
-  await pickerPage.getByRole("link",{name:/חודש הבא/}).click();
-  await expect(pickerPage.getByRole("link",{name:/חודש קודם/})).toBeVisible();
+  await pickerPage.locator("button.next").click();
+  await expect(pickerPage.locator("button.prev")).toBeEnabled();
   await expect(pickerPage.locator("strong.label").first()).not.toHaveText(monthLabelBefore!);
  }finally{await context.close();}
 });
