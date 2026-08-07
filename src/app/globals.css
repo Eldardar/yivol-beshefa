@@ -25,4 +25,21 @@ a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit}b
 .status-option--unavailable.is-selected{background:#e2685c;border-color:#e2685c;color:#fff}
 .calendar-day--saving{opacity:.65}
 .calendar--pending{opacity:.5;pointer-events:none}
+.table-toolbar{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap}
+.search-input{max-width:320px}
+.ltr-field{display:inline-block;unicode-bidi:isolate}
+.actions-cell{display:flex;flex-direction:row;align-items:center;gap:.5rem;flex-wrap:wrap}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:2.2rem;height:2.2rem;border:1px solid var(--line);border-radius:.5rem;background:#fff;font-size:1.05rem;padding:0}
+.icon-btn:hover{background:#f3f1e6}
+.expand-btn{background:transparent;border:0;padding:.3rem;display:inline-flex;color:var(--leaf2)}
+.expand-btn svg{transition:transform .15s}
+.expand-btn.is-open svg{transform:rotate(180deg)}
+.worker-expand-row td{padding:0;border-bottom:1px solid var(--line)}
+.sub-tables{display:grid;gap:1rem;padding:1rem;background:#faf8f1}
+.modal-backdrop{position:fixed;inset:0;background:#26261f66;display:grid;place-items:center;z-index:20;padding:1rem}
+.modal{background:#fff;border-radius:1rem;padding:1.25rem;max-width:480px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 20px 60px #0004;display:grid;gap:.9rem;align-content:start}
+.modal-head{display:flex;justify-content:space-between;align-items:center;gap:1rem}
+.modal-close{background:transparent;border:0;font-size:1.3rem;line-height:1;color:var(--muted);padding:.2rem .5rem;border-radius:.4rem}
+.modal-close:hover{background:#f1efe4}
+.btn-icon-leading{display:inline-flex;align-items:center;gap:.4rem}
 @media(max-width:700px){.topbar .inner{padding-block:.7rem;gap:.5rem .75rem;min-height:0;grid-template-columns:1fr auto;grid-template-areas:"brand actions" "nav nav";row-gap:.6rem}.brand{grid-area:brand;font-size:1.05rem;gap:.35rem}.brand-logo{height:1.35rem;width:1.35rem}.nav{grid-area:nav;justify-self:stretch;justify-content:center;font-size:.82rem;gap:.1rem}.nav a{padding:.35rem .5rem}.nav-actions{grid-area:actions;gap:.25rem}.hero{padding:1.3rem}.table th,.table td{padding:.55rem}.main{padding-top:1rem}.calendar-nav{gap:.5rem}.calendar{gap:.25rem}.calendar-day{padding:.35rem;min-height:150px}.calendar-day-number{font-size:.85rem}.status-option{font-size:.68rem;padding:.3rem .3rem;min-height:36px}}

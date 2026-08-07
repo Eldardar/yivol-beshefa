@@ -33,7 +33,7 @@ export function ResetPickerPassword({ csrf, userId }: { csrf: string; userId: nu
       <form method="post" action="/api/admin/users/reset-password" onSubmit={submit}>
         <input type="hidden" name="csrf" value={csrf} />
         <input type="hidden" name="userId" value={userId} />
-        <button className="btn secondary" disabled={busy}>{busy ? "מאפס…" : "איפוס סיסמה"}</button>
+        <button className="icon-btn" disabled={busy} title="איפוס סיסמה" aria-label="איפוס סיסמה">{busy ? "…" : "🔑"}</button>
       </form>
       {error && <p className="alert" role="alert">{error}</p>}
       {password && (
