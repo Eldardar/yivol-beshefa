@@ -7,7 +7,8 @@ import { AdminService, type ManagedEntity } from "@/lib/services/admin";
 import { PickerService } from "@/lib/services/picker";
 import { SchedulingService } from "@/lib/services/scheduling";
 import { ShiftService } from "@/lib/services/shifts";
-import { farmSchema, seasonSchema, shiftSchema, vehicleSchema } from "@/lib/schemas";
+import { farmSchema, seasonSchema, shiftSchema, unitSchema, vehicleSchema } from "@/lib/schemas";
+import type { Unit } from "@/lib/units";
 import { requestBodyIssue, requestUrl } from "@/lib/http";
 
 export const runtime="nodejs";
@@ -16,8 +17,9 @@ const activeSchema=z.enum(["0","1"]);
 const entitySchema=z.enum(["USER","FARM","SEASON","VEHICLE"]);
 
 function destination(action:string,form:FormData):string {
-  if(action==="setActive")return form.get("entity")==="USER"?"/admin/users?saved=1":"/admin/resources?saved=1";
-  if(action.startsWith("farm")||action.startsWith("season")||action.startsWith("vehicle"))return "/admin/resources?saved=1";
+  if(action==="setActive"){const entity=form.get("entity");if(entity==="USER")return "/admin/users?saved=1";if(entity==="VEHICLE")return "/admin/transport?saved=1";return "/admin/resources?saved=1";}
+  if(action.startsWith("vehicle"))return "/admin/transport?saved=1";
+  if(action.startsWith("farm")||action.startsWith("season"))return "/admin/resources?saved=1";
   if(action.startsWith("shift")||action==="quantities")return "/admin/shifts?saved=1";
   if(action==="readNotification")return "/notifications";
   return "/";
@@ -49,15 +51,18 @@ export async function POST(req:Request){
       new AdminService(database).setActive(user.id,entity,entityId,active);
     }else if(action==="shiftCreate"||action==="shiftUpdate"){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
-      const input=shiftSchema.parse({date:form.get("date"),slot:form.get("slot"),seasonId:form.get("seasonId"),pickerIds:form.getAll("pickerIds"),leaderId:form.get("leaderId"),vehicleIds:form.getAll("vehicleIds"),goal:form.get("goal"),notes:form.get("notes")??""});
+      const goalUnits=form.getAll("goalUnit");const goalQtys=form.getAll("goalQty");
+      const goals=goalUnits.map((unit,i)=>({unit,goal:goalQtys[i]}));
+      const input=shiftSchema.parse({date:form.get("date"),slot:form.get("slot"),seasonId:form.get("seasonId"),pickerIds:form.getAll("pickerIds"),leaderId:form.get("leaderId"),vehicleIds:form.getAll("vehicleIds"),goals,notes:form.get("notes")??""});
       const scheduling=new SchedulingService(database);
       const result=action==="shiftCreate"?scheduling.createShift(user.id,input):scheduling.updateShift(user.id,positiveId.parse(form.get("shiftId")),input);warning=result.warnings.join(" · ");
     }else if(action==="shiftTransition"){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
       const target=z.enum(["DRAFT","PUBLISHED","COMPLETED","CANCELLED"]).parse(form.get("target"));warning=new ShiftService(database).transition(user.id,positiveId.parse(form.get("shiftId")),target).join(" · ");
     }else if(action==="quantities"){
-      const shiftId=positiveId.parse(form.get("shiftId"));const entries:Array<{userId:number;quantity:number}>=[];
-      for(const [key,value] of form.entries()){const match=/^quantity_(\d+)$/.exec(key);if(match)entries.push({userId:positiveId.parse(match[1]),quantity:z.coerce.number().finite().nonnegative().max(1_000_000).parse(value)});}
+      const shiftId=positiveId.parse(form.get("shiftId"));const entries:Array<{userId:number;quantity:number;unit:Unit}>=[];
+      const userIds=new Set<string>();for(const key of form.keys()){const match=/^qty_(\d+)$/.exec(key);if(match)userIds.add(match[1]!);}
+      for(const uid of userIds){const qtys=form.getAll(`qty_${uid}`);const units=form.getAll(`unit_${uid}`);for(let i=0;i<qtys.length;i++)entries.push({userId:positiveId.parse(uid),quantity:z.coerce.number().finite().nonnegative().max(1_000_000).parse(qtys[i]),unit:unitSchema.parse(units[i])});}
       new ShiftService(database).saveQuantities(user.id,shiftId,entries);
     }else if(action==="readNotification"){
       new PickerService(database).markRead(user.id,positiveId.parse(form.get("notificationId")));

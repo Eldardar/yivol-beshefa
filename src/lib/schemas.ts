@@ -1,5 +1,7 @@
 import { z } from "zod";
+import { UNITS } from "@/lib/units";
 
+export const unitSchema = z.enum(UNITS);
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "תאריך אינו תקין").refine(value=>{const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(value);if(!match)return false;const year=Number(match[1]!),month=Number(match[2]!),day=Number(match[3]!);const date=new Date(Date.UTC(year,month-1,day));return date.getUTCFullYear()===year&&date.getUTCMonth()===month-1&&date.getUTCDate()===day;},"תאריך אינו תקין");
 const id = z.coerce.number().int().positive();
 const text = (max: number) => z.string().trim().min(1).max(max);
@@ -26,6 +28,8 @@ export const availabilityMonthSchema = z.object({
   entries: z.array(availabilitySchema).min(1)
 }).strict();
 
+const goalLineSchema = z.object({ unit: unitSchema, goal: z.coerce.number().finite().nonnegative() }).strict();
+
 export const shiftSchema = z.object({
   date: isoDate,
   slot: z.enum(["MORNING", "EVENING"]),
@@ -33,7 +37,7 @@ export const shiftSchema = z.object({
   pickerIds: z.array(id).min(1).transform((items) => [...new Set(items)]),
   leaderId: id,
   vehicleIds: z.array(id).transform((items) => [...new Set(items)]),
-  goal: z.coerce.number().finite().nonnegative(),
+  goals: z.array(goalLineSchema).min(1).refine((items) => new Set(items.map((x) => x.unit)).size === items.length, "כל יחידת מידה יכולה להופיע פעם אחת ביעד"),
   notes: z.string().trim().max(4000)
 }).strict();
 

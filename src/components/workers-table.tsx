@@ -2,11 +2,12 @@
 import { Fragment, useState } from "react";
 import { formatHebrewDate } from "@/lib/dates";
 import { maskNationalId } from "@/lib/privacy";
+import { UNIT_LABEL, type Unit } from "@/lib/units";
 import { ResetPickerPassword } from "./reset-picker-password";
 import { AddWorkerButton } from "./add-worker-button";
 
 export type WorkerRow = { id: number; name: string; email: string; phone: string; national_id: string | null; role: "ADMIN" | "PICKER"; active: number };
-export type WorkerShiftRow = { id: number; date: string; slot: "MORNING" | "EVENING"; status: string; farm: string; crop: string; quantity: number };
+export type WorkerShiftRow = { id: number; date: string; slot: "MORNING" | "EVENING"; status: string; farm: string; crop: string; lines: Array<{ quantity: number; unit: Unit }> };
 export type ShiftsByUser = Record<number, { past: WorkerShiftRow[]; future: WorkerShiftRow[] }>;
 
 const STATUS_LABEL: Record<string, string> = { DRAFT: "טיוטה", PUBLISHED: "פורסמה", COMPLETED: "הושלמה", CANCELLED: "בוטלה" };
@@ -105,7 +106,7 @@ function ShiftsList({ title, rows, empty }: { title: string; rows: WorkerShiftRo
                   <td>{s.slot === "MORNING" ? "בוקר" : "ערב"}</td>
                   <td>{s.farm} · {s.crop}</td>
                   <td>{STATUS_LABEL[s.status] ?? s.status}</td>
-                  <td>{s.quantity}</td>
+                  <td>{s.lines.length ? s.lines.map((l) => `${l.quantity} ${UNIT_LABEL[l.unit]}`).join(" · ") : "—"}</td>
                 </tr>
               ))}
             </tbody>

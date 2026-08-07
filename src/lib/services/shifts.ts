@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
 import { SchedulingService } from "@/lib/services/scheduling";
+import type { Unit } from "@/lib/units";
 
 const transitions:Record<string,Set<string>>={DRAFT:new Set(["PUBLISHED","CANCELLED"]),PUBLISHED:new Set(["COMPLETED","CANCELLED","DRAFT"]),COMPLETED:new Set(),CANCELLED:new Set(["DRAFT"])};
 
@@ -28,13 +29,27 @@ export class ShiftService{
   });
   return change.immediate();
  }
- saveQuantities(actorId:number,shiftId:number,entries:Array<{userId:number;quantity:number}>):void{
+ saveQuantities(actorId:number,shiftId:number,entries:Array<{userId:number;quantity:number;unit:Unit}>):void{
   const actor=this.actor(actorId);const shift=this.db.prepare("SELECT leader_id,status FROM shifts WHERE id=?").get(shiftId) as {leader_id:number;status:string}|undefined;
   if(!actor?.active||!shift)throw new Error("אין הרשאה");if(shift.status!=="PUBLISHED")throw new Error("מצב המשמרת אינו מאפשר דיווח");if(actor.role!=="ADMIN"&&shift.leader_id!==actorId)throw new Error("אין הרשאה");
   const assigned=(this.db.prepare("SELECT user_id FROM shift_pickers WHERE shift_id=? ORDER BY user_id").all(shiftId) as Array<{user_id:number}>).map(x=>x.user_id);
-  if(entries.length!==assigned.length||entries.length===0)throw new Error("יש לדווח עבור כל הקוטפים");
-  const seen=new Set<number>();for(const entry of entries){if(!Number.isInteger(entry.userId)||!Number.isFinite(entry.quantity)||entry.quantity<0||entry.quantity>1_000_000)throw new Error("כמות אינה תקינה");if(seen.has(entry.userId))throw new Error("קוטף מופיע יותר מפעם אחת");seen.add(entry.userId);if(!assigned.includes(entry.userId))throw new Error("הקוטף אינו משובץ");}
-  this.db.transaction(()=>{const upsert=this.db.prepare(`INSERT INTO quantities(shift_id,user_id,quantity,updated_by) VALUES(?,?,?,?) ON CONFLICT(shift_id,user_id) DO UPDATE SET quantity=excluded.quantity,updated_by=excluded.updated_by,updated_at=CURRENT_TIMESTAMP`);for(const entry of entries)upsert.run(shiftId,entry.userId,entry.quantity,actorId);this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)").run(actorId,"REPORT_UPDATE","SHIFT",shiftId,JSON.stringify({count:entries.length}));})();
+  if(entries.length===0)throw new Error("יש לדווח עבור כל הקוטפים");
+  const seen=new Map<number,Set<Unit>>();
+  for(const entry of entries){
+   if(!Number.isInteger(entry.userId)||!Number.isFinite(entry.quantity)||entry.quantity<0||entry.quantity>1_000_000)throw new Error("כמות אינה תקינה");
+   if(!assigned.includes(entry.userId))throw new Error("הקוטף אינו משובץ");
+   const units=seen.get(entry.userId)??new Set<Unit>();if(units.has(entry.unit))throw new Error("יחידת מידה כפולה עבור אותו קוטף");units.add(entry.unit);seen.set(entry.userId,units);
+  }
+  for(const userId of assigned)if(!seen.has(userId))throw new Error("יש לדווח עבור כל הקוטפים");
+  this.db.transaction(()=>{this.db.prepare("DELETE FROM quantities WHERE shift_id=?").run(shiftId);const insert=this.db.prepare("INSERT INTO quantities(shift_id,user_id,quantity,unit,updated_by) VALUES(?,?,?,?,?)");for(const entry of entries)insert.run(shiftId,entry.userId,entry.quantity,entry.unit,actorId);this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)").run(actorId,"REPORT_UPDATE","SHIFT",shiftId,JSON.stringify({count:entries.length}));})();
  }
- total(actorId:number,shiftId:number):number{const actor=this.actor(actorId);const shift=this.db.prepare("SELECT leader_id,status FROM shifts WHERE id=?").get(shiftId) as {leader_id:number;status:string}|undefined;if(!actor?.active||!shift||!["PUBLISHED","COMPLETED"].includes(shift.status)||(actor.role!=="ADMIN"&&shift.leader_id!==actorId))throw new Error("אין הרשאה");return (this.db.prepare("SELECT COALESCE(SUM(quantity),0) total FROM quantities WHERE shift_id=?").get(shiftId) as {total:number}).total;}
+ totals(actorId:number,shiftId:number):Array<{unit:Unit;produced:number;goal:number}>{
+  const actor=this.actor(actorId);const shift=this.db.prepare("SELECT leader_id,status FROM shifts WHERE id=?").get(shiftId) as {leader_id:number;status:string}|undefined;if(!actor?.active||!shift||!["PUBLISHED","COMPLETED"].includes(shift.status)||(actor.role!=="ADMIN"&&shift.leader_id!==actorId))throw new Error("אין הרשאה");
+  const produced=this.db.prepare("SELECT unit,SUM(quantity) produced FROM quantities WHERE shift_id=? GROUP BY unit").all(shiftId) as Array<{unit:Unit;produced:number}>;
+  const goals=this.db.prepare("SELECT unit,goal FROM shift_goals WHERE shift_id=?").all(shiftId) as Array<{unit:Unit;goal:number}>;
+  const map=new Map<Unit,{unit:Unit;produced:number;goal:number}>();
+  for(const g of goals)map.set(g.unit,{unit:g.unit,produced:0,goal:g.goal});
+  for(const p of produced){const existing=map.get(p.unit);if(existing)existing.produced=p.produced;else map.set(p.unit,{unit:p.unit,produced:p.produced,goal:0});}
+  return [...map.values()];
+ }
 }
