@@ -39,7 +39,7 @@ export async function POST(req:Request){
     }else if(action==="seasonCreate"){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
       const input=seasonSchema.parse({farmId:form.get("farmId"),crop:form.get("crop"),startDate:form.get("start"),endDate:form.get("end"),notes:form.get("notes")??""});
-      database.transaction(()=>{const farm=database.prepare("SELECT active FROM farms WHERE id=?").get(input.farmId) as {active:number}|undefined;if(!farm?.active)throw new Error("המשק אינו פעיל");const result=database.prepare("INSERT INTO seasons(farm_id,crop,start_date,end_date,notes) VALUES(?,?,?,?,?)").run(input.farmId,input.crop,input.startDate,input.endDate,input.notes);database.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(user.id,"CREATE","SEASON",Number(result.lastInsertRowid));})();
+      database.transaction(()=>{const farm=database.prepare("SELECT active FROM farms WHERE id=?").get(input.farmId) as {active:number}|undefined;if(!farm?.active)throw new Error("החקלאי אינו פעיל");const result=database.prepare("INSERT INTO seasons(farm_id,crop,start_date,end_date,notes) VALUES(?,?,?,?,?)").run(input.farmId,input.crop,input.startDate,input.endDate,input.notes);database.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(user.id,"CREATE","SEASON",Number(result.lastInsertRowid));})();
     }else if(action==="vehicleCreate"){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
       const input=vehicleSchema.parse({number:form.get("number"),name:form.get("name"),notes:form.get("notes")??""});

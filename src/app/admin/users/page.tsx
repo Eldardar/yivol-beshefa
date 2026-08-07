@@ -15,7 +15,7 @@ export default async function Users({searchParams}:{searchParams:Promise<{saved?
     {saved&&<p className="alert">הפעולה הושלמה</p>}{error&&<p className="alert" role="alert">{error}</p>}
     <div className="grid"><CreatePicker csrf={csrf}/><section className="card"><h2>חשבונות</h2><div className="table-wrap"><table className="table">
       <thead><tr><th>שם</th><th>תפקיד</th><th>תעודת זהות</th><th>דוא״ל</th><th>טלפון</th><th>מצב</th><th>פעולה</th></tr></thead>
-      <tbody>{users.map(row=><tr key={row.id}><td>{row.name}</td><td>{row.role==="ADMIN"?"מנהל":"קוטף"}</td><td>{row.role==="PICKER"?(row.national_id?maskNationalId(row.national_id):"חסרה (רשומה ותיקה)"):"—"}</td><td>{row.email}</td><td>{row.phone}</td><td><span className={`tag ${row.active?"":"bad"}`}>{row.active?"פעיל":"בארכיון"}</span></td><td className="stack">{row.role==="PICKER"&&Boolean(row.active)&&<ResetPickerPassword csrf={csrf} userId={row.id}/>}{row.id!==user.id&&<ActiveForm csrf={csrf} id={row.id} active={!row.active}/>}</td></tr>)}</tbody>
+      <tbody>{users.map(row=><tr key={row.id}><td>{row.name}</td><td>{row.role==="ADMIN"?"מנהל":"עובד"}</td><td>{row.role==="PICKER"?(row.national_id?maskNationalId(row.national_id):"חסרה (רשומה ותיקה)"):"—"}</td><td>{row.email}</td><td>{row.phone}</td><td><span className={`tag ${row.active?"":"bad"}`}>{row.active?"פעיל":"בארכיון"}</span></td><td className="stack">{row.role==="PICKER"&&Boolean(row.active)&&<ResetPickerPassword csrf={csrf} userId={row.id}/>}{row.id!==user.id&&<ActiveForm csrf={csrf} id={row.id} active={!row.active}/>}</td></tr>)}</tbody>
     </table></div></section></div>
   </AppShell>;
 }
