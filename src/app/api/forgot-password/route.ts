@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     const result = await new AuthService(db()).requestPasswordReset(email, trustedClientIp(req));
     if (result) {
       const resetUrl = requestUrl(`/reset-password?token=${encodeURIComponent(result.token)}`, req).toString();
-      await sendPasswordResetEmail(email, resetUrl).catch(() => {});
+      await sendPasswordResetEmail(email, resetUrl).catch(error => console.error("שליחת דוא״ל איפוס סיסמה נכשלה", error));
     }
   } catch {
     // Always fall through to the same generic redirect below, regardless of outcome,
