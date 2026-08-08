@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { KeyIcon } from "./icons";
 
 export function ResetPickerPassword({ csrf, userId }: { csrf: string; userId: number }) {
   const router = useRouter();
@@ -33,7 +34,7 @@ export function ResetPickerPassword({ csrf, userId }: { csrf: string; userId: nu
       <form method="post" action="/api/admin/users/reset-password" onSubmit={submit}>
         <input type="hidden" name="csrf" value={csrf} />
         <input type="hidden" name="userId" value={userId} />
-        <button className="icon-btn" disabled={busy} title="איפוס סיסמה" aria-label="איפוס סיסמה">{busy ? "…" : "🔑"}</button>
+        <button className="icon-btn" disabled={busy} title="איפוס סיסמה" aria-label="איפוס סיסמה">{busy ? <span aria-hidden="true">…</span> : <KeyIcon size={18} />}</button>
       </form>
       {error && <p className="alert" role="alert">{error}</p>}
       {password && (

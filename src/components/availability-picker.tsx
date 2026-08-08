@@ -1,6 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowLeftIcon, ArrowRightIcon } from "./icons";
 
 type Status = "AVAILABLE" | "MAYBE" | "UNAVAILABLE";
 export type AvailabilityDay = { date: string; day: number; weekday: number; status: Status | null; locked: boolean };
@@ -66,9 +67,13 @@ export function AvailabilityPicker({ csrf, days: allDays, monthLabel, prevKey, n
   return (
     <div className="stack">
       <div className="calendar-nav">
-        <button type="button" className="btn secondary prev" disabled={!hasPrev || isPending} onClick={() => goToMonth(prevKey)}>→ חודש קודם</button>
+        <button type="button" className="btn secondary btn-icon-leading prev" disabled={!hasPrev || isPending} onClick={() => goToMonth(prevKey)}>
+          <ArrowRightIcon size={18} /><span>חודש קודם</span>
+        </button>
         <strong className="label">{monthLabel}</strong>
-        <button type="button" className="btn secondary next" disabled={!hasNext || isPending} onClick={() => goToMonth(nextKey)}>חודש הבא ←</button>
+        <button type="button" className="btn secondary btn-icon-leading next" disabled={!hasNext || isPending} onClick={() => goToMonth(nextKey)}>
+          <span>חודש הבא</span><ArrowLeftIcon size={18} />
+        </button>
       </div>
       <div className="row">
         <button type="button" className="btn secondary" disabled={isPending} onClick={() => setAll("AVAILABLE")}>סימון הכל כ&quot;רוצה לעבוד&quot;</button>

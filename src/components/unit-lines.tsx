@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { UNITS, UNIT_LABEL, type Unit } from "@/lib/units";
+import { XIcon, PlusIcon } from "./icons";
 
 type Line = { key: number; value: number | string; unit: Unit };
 let nextKey = 0;
@@ -20,10 +21,10 @@ export function UnitLines({ valueName, unitName, initial, addLabel, valueLabel, 
             {UNITS.map((u) => <option value={u} key={u}>{UNIT_LABEL[u]}</option>)}
           </select>
           {lines.length > 1 && (
-            <button type="button" className="icon-btn" aria-label="הסרת שורה" onClick={() => setLines(lines.filter((_, j) => j !== i))}>×</button>
+            <button type="button" className="icon-btn" aria-label="הסרת שורה" onClick={() => setLines(lines.filter((_, j) => j !== i))}><XIcon size={18} /></button>
           )}
           {i === lines.length - 1 && (
-            <button type="button" className="icon-btn-circle" aria-label={addLabel} onClick={() => setLines([...lines, makeLine()])}>+</button>
+            <button type="button" className="icon-btn-circle" aria-label={addLabel} onClick={() => setLines([...lines, makeLine()])}><PlusIcon size={18} /></button>
           )}
         </div>
       ))}

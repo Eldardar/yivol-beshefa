@@ -15,7 +15,7 @@ export default async function Transport({ searchParams }: { searchParams: Promis
   return (
     <AppShell user={user}>
       <h1>ניהול תחבורה</h1>
-      {saved && <p className="alert">הפעולה הושלמה</p>}
+      {saved && <p className="alert" role="status">הפעולה הושלמה</p>}
       {error && <p className="alert" role="alert">{error}</p>}
       <section className="card">
         <VehiclesTable vehicles={vehicles} csrf={csrf} />

@@ -1,2 +1,28 @@
 import Link from "next/link";
-export default async function ForgotPassword({searchParams}:{searchParams:Promise<{sent?:string}>}){const {sent}=await searchParams;return <main className="shell login"><section className="card"><h1>שחזור סיסמה</h1>{sent?<p className="alert" role="status">אם קיים חשבון עם כתובת הדוא״ל שהוזנה, נשלח אליו קישור לאיפוס סיסמה. בדקו גם בתיקיית הספאם.</p>:<><p>הזינו את כתובת הדוא״ל המשויכת לחשבון, ואנו נשלח קישור לאיפוס הסיסמה.</p><form action="/api/forgot-password" method="post" className="stack"><div className="field"><label htmlFor="email">דוא״ל</label><input className="input" id="email" name="email" type="email" autoComplete="username" required maxLength={254}/></div><button className="btn" type="submit">שליחת קישור לאיפוס</button></form></>}<p><Link href="/login">חזרה להתחברות</Link></p></section></main>}
+import { AuthShell } from "@/components/auth-shell";
+
+export default async function ForgotPassword({ searchParams }: { searchParams: Promise<{ sent?: string }> }) {
+  const { sent } = await searchParams;
+  return (
+    <AuthShell>
+      <div className="stack">
+        <h1>שחזור סיסמה</h1>
+        {sent ? (
+          <p className="alert" role="status">אם קיים חשבון עם כתובת הדוא״ל שהוזנה, נשלח אליו קישור לאיפוס סיסמה. בדקו גם בתיקיית הספאם.</p>
+        ) : (
+          <>
+            <p>הזינו את כתובת הדוא״ל המשויכת לחשבון, ואנו נשלח קישור לאיפוס הסיסמה.</p>
+            <form action="/api/forgot-password" method="post" className="stack">
+              <div className="field">
+                <label htmlFor="email">דוא״ל</label>
+                <input className="input" id="email" name="email" type="email" autoComplete="username" required maxLength={254} />
+              </div>
+              <button className="btn" type="submit">שליחת קישור לאיפוס</button>
+            </form>
+          </>
+        )}
+        <p><Link href="/login">חזרה להתחברות</Link></p>
+      </div>
+    </AuthShell>
+  );
+}

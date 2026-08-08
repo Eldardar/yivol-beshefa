@@ -45,7 +45,7 @@ export default async function Users({ searchParams }: { searchParams: Promise<{ 
   return (
     <AppShell user={user}>
       <h1>ניהול עובדים</h1>
-      {saved && <p className="alert">הפעולה הושלמה</p>}
+      {saved && <p className="alert" role="status">הפעולה הושלמה</p>}
       {error && <p className="alert" role="alert">{error}</p>}
       <section className="card">
         <WorkersTable users={users} shiftsByUser={shiftsByUser} csrf={csrf} currentUserId={user.id} />

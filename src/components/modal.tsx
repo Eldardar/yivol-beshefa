@@ -1,5 +1,6 @@
 "use client";
 import { useEffect } from "react";
+import { XIcon } from "./icons";
 
 export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   useEffect(() => {
@@ -13,7 +14,7 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
       <div className="modal" role="dialog" aria-modal="true" aria-label={title} onClick={e => e.stopPropagation()}>
         <div className="modal-head">
           <h2>{title}</h2>
-          <button type="button" className="modal-close" aria-label="סגירה" onClick={onClose}>✕</button>
+          <button type="button" className="modal-close" aria-label="סגירה" onClick={onClose}><XIcon size={20} /></button>
         </div>
         {children}
       </div>
