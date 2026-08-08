@@ -1,6 +1,6 @@
 import { BrandLogo } from "./brand-logo";
 
-export function AuthShell({ children }: { children: React.ReactNode }) {
+export function AuthShell({ children, sideExtra }: { children: React.ReactNode; sideExtra?: React.ReactNode }) {
   return (
     <div className="auth-page">
       <div className="auth-panel">
@@ -20,6 +20,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
           <BrandLogo size="lg" className="auth-side-logo" />
           <h2>עונה טובה מתחילה בתפעול מסודר</h2>
           <p>זמינות, שיבוצים ודיווחי קטיף — במקום אחד לכל הצוות.</p>
+          {sideExtra}
         </div>
       </div>
     </div>

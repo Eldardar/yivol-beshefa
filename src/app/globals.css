@@ -412,7 +412,7 @@ select.input { appearance: auto; }
 .expand-btn svg { transition: transform var(--duration-normal) var(--ease-standard); }
 .expand-btn.is-open svg { transform: rotate(180deg); }
 .worker-expand-row td { padding: 0; border-bottom: 1px solid var(--color-border); }
-.sub-tables { display: grid; gap: var(--space-4); padding: var(--space-4); background: var(--color-surface-sunk); }
+.sub-tables { display: grid; gap: var(--space-4); padding: var(--space-6) var(--space-4) var(--space-4); background: var(--color-surface-sunk); }
 
 /* Worker/vehicle card list — mobile-first alternative to the desktop table */
 .record-list { display: grid; gap: var(--space-3); }
@@ -429,7 +429,7 @@ select.input { appearance: auto; }
 .record-card-name { font: var(--text-card-title); }
 .record-card-meta { color: var(--color-text-secondary); font: var(--text-body-sm); display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); }
 .record-card-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
-.record-card-details { border-top: 1px solid var(--color-border); padding-top: var(--space-3); display: grid; gap: var(--space-4); }
+.record-card-details { border-top: 1px solid var(--color-border); padding-top: var(--space-5); display: grid; gap: var(--space-4); }
 
 .mobile-only { display: block; }
 .desktop-only { display: none; }
@@ -674,6 +674,9 @@ button.sidebar-nav-link { border: 0; background: transparent; width: 100%; text-
 }
 .auth-side-content { position: relative; z-index: 1; display: grid; gap: var(--space-2); max-width: 380px; }
 .auth-side-content p { color: rgba(255, 255, 255, 0.82); }
+.auth-side-quote { margin-top: var(--space-4); padding-inline-start: var(--space-3); border-inline-start: 2px solid rgba(255, 255, 255, 0.35); }
+.auth-side-quote p { font-style: italic; color: rgba(255, 255, 255, 0.9); margin: 0; }
+.auth-side-quote cite { display: block; margin-top: var(--space-1); font-style: normal; font-size: 0.875rem; color: rgba(255, 255, 255, 0.65); }
 .auth-side::before {
   content: "";
   position: absolute;

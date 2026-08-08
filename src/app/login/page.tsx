@@ -9,7 +9,14 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
   const { error, changed, reset } = await searchParams;
 
   return (
-    <AuthShell>
+    <AuthShell
+      sideExtra={
+        <blockquote className="auth-side-quote" dir="ltr">
+          <p>&ldquo;Ooga Booga&rdquo;</p>
+          <cite>~ Andrey</cite>
+        </blockquote>
+      }
+    >
       <div className="stack">
         {error && <p className="alert" role="alert">פרטי ההתחברות שגויים</p>}
         {changed && <p className="alert" role="status">הסיסמה עודכנה בהצלחה. יש להתחבר עם הסיסמה החדשה.</p>}
