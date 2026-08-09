@@ -15,7 +15,6 @@ const PICKER_NAV: NavItem[] = [
 ];
 
 const ADMIN_NAV: NavItem[] = [
-  { href: "/admin", label: "תפעול", icon: HomeIcon },
   { href: "/admin/users", label: "עובדים", icon: UsersIcon },
   { href: "/admin/resources", label: "חקלאים", icon: SproutIcon },
   { href: "/admin/transport", label: "תחבורה", icon: TruckIcon },
@@ -27,7 +26,7 @@ function itemsFor(role: Role): NavItem[] {
 }
 
 function isActive(pathname: string, href: string) {
-  if (href === "/" || href === "/admin") return pathname === href;
+  if (href === "/") return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
