@@ -331,6 +331,9 @@ a.card:hover, a.card:focus-visible { border-color: var(--brand-forest-600); box-
 .icon-btn.danger:hover { background: var(--color-danger-surface); }
 
 .icon-btn-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 44px;
   height: 44px;
   border-radius: 50%;
