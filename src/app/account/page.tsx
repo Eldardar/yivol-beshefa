@@ -1,13 +1,15 @@
 import { AppShell } from "@/components/nav";
-import { csrfValue, requireUser } from "@/lib/server";
+import { csrfValue, db, requireUser } from "@/lib/server";
 import { UserIcon } from "@/components/icons";
+import { PickerService } from "@/lib/services/picker";
 
 export const dynamic = "force-dynamic";
 
-export default async function Account({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+export default async function Account({ searchParams }: { searchParams: Promise<{ error?: string; detailsError?: string; detailsSaved?: string }> }) {
   const user = await requireUser();
   const csrf = await csrfValue();
-  const { error } = await searchParams;
+  const { error, detailsError, detailsSaved } = await searchParams;
+  const personalDetails = new PickerService(db()).personalDetails(user.id);
 
   return (
     <AppShell user={user}>
@@ -20,6 +22,23 @@ export default async function Account({ searchParams }: { searchParams: Promise<
             <span className="muted">{user.email}</span>
           </div>
         </div>
+      </section>
+      <section className="card">
+        <h2>פרטים אישיים</h2>
+        {detailsError && <p className="alert" role="alert">{detailsError}</p>}
+        {detailsSaved && !detailsError && <p className="alert" role="status">הפרטים נשמרו בהצלחה</p>}
+        <form action="/api/account/personal-details" method="post" className="stack">
+          <input type="hidden" name="csrf" value={csrf} />
+          <div className="field">
+            <label htmlFor="dateOfBirth">תאריך לידה</label>
+            <input className="input" id="dateOfBirth" type="date" name="dateOfBirth" defaultValue={personalDetails?.dateOfBirth ?? ""} />
+          </div>
+          <div className="field">
+            <label htmlFor="favoriteFruit">פרי אהוב</label>
+            <input className="input" id="favoriteFruit" type="text" name="favoriteFruit" maxLength={100} defaultValue={personalDetails?.favoriteFruit ?? ""} />
+          </div>
+          <button className="btn" type="submit">שמירה</button>
+        </form>
       </section>
       <section className="card">
         <h2>החלפת סיסמה</h2>

@@ -19,6 +19,7 @@ export const passwordChangeSchema=z.object({password:passwordSchema,confirmation
 export const forgotPasswordSchema=z.object({email:z.string().trim().toLowerCase().email().max(254)}).strict();
 export const resetPasswordSchema=z.object({token:z.string().min(1).max(512),password:passwordSchema,confirmation:z.string()}).strict().refine(x=>x.password===x.confirmation,{message:"הסיסמאות אינן זהות",path:["confirmation"]});
 export const changePasswordSelfSchema=z.object({currentPassword:z.string().min(1).max(128),password:passwordSchema,confirmation:z.string()}).strict().refine(x=>x.password===x.confirmation,{message:"הסיסמאות אינן זהות",path:["confirmation"]});
+export const personalDetailsSchema=z.object({dateOfBirth:z.union([isoDate,z.literal("")]).default(""),favoriteFruit:z.string().trim().max(100).default("")}).strict();
 
 export const availabilitySchema = z.object({
   date: isoDate,

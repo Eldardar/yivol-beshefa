@@ -1,5 +1,5 @@
 import type Database from "better-sqlite3";
-import { availabilityMonthSchema } from "@/lib/schemas";
+import { availabilityMonthSchema, personalDetailsSchema } from "@/lib/schemas";
 import { availabilityWindow } from "@/lib/dates";
 
 type Notification={id:number;title:string;body:string;read_at:string|null;created_at:string};
@@ -10,6 +10,14 @@ export class PickerService{
   if(!actor || (actor.role!=="ADMIN" && actorId!==targetId)) throw new Error("אין הרשאה");
   const profile=this.db.prepare("SELECT id,name,email,phone,notes,active FROM users WHERE id=? AND role='PICKER'").get(targetId);
   if(!profile) throw new Error("הקוטף לא נמצא"); return profile;
+ }
+ personalDetails(actorId:number){
+  return this.db.prepare("SELECT date_of_birth AS dateOfBirth, favorite_fruit AS favoriteFruit FROM users WHERE id=?").get(actorId) as {dateOfBirth:string|null;favoriteFruit:string}|undefined;
+ }
+ updatePersonalDetails(actorId:number,raw:unknown):void{
+  const input=personalDetailsSchema.parse(raw);
+  const result=this.db.prepare("UPDATE users SET date_of_birth=?,favorite_fruit=? WHERE id=? AND active=1").run(input.dateOfBirth||null,input.favoriteFruit,actorId);
+  if(result.changes!==1)throw new Error("המשתמש לא נמצא");
  }
  notifications(actorId:number):Notification[]{return this.db.prepare("SELECT id,title,body,read_at,created_at FROM notifications WHERE user_id=? ORDER BY created_at DESC").all(actorId) as Notification[];}
  markRead(actorId:number,notificationId:number):void{
