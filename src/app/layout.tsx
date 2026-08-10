@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title: "יבול בשפע",
   description: "ניהול תפעול חקלאי",
   manifest: "/manifest.webmanifest",
-  icons: { icon: "/icons/icon-192.png", apple: "/icons/icon-192.png" },
+  icons: { icon: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
   appleWebApp: { capable: true, statusBarStyle: "default", title: "יבול בשפע" },
 };
 
