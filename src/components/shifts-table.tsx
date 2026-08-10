@@ -205,7 +205,9 @@ function ShiftDetails({ units, pickerNames, vehicles, notes }: { units: UnitInfo
       </div>
       <div className="stack">
         <h3>קוטפים משובצים</h3>
-        {pickerNames.length === 0 ? <p className="muted">לא שובצו קוטפים</p> : <p>{pickerNames.join(" · ")}</p>}
+        {pickerNames.length === 0 ? <p className="muted">לא שובצו קוטפים</p> : (
+          <ol className="numbered-list">{pickerNames.map((name, i) => <li key={`${name}-${i}`}>{name}</li>)}</ol>
+        )}
       </div>
       <div className="stack">
         <h3>רכבים</h3>
