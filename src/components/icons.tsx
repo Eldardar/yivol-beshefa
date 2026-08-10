@@ -90,6 +90,15 @@ export function TruckIcon(props: IconProps) {
   );
 }
 
+export function BarChartIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 20V10M12 20V4M20 20v-7" />
+      <path d="M3 20h18" />
+    </Svg>
+  );
+}
+
 export function MoreIcon(props: IconProps) {
   return (
     <Svg {...props}>

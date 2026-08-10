@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ComponentType } from "react";
-import { HomeIcon, CalendarIcon, ClipboardListIcon, HistoryIcon, UsersIcon, SproutIcon, TruckIcon } from "./icons";
+import { HomeIcon, CalendarIcon, ClipboardListIcon, HistoryIcon, UsersIcon, SproutIcon, TruckIcon, BarChartIcon } from "./icons";
 
 export type NavItem = { href: string; label: string; icon: ComponentType<{ size?: number; className?: string }> };
 export type Role = "ADMIN" | "PICKER";
@@ -19,6 +19,7 @@ const ADMIN_NAV: NavItem[] = [
   { href: "/admin/resources", label: "חקלאים", icon: SproutIcon },
   { href: "/admin/transport", label: "תחבורה", icon: TruckIcon },
   { href: "/admin/shifts", label: "משמרות", icon: ClipboardListIcon },
+  { href: "/admin/reports", label: "דוחות", icon: BarChartIcon },
 ];
 
 function itemsFor(role: Role): NavItem[] {
