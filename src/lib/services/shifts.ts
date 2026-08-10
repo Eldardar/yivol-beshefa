@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
 import { SchedulingService } from "@/lib/services/scheduling";
+import { pushToUsers } from "@/lib/push";
 import type { Unit } from "@/lib/units";
 
 const transitions:Record<string,Set<string>>={DRAFT:new Set(["PUBLISHED","CANCELLED"]),PUBLISHED:new Set(["COMPLETED","CANCELLED","DRAFT"]),COMPLETED:new Set(),CANCELLED:new Set(["DRAFT"])};
@@ -9,6 +10,7 @@ export class ShiftService{
  private actor(actorId:number){return this.db.prepare("SELECT id,role,active FROM users WHERE id=?").get(actorId) as {id:number;role:string;active:number}|undefined;}
  transition(actorId:number,shiftId:number,target:"DRAFT"|"PUBLISHED"|"COMPLETED"|"CANCELLED"):string[]{
   const actor=this.actor(actorId);if(!actor?.active||actor.role!=="ADMIN")throw new Error("אין הרשאה");
+  let pushItems:Array<{userId:number;title:string;body:string}>=[];
   const change=this.db.transaction(()=>{
    const shift=this.db.prepare("SELECT id,status,date,slot FROM shifts WHERE id=?").get(shiftId) as {id:number;status:string;date:string;slot:string}|undefined;
    if(!shift)throw new Error("המשמרת לא נמצאה");if(!transitions[shift.status]?.has(target))throw new Error("מעבר מצב אינו תקין");
@@ -23,11 +25,18 @@ export class ShiftService{
    this.db.prepare("UPDATE shifts SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").run(target,shiftId);
    let title:string|undefined;
    if(target==="PUBLISHED")title="שיבוץ למשמרת";else if(target==="CANCELLED")title="משמרת בוטלה";else if(shift.status==="PUBLISHED"&&target==="DRAFT")title="פרסום המשמרת נמשך";
-   if(title){const body=`${shift.date} · ${shift.slot==="MORNING"?"בוקר":"ערב"}`;this.db.prepare("INSERT INTO notifications(user_id,title,body) SELECT user_id,?,? FROM shift_pickers WHERE shift_id=?").run(title,body,shiftId);}
+   if(title){
+    const body=`${shift.date} · ${shift.slot==="MORNING"?"בוקר":"ערב"}`;
+    this.db.prepare("INSERT INTO notifications(user_id,title,body) SELECT user_id,?,? FROM shift_pickers WHERE shift_id=?").run(title,body,shiftId);
+    const pickerIds=(this.db.prepare("SELECT user_id FROM shift_pickers WHERE shift_id=?").all(shiftId) as Array<{user_id:number}>).map(x=>x.user_id);
+    pushItems=pickerIds.map(userId=>({userId,title:title!,body}));
+   }
    this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)").run(actorId,"TRANSITION","SHIFT",shiftId,JSON.stringify({from:shift.status,to:target}));
    return warnings;
   });
-  return change.immediate();
+  const warnings=change.immediate();
+  if(pushItems.length)void pushToUsers(this.db,pushItems);
+  return warnings;
  }
  saveQuantities(actorId:number,shiftId:number,entries:Array<{userId:number;quantity:number;unit:Unit}>):void{
   const actor=this.actor(actorId);const shift=this.db.prepare("SELECT leader_id,status FROM shifts WHERE id=?").get(shiftId) as {leader_id:number;status:string}|undefined;

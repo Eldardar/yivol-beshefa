@@ -1,12 +1,15 @@
 import { AppShell } from "@/components/nav";
 import { csrfValue, db, requireUser } from "@/lib/server";
 import { formatHebrewDateTime } from "@/lib/dates";
+import { vapidPublicKey } from "@/lib/push";
+import { PushToggle } from "@/components/push-toggle";
 
 export const dynamic = "force-dynamic";
 
 export default async function Notifications() {
   const user = await requireUser();
   const csrf = await csrfValue();
+  const publicKey = vapidPublicKey();
   const rows = db()
     .prepare("SELECT id,title,body,read_at,created_at FROM notifications WHERE user_id=? ORDER BY created_at DESC")
     .all(user.id) as Array<{ id: number; title: string; body: string; read_at: string | null; created_at: string }>;
@@ -14,6 +17,7 @@ export default async function Notifications() {
   return (
     <AppShell user={user}>
       <h1>ההתראות שלי</h1>
+      {publicKey && <PushToggle vapidPublicKey={publicKey} csrf={csrf} />}
       <div className="stack">
         {rows.map(x => (
           <article className="card" key={x.id}>
