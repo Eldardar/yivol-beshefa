@@ -259,3 +259,20 @@ export function PhoneIcon(props: IconProps) {
     </Svg>
   );
 }
+
+export function CheckCircleIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m8 12.5 2.5 2.5 5.5-6" />
+    </Svg>
+  );
+}
+
+export function CircleIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="9" />
+    </Svg>
+  );
+}

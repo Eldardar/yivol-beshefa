@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { AppShell } from "@/components/nav";
+import { OnboardingChecklist } from "@/components/onboarding";
 import { db, requireUser } from "@/lib/server";
 import { formatHebrewDate, jerusalemDate } from "@/lib/dates";
+import { PickerService } from "@/lib/services/picker";
 import { CalendarIcon, ClipboardListIcon, HistoryIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
@@ -54,26 +56,37 @@ export default async function Home() {
     )
     .get(user.id, today) as { id: number; date: string; slot: string; farm: string; fruit_type: string } | undefined;
 
+  const personalDetails = new PickerService(database).personalDetails(user.id);
+  const profileComplete = Boolean(personalDetails?.dateOfBirth) && Boolean(personalDetails?.favoriteFruit?.trim());
+  const pushEnabled = (database.prepare("SELECT count(*) n FROM push_subscriptions WHERE user_id=?").get(user.id) as { n: number }).n > 0;
+  const hasAvailability = (database.prepare("SELECT count(*) n FROM availability WHERE user_id=?").get(user.id) as { n: number }).n > 0;
+  const onboardingSteps = [
+    { key: "profile", title: "מילוי פרטים אישיים", description: "השלימו תאריך לידה ופרי אהוב בעמוד החשבון שלכם", href: "/account", done: profileComplete },
+    { key: "push", title: "הפעלת התראות דחיפה", description: "קבלו התראה במכשיר בכל פעם שאתם משובצים למשמרת", href: "/notifications", done: pushEnabled },
+    { key: "availability", title: "עדכון זמינות", description: "דווחו זמינות ליום אחד לפחות מתוך 60 הימים הקרובים", href: "/availability", done: hasAvailability },
+  ];
+
   return (
     <AppShell user={user}>
       <section className="hero">
         <h1>שלום {firstName}</h1>
         <p>{next ? `השיבוץ הבא: ${formatHebrewDate(next.date)} · ${next.slot === "MORNING" ? "בוקר" : "ערב"} · ${next.farm}` : "אין שיבוצים קרובים"}</p>
         <pre className="ascii-banner" dir="ltr" aria-hidden="true">
-{`                    XXXXXX                        
-          XXX     XX     XXX        XXXXXXX       
-XXX      XX      XX        XX     XX      X       
-  XX   XX       XX          XX    X       X       
-   XX  X        X            X    X      XX       
-    XXX               XX     X    X    XXX        
-      XXX           XXXX     X    XXXXX           
-      X XXX        X        XX    X               
-      XX  XX       X        X     XX              
+{`                    XXXXXX
+          XXX     XX     XXX        XXXXXXX
+XXX      XX      XX        XX     XX      X
+  XX   XX       XX          XX    X       X
+   XX  X        X            X    X      XX
+    XXX               XX     X    X    XXX
+      XXX           XXXX     X    XXXXX
+      X XXX        X        XX    X
+      XX  XX       X        X     XX
        XX  X       XXX    XXX      XX         XXXX
         XXXX         XXXXX          XXXXXXXXXXX   `}
         </pre>
         <span className="sr-only">שפע</span>
       </section>
+      <OnboardingChecklist steps={onboardingSteps} />
       <div className="grid">
         <Link className="card" href="/availability">
           <CalendarIcon size={22} className="muted" />
