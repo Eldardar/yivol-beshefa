@@ -45,16 +45,26 @@ export function ShiftsTable({
 }) {
   const [expanded, setExpanded] = useState<number | null>(null);
   const [search, setSearch] = useState("");
+  const [showCancelled, setShowCancelled] = useState(false);
 
   const query = search.trim().toLowerCase();
-  const filtered = query
-    ? shifts.filter(row => row.farm.toLowerCase().includes(query) || row.crop.toLowerCase().includes(query) || row.leader.toLowerCase().includes(query) || formatHebrewDate(row.date).includes(query))
-    : shifts;
+  const filtered = shifts
+    .filter(row => showCancelled || row.status !== "CANCELLED")
+    .filter(row =>
+      !query || row.farm.toLowerCase().includes(query) || row.crop.toLowerCase().includes(query) || row.leader.toLowerCase().includes(query) || formatHebrewDate(row.date).includes(query)
+    );
 
   return (
     <div className="stack">
       <div className="table-toolbar">
         <input className="input search-input" type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="חיפוש לפי חקלאי, גידול או מוביל משמרת" aria-label="חיפוש משמרות" />
+        <label className="switch-row">
+          <span className="switch">
+            <input type="checkbox" checked={showCancelled} onChange={e => setShowCancelled(e.target.checked)} />
+            <span className="switch-track" aria-hidden="true" />
+          </span>
+          <span>הצג משמרות מבוטלות</span>
+        </label>
         <AddShiftButton csrf={csrf} pickers={pickers} seasons={seasons} />
       </div>
 
