@@ -20,6 +20,7 @@ export class PickerService{
   if(result.changes!==1)throw new Error("המשתמש לא נמצא");
  }
  notifications(actorId:number):Notification[]{return this.db.prepare("SELECT id,title,body,read_at,created_at FROM notifications WHERE user_id=? ORDER BY created_at DESC").all(actorId) as Notification[];}
+ unreadCount(actorId:number):number{return (this.db.prepare("SELECT COUNT(*) AS n FROM notifications WHERE user_id=? AND read_at IS NULL").get(actorId) as {n:number}).n;}
  markRead(actorId:number,notificationId:number):void{
   const result=this.db.prepare("UPDATE notifications SET read_at=COALESCE(read_at,CURRENT_TIMESTAMP) WHERE id=? AND user_id=?").run(notificationId,actorId);
   if(result.changes!==1)throw new Error("ההודעה לא נמצאה");

@@ -1,11 +1,12 @@
 import Link from "next/link";
 import type { SessionUser } from "@/lib/services/auth";
-import { csrfValue } from "@/lib/server";
+import { csrfValue, db } from "@/lib/server";
+import { PickerService } from "@/lib/services/picker";
 import { BrandLockup } from "./brand-logo";
 import { SidebarNavLinks, BottomNavLinks } from "./nav-links";
 import { BellIcon, UserIcon, LogOutIcon } from "./icons";
 
-function TopBar({ csrf }: { csrf: string }) {
+function TopBar({ csrf, hasUnread }: { csrf: string; hasUnread: boolean }) {
   return (
     <header className="topbar">
       <div className="shell inner">
@@ -18,6 +19,7 @@ function TopBar({ csrf }: { csrf: string }) {
           </Link>
           <Link href="/notifications" className="nav-icon" aria-label="התראות" title="התראות">
             <BellIcon size={20} />
+            {hasUnread && <span className="notif-dot" aria-hidden="true" />}
           </Link>
           <LogoutButton csrf={csrf} iconOnly />
         </div>
@@ -26,7 +28,7 @@ function TopBar({ csrf }: { csrf: string }) {
   );
 }
 
-function Sidebar({ user, csrf }: { user: SessionUser; csrf: string }) {
+function Sidebar({ user, csrf, hasUnread }: { user: SessionUser; csrf: string; hasUnread: boolean }) {
   return (
     <aside className="sidebar" aria-label="ניווט ראשי">
       <Link href="/" className="sidebar-brand" aria-label="יבול בשפע · דף הבית">
@@ -35,7 +37,10 @@ function Sidebar({ user, csrf }: { user: SessionUser; csrf: string }) {
       <SidebarNavLinks role={user.role} />
       <div className="sidebar-footer">
         <Link href="/notifications" className="sidebar-nav-link">
-          <BellIcon size={22} />
+          <span className="notif-icon-wrap">
+            <BellIcon size={22} />
+            {hasUnread && <span className="notif-dot" aria-hidden="true" />}
+          </span>
           <span>התראות</span>
         </Link>
         <Link href="/account" className="sidebar-nav-link">
@@ -68,11 +73,12 @@ function LogoutButton({ csrf, iconOnly }: { csrf: string; iconOnly?: boolean }) 
 
 export async function AppShell({ user, children }: { user: SessionUser; children: React.ReactNode }) {
   const csrf = await csrfValue();
+  const hasUnread = new PickerService(db()).unreadCount(user.id) > 0;
   return (
     <div className="app-shell">
-      <TopBar csrf={csrf} />
+      <TopBar csrf={csrf} hasUnread={hasUnread} />
       <div className="app-body">
-        <Sidebar user={user} csrf={csrf} />
+        <Sidebar user={user} csrf={csrf} hasUnread={hasUnread} />
         <div className="content-area">
           <main className="shell main">{children}</main>
           <footer className="footer">יבול בשפע</footer>
