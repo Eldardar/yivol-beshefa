@@ -14,8 +14,8 @@ export default async function History() {
 
   const rows = db()
     .prepare(
-      `SELECT s.id,s.date,s.slot,s.status,f.name farm,se.crop FROM shift_pickers sp
-       JOIN shifts s ON s.id=sp.shift_id JOIN seasons se ON se.id=s.season_id JOIN farms f ON f.id=se.farm_id
+      `SELECT s.id,s.date,s.slot,s.status,f.name farm,pf.fruit_type crop FROM shift_pickers sp
+       JOIN shifts s ON s.id=sp.shift_id JOIN plantation_fields pf ON pf.id=s.plantation_field_id JOIN farms f ON f.id=pf.farm_id
        WHERE sp.user_id=? AND s.status IN ('PUBLISHED','COMPLETED','CANCELLED') AND (s.date<? OR s.status IN ('COMPLETED','CANCELLED'))
        ORDER BY s.date DESC`
     )

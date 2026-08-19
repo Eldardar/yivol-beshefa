@@ -5,7 +5,7 @@ import path from "node:path";
 export type AppDb = Database.Database;
 
 export function migrate(db: AppDb): void {
-  db.pragma("foreign_keys = ON");
+  db.pragma("foreign_keys = OFF");
   db.exec("CREATE TABLE IF NOT EXISTS schema_migrations(version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)");
   const dir = path.join(process.cwd(), "migrations");
   const files = fs.readdirSync(dir).filter((name) => /^\d+.*\.sql$/.test(name)).sort();
@@ -17,6 +17,9 @@ export function migrate(db: AppDb): void {
     const sql = fs.readFileSync(path.join(dir, file), "utf8");
     db.transaction(() => { db.exec(sql); record.run(version); })();
   }
+  const violations = db.pragma("foreign_key_check") as unknown[];
+  if (violations.length) throw new Error(`בדיקת מפתחות זרים נכשלה לאחר מיגרציה: ${JSON.stringify(violations)}`);
+  db.pragma("foreign_keys = ON");
 }
 
 export function openDb(filename = process.env.DATABASE_PATH || "./data/yivol.sqlite"): AppDb {

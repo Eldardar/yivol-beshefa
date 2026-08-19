@@ -34,7 +34,7 @@ const goalLineSchema = z.object({ unit: unitSchema, goal: z.coerce.number().fini
 export const shiftSchema = z.object({
   date: isoDate,
   slot: z.enum(["MORNING", "EVENING"]),
-  seasonId: id,
+  plantationFieldId: id,
   pickerIds: z.array(id).min(1).transform((items) => [...new Set(items)]),
   leaderId: id,
   vehicleIds: z.array(id).transform((items) => [...new Set(items)]),
@@ -45,5 +45,5 @@ export const shiftSchema = z.object({
 export type ShiftInput = z.input<typeof shiftSchema>;
 
 export const farmSchema=z.object({name:text(150),contactPerson:text(150),phone:text(30),address:text(300),navigationUrl:z.union([z.literal(""),z.string().url().refine(v=>/^https?:/.test(v))]).default(""),notes:z.string().trim().max(2000).default("")}).strict();
-export const seasonSchema=z.object({farmId:id,crop:text(150),startDate:isoDate,endDate:isoDate,notes:z.string().trim().max(2000).default("")}).strict().refine(x=>x.startDate<=x.endDate,{message:"תאריך הסיום חייב להיות אחרי ההתחלה"});
+export const plantationFieldSchema=z.object({farmId:id,name:text(150),fruitType:text(150),fruitSubtype:text(150),size:z.union([z.literal(""),z.coerce.number().positive()]).optional().default("").transform(v=>v===""?null:v),location:z.string().trim().max(300).default(""),details:z.string().trim().max(2000).default("")}).strict();
 export const vehicleSchema=z.object({number:text(50),name:text(150),notes:z.string().trim().max(2000).default("")}).strict();

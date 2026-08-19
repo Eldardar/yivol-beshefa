@@ -1,25 +1,14 @@
 "use client";
 import { Fragment, useState } from "react";
-import { formatHebrewDate } from "@/lib/dates";
 import { AddFarmerButton } from "./add-farmer-button";
-import { AddSeasonButton } from "./add-season-button";
+import { AddPlantationFieldButton } from "./add-plantation-field-button";
 import { ChevronDownIcon, TrashIcon } from "./icons";
 
 export type FarmRow = { id: number; name: string; contact_person: string; phone: string; address: string; active: number };
-export type SeasonRow = { id: number; farm_id: number; crop: string; start_date: string; end_date: string; active: number };
-export type SeasonsByFarm = Record<number, SeasonRow[]>;
+export type PlantationFieldRow = { id: number; farm_id: number; name: string; fruit_type: string; fruit_subtype: string; size: number | null; location: string; details: string; active: number };
+export type PlantationFieldsByFarm = Record<number, PlantationFieldRow[]>;
 
-type SeasonStatus = "over" | "ongoing" | "future";
-const STATUS_TAG: Record<SeasonStatus, string> = { over: "bad", ongoing: "", future: "warn" };
-const STATUS_LABEL: Record<SeasonStatus, string> = { over: "הסתיימה", ongoing: "פעילה כעת", future: "עתידית" };
-
-function seasonStatus(season: SeasonRow, today: string): SeasonStatus {
-  if (season.end_date < today) return "over";
-  if (season.start_date > today) return "future";
-  return "ongoing";
-}
-
-export function FarmersTable({ farms, seasonsByFarm, csrf, today }: { farms: FarmRow[]; seasonsByFarm: SeasonsByFarm; csrf: string; today: string }) {
+export function FarmersTable({ farms, plantationFieldsByFarm, csrf }: { farms: FarmRow[]; plantationFieldsByFarm: PlantationFieldsByFarm; csrf: string }) {
   const [expanded, setExpanded] = useState<number | null>(null);
   const [search, setSearch] = useState("");
 
@@ -41,7 +30,7 @@ export function FarmersTable({ farms, seasonsByFarm, csrf, today }: { farms: Far
       <div className="record-list mobile-only">
         {filtered.map(row => {
           const isOpen = expanded === row.id;
-          const seasons = seasonsByFarm[row.id] ?? [];
+          const fields = plantationFieldsByFarm[row.id] ?? [];
           return (
             <article className="record-card" key={row.id}>
               <div className="record-card-head">
@@ -59,13 +48,13 @@ export function FarmersTable({ farms, seasonsByFarm, csrf, today }: { farms: Far
                 </button>
               </div>
               <div className="record-card-actions">
-                <AddSeasonButton csrf={csrf} farmId={row.id} farmName={row.name} />
+                <AddPlantationFieldButton csrf={csrf} farmId={row.id} farmName={row.name} />
                 <ActiveForm csrf={csrf} id={row.id} active={!row.active} />
               </div>
               {isOpen && (
                 <div className="record-card-details">
                   <div className="sub-tables">
-                    <SeasonsList seasons={seasons} today={today} csrf={csrf} />
+                    <PlantationFieldsList fields={fields} csrf={csrf} />
                   </div>
                 </div>
               )}
@@ -83,7 +72,7 @@ export function FarmersTable({ farms, seasonsByFarm, csrf, today }: { farms: Far
           <tbody>
             {filtered.map(row => {
               const isOpen = expanded === row.id;
-              const seasons = seasonsByFarm[row.id] ?? [];
+              const fields = plantationFieldsByFarm[row.id] ?? [];
               return (
                 <Fragment key={row.id}>
                   <tr>
@@ -99,7 +88,7 @@ export function FarmersTable({ farms, seasonsByFarm, csrf, today }: { farms: Far
                     <td><span className={`tag ${row.active ? "" : "bad"}`}>{row.active ? "פעיל" : "בארכיון"}</span></td>
                     <td>
                       <div className="actions-cell">
-                        <AddSeasonButton csrf={csrf} farmId={row.id} farmName={row.name} />
+                        <AddPlantationFieldButton csrf={csrf} farmId={row.id} farmName={row.name} />
                         <ActiveForm csrf={csrf} id={row.id} active={!row.active} />
                       </div>
                     </td>
@@ -108,7 +97,7 @@ export function FarmersTable({ farms, seasonsByFarm, csrf, today }: { farms: Far
                     <tr className="worker-expand-row">
                       <td colSpan={7}>
                         <div className="sub-tables">
-                          <SeasonsList seasons={seasons} today={today} csrf={csrf} />
+                          <PlantationFieldsList fields={fields} csrf={csrf} />
                         </div>
                       </td>
                     </tr>
@@ -123,26 +112,26 @@ export function FarmersTable({ farms, seasonsByFarm, csrf, today }: { farms: Far
   );
 }
 
-function SeasonsList({ seasons, today, csrf }: { seasons: SeasonRow[]; today: string; csrf: string }) {
+function PlantationFieldsList({ fields, csrf }: { fields: PlantationFieldRow[]; csrf: string }) {
   return (
     <div className="stack">
-      <h3>עונות גידול</h3>
-      {seasons.length === 0 ? <p className="muted">אין עונות רשומות</p> : (
+      <h3>חלקות גידול</h3>
+      {fields.length === 0 ? <p className="muted">אין חלקות רשומות</p> : (
         <div className="table-wrap">
           <table className="table">
-            <thead><tr><th>גידול</th><th>טווח</th><th>מצב</th><th>פעולה</th></tr></thead>
+            <thead><tr><th>שם</th><th>סוג פרי</th><th>תת-סוג</th><th>גודל</th><th>מיקום</th><th>מצב</th><th>פעולה</th></tr></thead>
             <tbody>
-              {seasons.map(s => {
-                const status = seasonStatus(s, today);
-                return (
-                  <tr key={s.id}>
-                    <td>{s.crop}</td>
-                    <td>{formatHebrewDate(s.start_date)}–{formatHebrewDate(s.end_date)}</td>
-                    <td><span className={`tag ${STATUS_TAG[status]}`}>{STATUS_LABEL[status]}</span></td>
-                    <td><SeasonActiveForm csrf={csrf} id={s.id} active={!s.active} /></td>
-                  </tr>
-                );
-              })}
+              {fields.map(f => (
+                <tr key={f.id}>
+                  <td>{f.name}</td>
+                  <td>{f.fruit_type}</td>
+                  <td>{f.fruit_subtype}</td>
+                  <td>{f.size ?? "—"}</td>
+                  <td>{f.location || "—"}</td>
+                  <td><span className={`tag ${f.active ? "" : "bad"}`}>{f.active ? "פעילה" : "בארכיון"}</span></td>
+                  <td><PlantationFieldActiveForm csrf={csrf} id={f.id} active={!f.active} /></td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -168,12 +157,12 @@ function ActiveForm({ csrf, id, active }: { csrf: string; id: number; active: bo
   );
 }
 
-function SeasonActiveForm({ csrf, id, active }: { csrf: string; id: number; active: boolean }) {
+function PlantationFieldActiveForm({ csrf, id, active }: { csrf: string; id: number; active: boolean }) {
   return (
     <form action="/api/actions" method="post">
       <input type="hidden" name="csrf" value={csrf} />
       <input type="hidden" name="action" value="setActive" />
-      <input type="hidden" name="entity" value="SEASON" />
+      <input type="hidden" name="entity" value="PLANTATION_FIELD" />
       <input type="hidden" name="entityId" value={id} />
       <input type="hidden" name="active" value={active ? "1" : "0"} />
       {active ? (

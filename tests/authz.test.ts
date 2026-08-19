@@ -82,9 +82,9 @@ describe("הרשאות והפעלות",()=>{
   const {p1}=await users();
   const admin=Number(db.prepare("INSERT INTO users(name,email,phone,role,password_hash) VALUES(?,?,?,?,?)").run("מנהל","admin2@example.com","0500000009","ADMIN","x").lastInsertRowid);
   const farm=Number(db.prepare("INSERT INTO farms(name,contact_person,phone,address) VALUES(?,?,?,?)").run("משק","איש","0500000003","כתובת").lastInsertRowid);
-  const season=Number(db.prepare("INSERT INTO seasons(farm_id,crop,start_date,end_date) VALUES(?,?,?,?)").run(farm,"תות","2026-08-01","2026-08-31").lastInsertRowid);
+  const field=Number(db.prepare("INSERT INTO plantation_fields(farm_id,fruit_type,fruit_subtype) VALUES(?,?,?)").run(farm,"תות","סטרולסה").lastInsertRowid);
   db.prepare("INSERT INTO availability(user_id,date,status) VALUES(?,?,?)").run(p1,"2026-08-01","AVAILABLE");
-  const shift=Number(db.prepare("INSERT INTO shifts(date,slot,season_id,leader_id,created_by) VALUES(?,?,?,?,?)").run("2026-08-01","MORNING",season,p1,admin).lastInsertRowid);
+  const shift=Number(db.prepare("INSERT INTO shifts(date,slot,plantation_field_id,leader_id,created_by) VALUES(?,?,?,?,?)").run("2026-08-01","MORNING",field,p1,admin).lastInsertRowid);
   db.prepare("INSERT INTO shift_goals(shift_id,unit,goal) VALUES(?,?,?)").run(shift,"KG",1);
   db.prepare("INSERT INTO shift_pickers(shift_id,user_id) VALUES(?,?)").run(shift,p1);
   new PickerService(db).setAvailability(p1,{entries:[{date:"2026-08-01",status:"UNAVAILABLE"}]},new Date("2026-07-15T12:00:00Z"));

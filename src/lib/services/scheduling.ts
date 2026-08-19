@@ -28,30 +28,29 @@ export class SchedulingService{
     WHERE sv.vehicle_id=? AND s.date=? AND s.slot=? AND s.status<>'CANCELLED' AND s.id<>?`).get(vehicleId,input.date,input.slot,excludeShiftId??-1);
    if(conflict)throw new Error("רכב כבר משובץ");
   }
-  const season=this.db.prepare(`SELECT se.active season_active,se.start_date,se.end_date,f.active farm_active
-   FROM seasons se JOIN farms f ON f.id=se.farm_id WHERE se.id=?`).get(input.seasonId) as {season_active:number;farm_active:number;start_date:string;end_date:string}|undefined;
-  if(!season?.season_active||!season.farm_active)throw new Error("עונה אינה פעילה");
-  if(input.date<season.start_date||input.date>season.end_date)throw new Error("תאריך המשמרת מחוץ לעונה");
+  const field=this.db.prepare(`SELECT pf.active field_active,f.active farm_active
+   FROM plantation_fields pf JOIN farms f ON f.id=pf.farm_id WHERE pf.id=?`).get(input.plantationFieldId) as {field_active:number;farm_active:number}|undefined;
+  if(!field?.field_active||!field.farm_active)throw new Error("חלקת הגידול אינה פעילה");
   return warnings;
  }
  validateExistingShift(shiftId:number):string[]{
-  const row=this.db.prepare("SELECT date,slot,season_id,leader_id,notes FROM shifts WHERE id=?").get(shiftId) as {date:string;slot:string;season_id:number;leader_id:number;notes:string}|undefined;
+  const row=this.db.prepare("SELECT date,slot,plantation_field_id,leader_id,notes FROM shifts WHERE id=?").get(shiftId) as {date:string;slot:string;plantation_field_id:number;leader_id:number;notes:string}|undefined;
   if(!row)throw new Error("המשמרת לא נמצאה");
   const pickerIds=(this.db.prepare("SELECT user_id FROM shift_pickers WHERE shift_id=?").all(shiftId) as Array<{user_id:number}>).map(x=>x.user_id);
   const vehicleIds=(this.db.prepare("SELECT vehicle_id FROM shift_vehicles WHERE shift_id=?").all(shiftId) as Array<{vehicle_id:number}>).map(x=>x.vehicle_id);
   const goals=this.db.prepare("SELECT unit,goal FROM shift_goals WHERE shift_id=?").all(shiftId) as Array<{unit:string;goal:number}>;
-  const input=shiftSchema.parse({date:row.date,slot:row.slot,seasonId:row.season_id,pickerIds,leaderId:row.leader_id,vehicleIds,goals,notes:row.notes});
+  const input=shiftSchema.parse({date:row.date,slot:row.slot,plantationFieldId:row.plantation_field_id,pickerIds,leaderId:row.leader_id,vehicleIds,goals,notes:row.notes});
   return this.validateAssignments(input,shiftId);
  }
  createShift(actorId:number,raw:ShiftInput):Result{
   const input=shiftSchema.parse(raw);this.assertAdmin(actorId);
-  const create=this.db.transaction(()=>{const warnings=this.validateAssignments(input);const shiftId=Number(this.db.prepare("INSERT INTO shifts(date,slot,season_id,leader_id,notes,created_by) VALUES(?,?,?,?,?,?)").run(input.date,input.slot,input.seasonId,input.leaderId,input.notes,actorId).lastInsertRowid);const addGoal=this.db.prepare("INSERT INTO shift_goals(shift_id,unit,goal) VALUES(?,?,?)");for(const g of input.goals)addGoal.run(shiftId,g.unit,g.goal);const addPicker=this.db.prepare("INSERT INTO shift_pickers(shift_id,user_id) VALUES(?,?)");for(const id of input.pickerIds)addPicker.run(shiftId,id);const addVehicle=this.db.prepare("INSERT INTO shift_vehicles(shift_id,vehicle_id) VALUES(?,?)");for(const id of input.vehicleIds)addVehicle.run(shiftId,id);this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(actorId,"CREATE","SHIFT",shiftId);return {shiftId,warnings};});
+  const create=this.db.transaction(()=>{const warnings=this.validateAssignments(input);const shiftId=Number(this.db.prepare("INSERT INTO shifts(date,slot,plantation_field_id,leader_id,notes,created_by) VALUES(?,?,?,?,?,?)").run(input.date,input.slot,input.plantationFieldId,input.leaderId,input.notes,actorId).lastInsertRowid);const addGoal=this.db.prepare("INSERT INTO shift_goals(shift_id,unit,goal) VALUES(?,?,?)");for(const g of input.goals)addGoal.run(shiftId,g.unit,g.goal);const addPicker=this.db.prepare("INSERT INTO shift_pickers(shift_id,user_id) VALUES(?,?)");for(const id of input.pickerIds)addPicker.run(shiftId,id);const addVehicle=this.db.prepare("INSERT INTO shift_vehicles(shift_id,vehicle_id) VALUES(?,?)");for(const id of input.vehicleIds)addVehicle.run(shiftId,id);this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(actorId,"CREATE","SHIFT",shiftId);return {shiftId,warnings};});
   return create.immediate();
  }
  updateShift(actorId:number,shiftId:number,raw:ShiftInput):Result{
   const input=shiftSchema.parse(raw);this.assertAdmin(actorId);if(!Number.isSafeInteger(shiftId)||shiftId<1)throw new Error("מזהה אינו תקין");
   const pushItems:Array<{userId:number;title:string;body:string}>=[];
-  const update=this.db.transaction(()=>{const existing=this.db.prepare("SELECT status FROM shifts WHERE id=?").get(shiftId) as {status:string}|undefined;if(!existing)throw new Error("המשמרת לא נמצאה");if(!["DRAFT","PUBLISHED"].includes(existing.status))throw new Error("לא ניתן לערוך משמרת שהסתיימה או בוטלה");const warnings=this.validateAssignments(input,shiftId);const oldPickers=(this.db.prepare("SELECT user_id FROM shift_pickers WHERE shift_id=?").all(shiftId) as Array<{user_id:number}>).map(x=>x.user_id);this.db.prepare("UPDATE shifts SET date=?,slot=?,season_id=?,leader_id=?,notes=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").run(input.date,input.slot,input.seasonId,input.leaderId,input.notes,shiftId);this.db.prepare("DELETE FROM shift_goals WHERE shift_id=?").run(shiftId);const addGoal=this.db.prepare("INSERT INTO shift_goals(shift_id,unit,goal) VALUES(?,?,?)");for(const g of input.goals)addGoal.run(shiftId,g.unit,g.goal);this.db.prepare("DELETE FROM shift_pickers WHERE shift_id=?").run(shiftId);const addPicker=this.db.prepare("INSERT INTO shift_pickers(shift_id,user_id) VALUES(?,?)");for(const id of input.pickerIds)addPicker.run(shiftId,id);this.db.prepare("DELETE FROM shift_vehicles WHERE shift_id=?").run(shiftId);const addVehicle=this.db.prepare("INSERT INTO shift_vehicles(shift_id,vehicle_id) VALUES(?,?)");for(const id of input.vehicleIds)addVehicle.run(shiftId,id);for(const id of oldPickers)if(!input.pickerIds.includes(id))this.db.prepare("DELETE FROM quantities WHERE shift_id=? AND user_id=?").run(shiftId,id);if(existing.status==="PUBLISHED"){const notify=this.db.prepare("INSERT INTO notifications(user_id,title,body) VALUES(?,?,?)");for(const id of new Set([...oldPickers,...input.pickerIds])){const body=input.pickerIds.includes(id)?`משמרת בתאריך ${input.date} עודכנה`:`הוסרת ממשמרת בתאריך ${input.date}`;notify.run(id,"המשמרת עודכנה",body);pushItems.push({userId:id,title:"המשמרת עודכנה",body});}}this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)").run(actorId,"UPDATE","SHIFT",shiftId,JSON.stringify({published:existing.status==="PUBLISHED"}));return {shiftId,warnings};});
+  const update=this.db.transaction(()=>{const existing=this.db.prepare("SELECT status FROM shifts WHERE id=?").get(shiftId) as {status:string}|undefined;if(!existing)throw new Error("המשמרת לא נמצאה");if(!["DRAFT","PUBLISHED"].includes(existing.status))throw new Error("לא ניתן לערוך משמרת שהסתיימה או בוטלה");const warnings=this.validateAssignments(input,shiftId);const oldPickers=(this.db.prepare("SELECT user_id FROM shift_pickers WHERE shift_id=?").all(shiftId) as Array<{user_id:number}>).map(x=>x.user_id);this.db.prepare("UPDATE shifts SET date=?,slot=?,plantation_field_id=?,leader_id=?,notes=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").run(input.date,input.slot,input.plantationFieldId,input.leaderId,input.notes,shiftId);this.db.prepare("DELETE FROM shift_goals WHERE shift_id=?").run(shiftId);const addGoal=this.db.prepare("INSERT INTO shift_goals(shift_id,unit,goal) VALUES(?,?,?)");for(const g of input.goals)addGoal.run(shiftId,g.unit,g.goal);this.db.prepare("DELETE FROM shift_pickers WHERE shift_id=?").run(shiftId);const addPicker=this.db.prepare("INSERT INTO shift_pickers(shift_id,user_id) VALUES(?,?)");for(const id of input.pickerIds)addPicker.run(shiftId,id);this.db.prepare("DELETE FROM shift_vehicles WHERE shift_id=?").run(shiftId);const addVehicle=this.db.prepare("INSERT INTO shift_vehicles(shift_id,vehicle_id) VALUES(?,?)");for(const id of input.vehicleIds)addVehicle.run(shiftId,id);for(const id of oldPickers)if(!input.pickerIds.includes(id))this.db.prepare("DELETE FROM quantities WHERE shift_id=? AND user_id=?").run(shiftId,id);if(existing.status==="PUBLISHED"){const notify=this.db.prepare("INSERT INTO notifications(user_id,title,body) VALUES(?,?,?)");for(const id of new Set([...oldPickers,...input.pickerIds])){const body=input.pickerIds.includes(id)?`משמרת בתאריך ${input.date} עודכנה`:`הוסרת ממשמרת בתאריך ${input.date}`;notify.run(id,"המשמרת עודכנה",body);pushItems.push({userId:id,title:"המשמרת עודכנה",body});}}this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)").run(actorId,"UPDATE","SHIFT",shiftId,JSON.stringify({published:existing.status==="PUBLISHED"}));return {shiftId,warnings};});
   const result=update.immediate();
   if(pushItems.length)void pushToUsers(this.db,pushItems);
   return result;
@@ -69,12 +68,12 @@ export class SchedulingService{
   });
  }
  assignPickers(actorId:number,shiftId:number,pickerIds:number[]):Result{
-  const row=this.db.prepare("SELECT date,slot,season_id,leader_id,notes FROM shifts WHERE id=?").get(shiftId) as {date:string;slot:string;season_id:number;leader_id:number;notes:string}|undefined;
+  const row=this.db.prepare("SELECT date,slot,plantation_field_id,leader_id,notes FROM shifts WHERE id=?").get(shiftId) as {date:string;slot:string;plantation_field_id:number;leader_id:number;notes:string}|undefined;
   if(!row)throw new Error("המשמרת לא נמצאה");
   const vehicleIds=(this.db.prepare("SELECT vehicle_id FROM shift_vehicles WHERE shift_id=?").all(shiftId) as Array<{vehicle_id:number}>).map(x=>x.vehicle_id);
   const goals=this.db.prepare("SELECT unit,goal FROM shift_goals WHERE shift_id=?").all(shiftId) as ShiftInput["goals"];
   const ids=new Set(pickerIds);ids.add(row.leader_id);
-  const raw:ShiftInput={date:row.date,slot:row.slot as "MORNING"|"EVENING",seasonId:row.season_id,pickerIds:[...ids],leaderId:row.leader_id,vehicleIds,goals,notes:row.notes};
+  const raw:ShiftInput={date:row.date,slot:row.slot as "MORNING"|"EVENING",plantationFieldId:row.plantation_field_id,pickerIds:[...ids],leaderId:row.leader_id,vehicleIds,goals,notes:row.notes};
   return this.updateShift(actorId,shiftId,raw);
  }
  listAvailableVehicles(shiftId:number):Array<{id:number;number:string;name:string;conflict:boolean;assigned:boolean}>{
@@ -89,11 +88,11 @@ export class SchedulingService{
   });
  }
  assignVehicles(actorId:number,shiftId:number,vehicleIds:number[]):Result{
-  const row=this.db.prepare("SELECT date,slot,season_id,leader_id,notes FROM shifts WHERE id=?").get(shiftId) as {date:string;slot:string;season_id:number;leader_id:number;notes:string}|undefined;
+  const row=this.db.prepare("SELECT date,slot,plantation_field_id,leader_id,notes FROM shifts WHERE id=?").get(shiftId) as {date:string;slot:string;plantation_field_id:number;leader_id:number;notes:string}|undefined;
   if(!row)throw new Error("המשמרת לא נמצאה");
   const pickerIds=(this.db.prepare("SELECT user_id FROM shift_pickers WHERE shift_id=?").all(shiftId) as Array<{user_id:number}>).map(x=>x.user_id);
   const goals=this.db.prepare("SELECT unit,goal FROM shift_goals WHERE shift_id=?").all(shiftId) as ShiftInput["goals"];
-  const raw:ShiftInput={date:row.date,slot:row.slot as "MORNING"|"EVENING",seasonId:row.season_id,pickerIds,leaderId:row.leader_id,vehicleIds:[...new Set(vehicleIds)],goals,notes:row.notes};
+  const raw:ShiftInput={date:row.date,slot:row.slot as "MORNING"|"EVENING",plantationFieldId:row.plantation_field_id,pickerIds,leaderId:row.leader_id,vehicleIds:[...new Set(vehicleIds)],goals,notes:row.notes};
   return this.updateShift(actorId,shiftId,raw);
  }
 }

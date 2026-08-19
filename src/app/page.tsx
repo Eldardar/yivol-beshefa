@@ -48,11 +48,11 @@ export default async function Home() {
 
   const next = database
     .prepare(
-      `SELECT s.id,s.date,s.slot,f.name farm,se.crop FROM shift_pickers sp
-       JOIN shifts s ON s.id=sp.shift_id JOIN seasons se ON se.id=s.season_id JOIN farms f ON f.id=se.farm_id
+      `SELECT s.id,s.date,s.slot,f.name farm,pf.fruit_type FROM shift_pickers sp
+       JOIN shifts s ON s.id=sp.shift_id JOIN plantation_fields pf ON pf.id=s.plantation_field_id JOIN farms f ON f.id=pf.farm_id
        WHERE sp.user_id=? AND s.status='PUBLISHED' AND s.date>=? ORDER BY s.date LIMIT 1`
     )
-    .get(user.id, today) as { id: number; date: string; slot: string; farm: string; crop: string } | undefined;
+    .get(user.id, today) as { id: number; date: string; slot: string; farm: string; fruit_type: string } | undefined;
 
   return (
     <AppShell user={user}>

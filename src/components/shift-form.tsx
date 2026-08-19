@@ -4,13 +4,16 @@ import { UnitLines } from "./unit-lines";
 import type { Unit } from "@/lib/units";
 
 export type Picker = { id: number; name: string };
-export type SeasonOption = { id: number; crop: string; farm: string };
+export type FarmOption = { id: number; name: string };
+export type PlantationFieldOption = { id: number; name: string; fruitType: string; fruitSubtype: string };
+export type PlantationFieldsByFarm = Record<number, PlantationFieldOption[]>;
 
 export type EditableShift = {
   id: number;
   date: string;
   slot: "MORNING" | "EVENING";
-  season_id: number;
+  farm_id: number;
+  plantation_field_id: number;
   leader_id: number;
   notes: string;
 };
@@ -18,7 +21,8 @@ export type EditableShift = {
 export function ShiftForm({
   csrf,
   pickers,
-  seasons,
+  farms,
+  plantationFieldsByFarm,
   shift,
   existingPickerIds,
   existingVehicleIds,
@@ -26,19 +30,24 @@ export function ShiftForm({
 }: {
   csrf: string;
   pickers: Picker[];
-  seasons: SeasonOption[];
+  farms: FarmOption[];
+  plantationFieldsByFarm: PlantationFieldsByFarm;
   shift?: EditableShift;
   existingPickerIds: number[];
   existingVehicleIds: number[];
   existingGoals: Array<{ value: number; unit: Unit }>;
 }) {
   const [leaderId, setLeaderId] = useState(shift ? String(shift.leader_id) : "");
+  const [farmId, setFarmId] = useState(shift ? String(shift.farm_id) : "");
+  const [fieldId, setFieldId] = useState(shift ? String(shift.plantation_field_id) : "");
 
   const pickerIds = useMemo(() => {
     const set = new Set(existingPickerIds.map(String));
     if (leaderId) set.add(leaderId);
     return [...set];
   }, [leaderId, existingPickerIds]);
+
+  const fields = farmId ? (plantationFieldsByFarm[Number(farmId)] ?? []) : [];
 
   return (
     <form className="stack" method="post" action="/api/actions">
@@ -57,9 +66,17 @@ export function ShiftForm({
           </select>
         </div>
         <div className="field">
-          <label htmlFor="shift-season">עונה</label>
-          <select className="input" id="shift-season" name="seasonId" required defaultValue={shift ? String(shift.season_id) : undefined}>
-            {seasons.map(s => <option value={s.id} key={s.id}>{s.farm} · {s.crop}</option>)}
+          <label htmlFor="shift-farm">חקלאי</label>
+          <select className="input" id="shift-farm" required value={farmId} onChange={e => { setFarmId(e.target.value); setFieldId(""); }}>
+            <option value="" disabled>בחירת חקלאי</option>
+            {farms.map(f => <option value={f.id} key={f.id}>{f.name}</option>)}
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="shift-field">חלקת גידול</label>
+          <select className="input" id="shift-field" name="plantationFieldId" required value={fieldId} onChange={e => setFieldId(e.target.value)} disabled={!farmId}>
+            <option value="" disabled>{farmId ? "בחירת חלקה" : "יש לבחור חקלאי תחילה"}</option>
+            {fields.map(f => <option value={f.id} key={f.id}>{f.name} · {f.fruitType} · {f.fruitSubtype}</option>)}
           </select>
         </div>
         <div className="field">

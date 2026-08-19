@@ -1,8 +1,8 @@
 import type Database from "better-sqlite3";
 import { generatePassword, hashPassword } from "@/lib/security";
 
-export type ManagedEntity = "USER" | "FARM" | "SEASON" | "VEHICLE";
-const tables: Record<ManagedEntity,string> = { USER:"users", FARM:"farms", SEASON:"seasons", VEHICLE:"vehicles" };
+export type ManagedEntity = "USER" | "FARM" | "PLANTATION_FIELD" | "VEHICLE";
+const tables: Record<ManagedEntity,string> = { USER:"users", FARM:"farms", PLANTATION_FIELD:"plantation_fields", VEHICLE:"vehicles" };
 
 export class AdminService {
   constructor(private readonly db: Database.Database) {}
@@ -18,9 +18,9 @@ export class AdminService {
         const operational=entity==="USER"
           ?this.db.prepare(`SELECT 1 FROM shifts s LEFT JOIN shift_pickers sp ON sp.shift_id=s.id WHERE s.status IN ('DRAFT','PUBLISHED') AND (s.leader_id=? OR sp.user_id=?) LIMIT 1`).get(entityId,entityId)
           :entity==="FARM"
-            ?this.db.prepare(`SELECT 1 FROM shifts s JOIN seasons se ON se.id=s.season_id WHERE s.status IN ('DRAFT','PUBLISHED') AND se.farm_id=? LIMIT 1`).get(entityId)
-            :entity==="SEASON"
-              ?this.db.prepare(`SELECT 1 FROM shifts WHERE status IN ('DRAFT','PUBLISHED') AND season_id=? LIMIT 1`).get(entityId)
+            ?this.db.prepare(`SELECT 1 FROM shifts s JOIN plantation_fields pf ON pf.id=s.plantation_field_id WHERE s.status IN ('DRAFT','PUBLISHED') AND pf.farm_id=? LIMIT 1`).get(entityId)
+            :entity==="PLANTATION_FIELD"
+              ?this.db.prepare(`SELECT 1 FROM shifts WHERE status IN ('DRAFT','PUBLISHED') AND plantation_field_id=? LIMIT 1`).get(entityId)
               :this.db.prepare(`SELECT 1 FROM shifts s JOIN shift_vehicles sv ON sv.shift_id=s.id WHERE s.status IN ('DRAFT','PUBLISHED') AND sv.vehicle_id=? LIMIT 1`).get(entityId);
         if(operational)throw new Error("לא ניתן להעביר לארכיון משאב המשובץ במשמרת פעילה");
       }

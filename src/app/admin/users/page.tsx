@@ -16,11 +16,11 @@ export default async function Users({ searchParams }: { searchParams: Promise<{ 
 
   const today = jerusalemDate();
   const shiftRows = database.prepare(`
-    SELECT sp.user_id user_id,s.id id,s.date date,s.slot slot,s.status status,f.name farm,se.crop crop
+    SELECT sp.user_id user_id,s.id id,s.date date,s.slot slot,s.status status,f.name farm,pf.fruit_type crop
     FROM shift_pickers sp
     JOIN shifts s ON s.id=sp.shift_id
-    JOIN seasons se ON se.id=s.season_id
-    JOIN farms f ON f.id=se.farm_id
+    JOIN plantation_fields pf ON pf.id=s.plantation_field_id
+    JOIN farms f ON f.id=pf.farm_id
     WHERE s.status IN ('PUBLISHED','COMPLETED','CANCELLED')
     ORDER BY s.date DESC,s.slot
   `).all() as Array<Omit<WorkerShiftRow, "lines"> & { user_id: number }>;

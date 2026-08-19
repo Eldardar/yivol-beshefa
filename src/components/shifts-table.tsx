@@ -8,9 +8,9 @@ import { EditShiftButton } from "./edit-shift-button";
 import { AssignPickersButton } from "./assign-pickers-button";
 import { AssignVehiclesButton } from "./assign-vehicles-button";
 import { ChevronDownIcon, TrashIcon } from "./icons";
-import type { Picker, SeasonOption } from "./shift-form";
+import type { Picker, FarmOption, PlantationFieldsByFarm } from "./shift-form";
 
-export type ShiftRow = { id: number; date: string; slot: "MORNING" | "EVENING"; status: string; notes: string; season_id: number; leader_id: number; leader: string; farm: string; crop: string; picker_count: number };
+export type ShiftRow = { id: number; date: string; slot: "MORNING" | "EVENING"; status: string; notes: string; farm_id: number; plantation_field_id: number; leader_id: number; leader: string; farm: string; fruit_type: string; picker_count: number };
 export type UnitInfo = { unit: Unit; goal: number; produced: number };
 export type UnitsByShift = Record<number, UnitInfo[]>;
 export type PickerNamesByShift = Record<number, string[]>;
@@ -25,7 +25,8 @@ const STATUS_TAG: Record<string, string> = { DRAFT: "warn", PUBLISHED: "", COMPL
 export function ShiftsTable({
   shifts,
   pickers,
-  seasons,
+  farms,
+  plantationFieldsByFarm,
   unitsByShift,
   pickerNamesByShift,
   pickerIdsByShift,
@@ -35,7 +36,8 @@ export function ShiftsTable({
 }: {
   shifts: ShiftRow[];
   pickers: Picker[];
-  seasons: SeasonOption[];
+  farms: FarmOption[];
+  plantationFieldsByFarm: PlantationFieldsByFarm;
   unitsByShift: UnitsByShift;
   pickerNamesByShift: PickerNamesByShift;
   pickerIdsByShift: PickerIdsByShift;
@@ -51,7 +53,7 @@ export function ShiftsTable({
   const filtered = shifts
     .filter(row => showCancelled || row.status !== "CANCELLED")
     .filter(row =>
-      !query || row.farm.toLowerCase().includes(query) || row.crop.toLowerCase().includes(query) || row.leader.toLowerCase().includes(query) || formatHebrewDate(row.date).includes(query)
+      !query || row.farm.toLowerCase().includes(query) || row.fruit_type.toLowerCase().includes(query) || row.leader.toLowerCase().includes(query) || formatHebrewDate(row.date).includes(query)
     );
 
   return (
@@ -65,7 +67,7 @@ export function ShiftsTable({
           </span>
           <span>הצג משמרות מבוטלות</span>
         </label>
-        <AddShiftButton csrf={csrf} pickers={pickers} seasons={seasons} />
+        <AddShiftButton csrf={csrf} pickers={pickers} farms={farms} plantationFieldsByFarm={plantationFieldsByFarm} />
       </div>
 
       {filtered.length === 0 && <p className="muted">לא נמצאו משמרות</p>}
@@ -81,7 +83,7 @@ export function ShiftsTable({
                 <div className="record-card-body">
                   <span className="record-card-name">{formatHebrewDate(row.date)} · {SLOT_LABEL[row.slot]}</span>
                   <div className="record-card-meta">
-                    <span>{row.farm} · {row.crop}</span>
+                    <span>{row.farm} · {row.fruit_type}</span>
                     <span>·</span>
                     <span>{row.leader}</span>
                   </div>
@@ -92,7 +94,7 @@ export function ShiftsTable({
                 </button>
               </div>
               <div className="record-card-actions">
-                <RowActions row={row} csrf={csrf} pickers={pickers} seasons={seasons} pickerIdsByShift={pickerIdsByShift} vehicleIdsByShift={vehicleIdsByShift} unitsByShift={unitsByShift} />
+                <RowActions row={row} csrf={csrf} pickers={pickers} farms={farms} plantationFieldsByFarm={plantationFieldsByFarm} pickerIdsByShift={pickerIdsByShift} vehicleIdsByShift={vehicleIdsByShift} unitsByShift={unitsByShift} />
               </div>
               {isOpen && (
                 <div className="record-card-details">
@@ -124,7 +126,7 @@ export function ShiftsTable({
                     </td>
                     <td>{formatHebrewDate(row.date)}</td>
                     <td>{SLOT_LABEL[row.slot]}</td>
-                    <td>{row.farm} · {row.crop}</td>
+                    <td>{row.farm} · {row.fruit_type}</td>
                     <td>{row.leader}</td>
                     <td>{row.picker_count}</td>
                     <td>{units.length ? units.map((u, i) => (
@@ -136,7 +138,7 @@ export function ShiftsTable({
                     <td><span className={`tag ${STATUS_TAG[row.status] ?? ""}`}>{STATUS_LABEL[row.status] ?? row.status}</span></td>
                     <td>
                       <div className="actions-cell">
-                        <RowActions row={row} csrf={csrf} pickers={pickers} seasons={seasons} pickerIdsByShift={pickerIdsByShift} vehicleIdsByShift={vehicleIdsByShift} unitsByShift={unitsByShift} />
+                        <RowActions row={row} csrf={csrf} pickers={pickers} farms={farms} plantationFieldsByFarm={plantationFieldsByFarm} pickerIdsByShift={pickerIdsByShift} vehicleIdsByShift={vehicleIdsByShift} unitsByShift={unitsByShift} />
                       </div>
                     </td>
                   </tr>
@@ -161,7 +163,8 @@ function RowActions({
   row,
   csrf,
   pickers,
-  seasons,
+  farms,
+  plantationFieldsByFarm,
   pickerIdsByShift,
   vehicleIdsByShift,
   unitsByShift
@@ -169,7 +172,8 @@ function RowActions({
   row: ShiftRow;
   csrf: string;
   pickers: Picker[];
-  seasons: SeasonOption[];
+  farms: FarmOption[];
+  plantationFieldsByFarm: PlantationFieldsByFarm;
   pickerIdsByShift: PickerIdsByShift;
   vehicleIdsByShift: VehicleIdsByShift;
   unitsByShift: UnitsByShift;
@@ -183,8 +187,9 @@ function RowActions({
         <EditShiftButton
           csrf={csrf}
           pickers={pickers}
-          seasons={seasons}
-          shift={{ id: row.id, date: row.date, slot: row.slot, season_id: row.season_id, leader_id: row.leader_id, notes: row.notes }}
+          farms={farms}
+          plantationFieldsByFarm={plantationFieldsByFarm}
+          shift={{ id: row.id, date: row.date, slot: row.slot, farm_id: row.farm_id, plantation_field_id: row.plantation_field_id, leader_id: row.leader_id, notes: row.notes }}
           existingPickerIds={pickerIdsByShift[row.id] ?? []}
           existingVehicleIds={vehicleIdsByShift[row.id] ?? []}
           existingGoals={(unitsByShift[row.id] ?? []).map(u => ({ value: u.goal, unit: u.unit }))}

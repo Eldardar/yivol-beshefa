@@ -7,19 +7,19 @@ import { AdminService, type ManagedEntity } from "@/lib/services/admin";
 import { PickerService } from "@/lib/services/picker";
 import { SchedulingService } from "@/lib/services/scheduling";
 import { ShiftService } from "@/lib/services/shifts";
-import { farmSchema, seasonSchema, shiftSchema, unitSchema, vehicleSchema } from "@/lib/schemas";
+import { farmSchema, plantationFieldSchema, shiftSchema, unitSchema, vehicleSchema } from "@/lib/schemas";
 import type { Unit } from "@/lib/units";
 import { requestBodyIssue, requestUrl } from "@/lib/http";
 
 export const runtime="nodejs";
 const positiveId=z.coerce.number().int().positive();
 const activeSchema=z.enum(["0","1"]);
-const entitySchema=z.enum(["USER","FARM","SEASON","VEHICLE"]);
+const entitySchema=z.enum(["USER","FARM","PLANTATION_FIELD","VEHICLE"]);
 
 function destination(action:string,form:FormData):string {
   if(action==="setActive"){const entity=form.get("entity");if(entity==="USER")return "/admin/users?saved=1";if(entity==="VEHICLE")return "/admin/transport?saved=1";return "/admin/resources?saved=1";}
   if(action.startsWith("vehicle"))return "/admin/transport?saved=1";
-  if(action.startsWith("farm")||action.startsWith("season"))return "/admin/resources?saved=1";
+  if(action.startsWith("farm")||action.startsWith("plantationField"))return "/admin/resources?saved=1";
   if(action.startsWith("shift")||action==="quantities")return "/admin/shifts?saved=1";
   if(action==="readNotification")return "/notifications";
   return "/";
@@ -38,10 +38,10 @@ export async function POST(req:Request){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
       const input=farmSchema.parse({name:form.get("name"),contactPerson:form.get("contact"),phone:form.get("phone"),address:form.get("address"),navigationUrl:form.get("navigation")??"",notes:form.get("notes")??""});
       database.transaction(()=>{const result=database.prepare("INSERT INTO farms(name,contact_person,phone,address,navigation_link,notes) VALUES(?,?,?,?,?,?)").run(input.name,input.contactPerson,input.phone,input.address,input.navigationUrl||null,input.notes);database.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(user.id,"CREATE","FARM",Number(result.lastInsertRowid));})();
-    }else if(action==="seasonCreate"){
+    }else if(action==="plantationFieldCreate"){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
-      const input=seasonSchema.parse({farmId:form.get("farmId"),crop:form.get("crop"),startDate:form.get("start"),endDate:form.get("end"),notes:form.get("notes")??""});
-      database.transaction(()=>{const farm=database.prepare("SELECT active FROM farms WHERE id=?").get(input.farmId) as {active:number}|undefined;if(!farm?.active)throw new Error("החקלאי אינו פעיל");const result=database.prepare("INSERT INTO seasons(farm_id,crop,start_date,end_date,notes) VALUES(?,?,?,?,?)").run(input.farmId,input.crop,input.startDate,input.endDate,input.notes);database.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(user.id,"CREATE","SEASON",Number(result.lastInsertRowid));})();
+      const input=plantationFieldSchema.parse({farmId:form.get("farmId"),name:form.get("name"),fruitType:form.get("fruitType"),fruitSubtype:form.get("fruitSubtype"),size:form.get("size")??"",location:form.get("location")??"",details:form.get("details")??""});
+      database.transaction(()=>{const farm=database.prepare("SELECT active FROM farms WHERE id=?").get(input.farmId) as {active:number}|undefined;if(!farm?.active)throw new Error("החקלאי אינו פעיל");const result=database.prepare("INSERT INTO plantation_fields(farm_id,name,fruit_type,fruit_subtype,size,location,details) VALUES(?,?,?,?,?,?,?)").run(input.farmId,input.name,input.fruitType,input.fruitSubtype,input.size,input.location,input.details);database.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(user.id,"CREATE","PLANTATION_FIELD",Number(result.lastInsertRowid));})();
     }else if(action==="vehicleCreate"){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
       const input=vehicleSchema.parse({number:form.get("number"),name:form.get("name"),notes:form.get("notes")??""});
@@ -53,7 +53,7 @@ export async function POST(req:Request){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
       const goalUnits=form.getAll("goalUnit");const goalQtys=form.getAll("goalQty");
       const goals=goalUnits.map((unit,i)=>({unit,goal:goalQtys[i]}));
-      const input=shiftSchema.parse({date:form.get("date"),slot:form.get("slot"),seasonId:form.get("seasonId"),pickerIds:form.getAll("pickerIds"),leaderId:form.get("leaderId"),vehicleIds:form.getAll("vehicleIds"),goals,notes:form.get("notes")??""});
+      const input=shiftSchema.parse({date:form.get("date"),slot:form.get("slot"),plantationFieldId:form.get("plantationFieldId"),pickerIds:form.getAll("pickerIds"),leaderId:form.get("leaderId"),vehicleIds:form.getAll("vehicleIds"),goals,notes:form.get("notes")??""});
       const scheduling=new SchedulingService(database);
       const result=action==="shiftCreate"?scheduling.createShift(user.id,input):scheduling.updateShift(user.id,positiveId.parse(form.get("shiftId")),input);warning=result.warnings.join(" · ");
     }else if(action==="shiftTransition"){

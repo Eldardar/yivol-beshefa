@@ -1,6 +1,6 @@
 import { AppShell } from "@/components/nav";
 import { ShiftsTable, type ShiftRow, type UnitsByShift, type PickerNamesByShift, type PickerIdsByShift, type VehiclesByShift, type VehicleIdsByShift } from "@/components/shifts-table";
-import type { Picker, SeasonOption } from "@/components/shift-form";
+import type { Picker, FarmOption, PlantationFieldOption, PlantationFieldsByFarm } from "@/components/shift-form";
 import { csrfValue, db, requireAdmin } from "@/lib/server";
 import type { Unit } from "@/lib/units";
 
@@ -13,11 +13,14 @@ export default async function Shifts({ searchParams }: { searchParams: Promise<{
   const database = db();
 
   const pickers = database.prepare("SELECT id,name FROM users WHERE role='PICKER' AND active=1 ORDER BY name").all() as Picker[];
-  const seasons = database.prepare("SELECT se.id,se.crop,f.name farm FROM seasons se JOIN farms f ON f.id=se.farm_id WHERE se.active=1 AND f.active=1 ORDER BY se.start_date DESC").all() as SeasonOption[];
+  const farms = database.prepare("SELECT DISTINCT f.id,f.name FROM farms f JOIN plantation_fields pf ON pf.farm_id=f.id WHERE f.active=1 AND pf.active=1 ORDER BY f.name").all() as FarmOption[];
+  const plantationFieldRows = database.prepare("SELECT pf.id,pf.farm_id farmId,pf.name,pf.fruit_type fruitType,pf.fruit_subtype fruitSubtype FROM plantation_fields pf JOIN farms f ON f.id=pf.farm_id WHERE pf.active=1 AND f.active=1 ORDER BY pf.id DESC").all() as Array<PlantationFieldOption & { farmId: number }>;
+  const plantationFieldsByFarm: PlantationFieldsByFarm = {};
+  for (const { farmId, ...field } of plantationFieldRows) (plantationFieldsByFarm[farmId] ??= []).push(field);
   const shifts = database
     .prepare(
-      `SELECT s.id,s.date,s.slot,s.status,s.notes,s.season_id,s.leader_id,u.name leader,f.name farm,se.crop,(SELECT COUNT(*) FROM shift_pickers WHERE shift_id=s.id) picker_count
-       FROM shifts s JOIN users u ON u.id=s.leader_id JOIN seasons se ON se.id=s.season_id JOIN farms f ON f.id=se.farm_id
+      `SELECT s.id,s.date,s.slot,s.status,s.notes,pf.farm_id,s.plantation_field_id,s.leader_id,u.name leader,f.name farm,pf.fruit_type,(SELECT COUNT(*) FROM shift_pickers WHERE shift_id=s.id) picker_count
+       FROM shifts s JOIN users u ON u.id=s.leader_id JOIN plantation_fields pf ON pf.id=s.plantation_field_id JOIN farms f ON f.id=pf.farm_id
        ORDER BY s.date DESC,s.slot LIMIT 100`
     )
     .all() as ShiftRow[];
@@ -62,7 +65,8 @@ export default async function Shifts({ searchParams }: { searchParams: Promise<{
         <ShiftsTable
           shifts={shifts}
           pickers={pickers}
-          seasons={seasons}
+          farms={farms}
+          plantationFieldsByFarm={plantationFieldsByFarm}
           unitsByShift={unitsByShift}
           pickerNamesByShift={pickerNamesByShift}
           pickerIdsByShift={pickerIdsByShift}
