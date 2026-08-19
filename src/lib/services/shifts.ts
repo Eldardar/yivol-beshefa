@@ -1,6 +1,7 @@
 import type Database from "better-sqlite3";
 import { SchedulingService } from "@/lib/services/scheduling";
 import { pushToUsers } from "@/lib/push";
+import { sendWhatsAppMessages } from "@/lib/whatsapp";
 import type { Unit } from "@/lib/units";
 
 const transitions:Record<string,Set<string>>={DRAFT:new Set(["PUBLISHED","CANCELLED"]),PUBLISHED:new Set(["COMPLETED","CANCELLED","DRAFT"]),COMPLETED:new Set(),CANCELLED:new Set(["DRAFT"])};
@@ -11,6 +12,7 @@ export class ShiftService{
  transition(actorId:number,shiftId:number,target:"DRAFT"|"PUBLISHED"|"COMPLETED"|"CANCELLED"):string[]{
   const actor=this.actor(actorId);if(!actor?.active||actor.role!=="ADMIN")throw new Error("אין הרשאה");
   let pushItems:Array<{userId:number;title:string;body:string}>=[];
+  let whatsappItems:Array<{to:string;title:string;body:string}>=[];
   const change=this.db.transaction(()=>{
    const shift=this.db.prepare("SELECT id,status,date,slot FROM shifts WHERE id=?").get(shiftId) as {id:number;status:string;date:string;slot:string}|undefined;
    if(!shift)throw new Error("המשמרת לא נמצאה");if(!transitions[shift.status]?.has(target))throw new Error("מעבר מצב אינו תקין");
@@ -28,14 +30,16 @@ export class ShiftService{
    if(title){
     const body=`${shift.date} · ${shift.slot==="MORNING"?"בוקר":"ערב"}`;
     this.db.prepare("INSERT INTO notifications(user_id,title,body) SELECT user_id,?,? FROM shift_pickers WHERE shift_id=?").run(title,body,shiftId);
-    const pickerIds=(this.db.prepare("SELECT user_id FROM shift_pickers WHERE shift_id=?").all(shiftId) as Array<{user_id:number}>).map(x=>x.user_id);
-    pushItems=pickerIds.map(userId=>({userId,title:title!,body}));
+    const pickers=(this.db.prepare("SELECT sp.user_id,u.phone FROM shift_pickers sp JOIN users u ON u.id=sp.user_id WHERE sp.shift_id=?").all(shiftId) as Array<{user_id:number;phone:string}>);
+    pushItems=pickers.map(p=>({userId:p.user_id,title:title!,body}));
+    whatsappItems=pickers.map(p=>({to:p.phone,title:title!,body}));
    }
    this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)").run(actorId,"TRANSITION","SHIFT",shiftId,JSON.stringify({from:shift.status,to:target}));
    return warnings;
   });
   const warnings=change.immediate();
   if(pushItems.length)void pushToUsers(this.db,pushItems);
+  if(whatsappItems.length)void sendWhatsAppMessages(whatsappItems);
   return warnings;
  }
  saveQuantities(actorId:number,shiftId:number,entries:Array<{userId:number;quantity:number;unit:Unit}>):void{
