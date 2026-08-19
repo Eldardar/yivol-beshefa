@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/nav";
 import { csrfValue, db, requireUser } from "@/lib/server";
-import { formatHebrewDate } from "@/lib/dates";
+import { formatHebrewDate, jerusalemDate } from "@/lib/dates";
 import type { Unit } from "@/lib/units";
 import { UnitLines } from "@/components/unit-lines";
 
@@ -12,6 +12,7 @@ export default async function Leader({ params }: { params: Promise<{ id: string 
   const id = Number((await params).id);
   const shift = db().prepare("SELECT id,date,slot,status,leader_id FROM shifts WHERE id=?").get(id) as { id: number; date: string; slot: string; status: string; leader_id: number } | undefined;
   if (!shift || shift.status !== "PUBLISHED" || (user.role !== "ADMIN" && shift.leader_id !== user.id)) notFound();
+  if (user.role !== "ADMIN" && shift.date > jerusalemDate()) notFound();
 
   const csrf = await csrfValue();
   const pickers = db().prepare(`SELECT u.id,u.name FROM shift_pickers sp JOIN users u ON u.id=sp.user_id WHERE sp.shift_id=? ORDER BY u.name`).all(id) as Array<{ id: number; name: string }>;

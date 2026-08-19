@@ -12,6 +12,7 @@ export default async function Assignments() {
   const user = await requireUser();
   if (user.role !== "PICKER") return null;
 
+  const today = jerusalemDate();
   const rows = db()
     .prepare(
       `SELECT s.id,s.date,s.slot,s.leader_id,f.name farm,f.address,f.navigation_link,pf.fruit_type,GROUP_CONCAT(v.name,', ') vehicles
@@ -38,7 +39,11 @@ export default async function Assignments() {
             {x.vehicles && <p className="muted inline-icon-text"><TruckIcon size={16} /><span>{x.vehicles}</span></p>}
             <div className="row">
               {x.navigation_link && <a className="btn secondary" rel="noreferrer" target="_blank" href={x.navigation_link}>ניווט</a>}
-              {x.leader_id === user.id && <Link className="btn" href={`/leader/${x.id}`}>דיווח כמויות</Link>}
+              {x.leader_id === user.id && (
+                x.date <= today
+                  ? <Link className="btn" href={`/leader/${x.id}`}>דיווח כמויות</Link>
+                  : <span className="btn" aria-disabled="true" title="הדיווח ייפתח ביום המשמרת">דיווח כמויות</span>
+              )}
             </div>
           </article>
         ))}
