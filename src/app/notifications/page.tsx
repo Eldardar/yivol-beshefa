@@ -13,10 +13,20 @@ export default async function Notifications() {
   const rows = db()
     .prepare("SELECT id,title,body,read_at,created_at FROM notifications WHERE user_id=? ORDER BY created_at DESC")
     .all(user.id) as Array<{ id: number; title: string; body: string; read_at: string | null; created_at: string }>;
+  const hasUnread = rows.some(x => !x.read_at);
 
   return (
     <AppShell user={user}>
-      <h1>ההתראות שלי</h1>
+      <div className="page-header">
+        <h1>ההתראות שלי</h1>
+        {hasUnread && (
+          <form action="/api/actions" method="post">
+            <input type="hidden" name="action" value="readAllNotifications" />
+            <input type="hidden" name="csrf" value={csrf} />
+            <button className="btn secondary btn-sm">סימון הכל כנקרא</button>
+          </form>
+        )}
+      </div>
       {publicKey && <PushToggle vapidPublicKey={publicKey} csrf={csrf} />}
       <div className="stack">
         {rows.map(x => (

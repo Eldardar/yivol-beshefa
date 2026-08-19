@@ -25,6 +25,9 @@ export class PickerService{
   const result=this.db.prepare("UPDATE notifications SET read_at=COALESCE(read_at,CURRENT_TIMESTAMP) WHERE id=? AND user_id=?").run(notificationId,actorId);
   if(result.changes!==1)throw new Error("ההודעה לא נמצאה");
  }
+ markAllRead(actorId:number):void{
+  this.db.prepare("UPDATE notifications SET read_at=CURRENT_TIMESTAMP WHERE user_id=? AND read_at IS NULL").run(actorId);
+ }
  setAvailability(actorId:number,raw:unknown,now=new Date()){
   const input=availabilityMonthSchema.parse(raw); const user=this.db.prepare("SELECT role,active FROM users WHERE id=?").get(actorId) as {role:string;active:number}|undefined;
   if(!user?.active || user.role!=="PICKER") throw new Error("אין הרשאה");

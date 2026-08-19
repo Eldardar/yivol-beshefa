@@ -21,7 +21,7 @@ function destination(action:string,form:FormData):string {
   if(action.startsWith("vehicle"))return "/admin/transport?saved=1";
   if(action.startsWith("farm")||action.startsWith("plantationField"))return "/admin/resources?saved=1";
   if(action.startsWith("shift")||action==="quantities")return "/admin/shifts?saved=1";
-  if(action==="readNotification")return "/notifications";
+  if(action==="readNotification"||action==="readAllNotifications")return "/notifications";
   return "/";
 }
 
@@ -66,6 +66,8 @@ export async function POST(req:Request){
       new ShiftService(database).saveQuantities(user.id,shiftId,entries);
     }else if(action==="readNotification"){
       new PickerService(database).markRead(user.id,positiveId.parse(form.get("notificationId")));
+    }else if(action==="readAllNotifications"){
+      new PickerService(database).markAllRead(user.id);
     }else throw new Error("פעולה אינה מוכרת");
     const redirect=requestUrl(destination(action,form),req);if(warning)redirect.searchParams.set("warning",warning);return NextResponse.redirect(redirect,303);
   }catch(error){
