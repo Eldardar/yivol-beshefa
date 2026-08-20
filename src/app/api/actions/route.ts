@@ -7,7 +7,7 @@ import { AdminService, type ManagedEntity } from "@/lib/services/admin";
 import { PickerService } from "@/lib/services/picker";
 import { SchedulingService } from "@/lib/services/scheduling";
 import { ShiftService } from "@/lib/services/shifts";
-import { farmSchema, plantationFieldSchema, shiftSchema, unitSchema, userUpdateSchema, vehicleSchema } from "@/lib/schemas";
+import { farmSchema, plantationFieldSchema, shiftReportSchema, shiftSchema, unitSchema, userUpdateSchema, vehicleSchema } from "@/lib/schemas";
 import type { Unit } from "@/lib/units";
 import { requestBodyIssue, requestUrl } from "@/lib/http";
 
@@ -91,7 +91,8 @@ export async function POST(req:Request){
       const shiftId=positiveId.parse(form.get("shiftId"));const entries:Array<{userId:number;quantity:number;unit:Unit}>=[];
       const userIds=new Set<string>();for(const key of form.keys()){const match=/^qty_(\d+)$/.exec(key);if(match)userIds.add(match[1]!);}
       for(const uid of userIds){const qtys=form.getAll(`qty_${uid}`);const units=form.getAll(`unit_${uid}`);for(let i=0;i<qtys.length;i++)entries.push({userId:positiveId.parse(uid),quantity:z.coerce.number().finite().nonnegative().max(1_000_000).parse(qtys[i]),unit:unitSchema.parse(units[i])});}
-      new ShiftService(database).saveQuantities(user.id,shiftId,entries);
+      const report=shiftReportSchema.parse({startHour:form.get("startHour"),endHour:form.get("endHour"),teamLeaderDetails:form.get("teamLeaderDetails")??""});
+      new ShiftService(database).saveQuantities(user.id,shiftId,entries,report);
     }else if(action==="readNotification"){
       new PickerService(database).markRead(user.id,positiveId.parse(form.get("notificationId")));
     }else if(action==="readAllNotifications"){

@@ -43,7 +43,7 @@ export class ShiftService{
   if(whatsappItems.length)void sendWhatsAppMessages(whatsappItems);
   return warnings;
  }
- saveQuantities(actorId:number,shiftId:number,entries:Array<{userId:number;quantity:number;unit:Unit}>):void{
+ saveQuantities(actorId:number,shiftId:number,entries:Array<{userId:number;quantity:number;unit:Unit}>,report?:{startHour:string;endHour:string;teamLeaderDetails:string}):void{
   const actor=this.actor(actorId);const shift=this.db.prepare("SELECT leader_id,status FROM shifts WHERE id=?").get(shiftId) as {leader_id:number;status:string}|undefined;
   if(!actor?.active||!shift)throw new Error("אין הרשאה");if(shift.status!=="PUBLISHED")throw new Error("מצב המשמרת אינו מאפשר דיווח");if(actor.role!=="ADMIN"&&shift.leader_id!==actorId)throw new Error("אין הרשאה");
   const assigned=(this.db.prepare("SELECT user_id FROM shift_pickers WHERE shift_id=? ORDER BY user_id").all(shiftId) as Array<{user_id:number}>).map(x=>x.user_id);
@@ -55,7 +55,12 @@ export class ShiftService{
    const units=seen.get(entry.userId)??new Set<Unit>();if(units.has(entry.unit))throw new Error("יחידת מידה כפולה עבור אותו קוטף");units.add(entry.unit);seen.set(entry.userId,units);
   }
   for(const userId of assigned)if(!seen.has(userId))throw new Error("יש לדווח עבור כל הקוטפים");
-  this.db.transaction(()=>{this.db.prepare("DELETE FROM quantities WHERE shift_id=?").run(shiftId);const insert=this.db.prepare("INSERT INTO quantities(shift_id,user_id,quantity,unit,updated_by) VALUES(?,?,?,?,?)");for(const entry of entries)insert.run(shiftId,entry.userId,entry.quantity,entry.unit,actorId);this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)").run(actorId,"REPORT_UPDATE","SHIFT",shiftId,JSON.stringify({count:entries.length}));})();
+  this.db.transaction(()=>{
+   this.db.prepare("DELETE FROM quantities WHERE shift_id=?").run(shiftId);
+   const insert=this.db.prepare("INSERT INTO quantities(shift_id,user_id,quantity,unit,updated_by) VALUES(?,?,?,?,?)");for(const entry of entries)insert.run(shiftId,entry.userId,entry.quantity,entry.unit,actorId);
+   if(report)this.db.prepare("UPDATE shifts SET start_hour=?,end_hour=?,team_leader_details=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").run(report.startHour,report.endHour,report.teamLeaderDetails,shiftId);
+   this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)").run(actorId,"REPORT_UPDATE","SHIFT",shiftId,JSON.stringify({count:entries.length}));
+  })();
  }
  totals(actorId:number,shiftId:number):Array<{unit:Unit;produced:number;goal:number}>{
   const actor=this.actor(actorId);const shift=this.db.prepare("SELECT leader_id,status FROM shifts WHERE id=?").get(shiftId) as {leader_id:number;status:string}|undefined;if(!actor?.active||!shift||!["PUBLISHED","COMPLETED"].includes(shift.status)||(actor.role!=="ADMIN"&&shift.leader_id!==actorId))throw new Error("אין הרשאה");

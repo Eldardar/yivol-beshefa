@@ -10,7 +10,7 @@ import { AssignVehiclesButton } from "./assign-vehicles-button";
 import { ChevronDownIcon, TrashIcon } from "./icons";
 import type { Picker, FarmOption, PlantationFieldsByFarm } from "./shift-form";
 
-export type ShiftRow = { id: number; date: string; slot: "MORNING" | "EVENING" | "PRE_DAWN"; status: string; notes: string; farm_id: number; plantation_field_id: number; leader_id: number; leader: string; farm: string; fruit_type: string; picker_count: number };
+export type ShiftRow = { id: number; date: string; slot: "MORNING" | "EVENING" | "PRE_DAWN"; status: string; notes: string; farm_id: number; plantation_field_id: number; leader_id: number; leader: string; farm: string; fruit_type: string; picker_count: number; start_hour: string | null; end_hour: string | null; team_leader_details: string };
 export type UnitInfo = { unit: Unit; goal: number; produced: number };
 export type UnitsByShift = Record<number, UnitInfo[]>;
 export type PickerNamesByShift = Record<number, string[]>;
@@ -98,7 +98,7 @@ export function ShiftsTable({
               </div>
               {isOpen && (
                 <div className="record-card-details">
-                  <ShiftDetails units={units} pickerNames={pickerNamesByShift[row.id] ?? []} vehicles={vehiclesByShift[row.id] ?? []} notes={row.notes} />
+                  <ShiftDetails units={units} pickerNames={pickerNamesByShift[row.id] ?? []} vehicles={vehiclesByShift[row.id] ?? []} notes={row.notes} startHour={row.start_hour} endHour={row.end_hour} teamLeaderDetails={row.team_leader_details} />
                 </div>
               )}
             </article>
@@ -145,7 +145,7 @@ export function ShiftsTable({
                   {isOpen && (
                     <tr className="worker-expand-row">
                       <td colSpan={9}>
-                        <ShiftDetails units={units} pickerNames={pickerNamesByShift[row.id] ?? []} vehicles={vehiclesByShift[row.id] ?? []} notes={row.notes} />
+                        <ShiftDetails units={units} pickerNames={pickerNamesByShift[row.id] ?? []} vehicles={vehiclesByShift[row.id] ?? []} notes={row.notes} startHour={row.start_hour} endHour={row.end_hour} teamLeaderDetails={row.team_leader_details} />
                       </td>
                     </tr>
                   )}
@@ -209,7 +209,7 @@ function RowActions({
   );
 }
 
-function ShiftDetails({ units, pickerNames, vehicles, notes }: { units: UnitInfo[]; pickerNames: string[]; vehicles: Array<{ number: string; name: string }>; notes: string }) {
+function ShiftDetails({ units, pickerNames, vehicles, notes, startHour, endHour, teamLeaderDetails }: { units: UnitInfo[]; pickerNames: string[]; vehicles: Array<{ number: string; name: string }>; notes: string; startHour: string | null; endHour: string | null; teamLeaderDetails: string }) {
   return (
     <div className="sub-tables">
       <div className="stack">
@@ -228,6 +228,16 @@ function ShiftDetails({ units, pickerNames, vehicles, notes }: { units: UnitInfo
         <h3>רכבים</h3>
         {vehicles.length === 0 ? <p className="muted">לא שובצו רכבים</p> : <p>{vehicles.map(v => `${v.number} · ${v.name}`).join(" · ")}</p>}
       </div>
+      <div className="stack">
+        <h3>שעות משמרת</h3>
+        {startHour && endHour ? <p><span dir="ltr" className="ltr-field">{startHour}–{endHour}</span></p> : <p className="muted">טרם דווח</p>}
+      </div>
+      {teamLeaderDetails && (
+        <div className="stack">
+          <h3>הערות מוביל המשמרת</h3>
+          <p>{teamLeaderDetails}</p>
+        </div>
+      )}
       {notes && (
         <div className="stack">
           <h3>הערות</h3>

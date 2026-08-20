@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 const STATUS_LABEL: Record<string, string> = { DRAFT: "טיוטה", PUBLISHED: "פורסמה", COMPLETED: "הושלמה", CANCELLED: "בוטלה" };
 const SLOT_LABEL: Record<string, string> = { MORNING: "בוקר", EVENING: "ערב", PRE_DAWN: "לפנות בוקר" };
-type HistoryRow = { id: number; date: string; slot: string; status: string; farm: string; crop: string };
+type HistoryRow = { id: number; date: string; slot: string; status: string; farm: string; crop: string; start_hour: string | null; end_hour: string | null };
 
 export default async function History() {
   const user = await requireUser();
@@ -15,7 +15,7 @@ export default async function History() {
 
   const rows = db()
     .prepare(
-      `SELECT s.id,s.date,s.slot,s.status,f.name farm,pf.fruit_type crop FROM shift_pickers sp
+      `SELECT s.id,s.date,s.slot,s.status,f.name farm,pf.fruit_type crop,s.start_hour,s.end_hour FROM shift_pickers sp
        JOIN shifts s ON s.id=sp.shift_id JOIN plantation_fields pf ON pf.id=s.plantation_field_id JOIN farms f ON f.id=pf.farm_id
        WHERE sp.user_id=? AND s.status IN ('PUBLISHED','COMPLETED','CANCELLED') AND (s.date<? OR s.status IN ('COMPLETED','CANCELLED'))
        ORDER BY s.date DESC`
@@ -33,6 +33,7 @@ export default async function History() {
     const lines = quantitiesByShift.get(id) ?? [];
     return lines.length ? lines.map(l => `${l.quantity} ${UNIT_LABEL[l.unit]}`).join(" · ") : "—";
   };
+  const hoursText = (x: HistoryRow) => (x.start_hour && x.end_hour ? `${x.start_hour}–${x.end_hour}` : "—");
 
   return (
     <AppShell user={user}>
@@ -49,6 +50,7 @@ export default async function History() {
               <span className={`tag${x.status === "CANCELLED" ? " bad" : ""}`}>{STATUS_LABEL[x.status]}</span>
             </div>
             <div className="record-card-meta">כמות: {quantityText(x.id)}</div>
+            <div className="record-card-meta">שעות: <span dir="ltr" className="ltr-field">{hoursText(x)}</span></div>
           </article>
         ))}
         {rows.length === 0 && <p className="muted">אין היסטוריה להצגה עדיין.</p>}
@@ -56,7 +58,7 @@ export default async function History() {
 
       <div className="table-wrap card desktop-only">
         <table className="table">
-          <thead><tr><th>תאריך</th><th>משמרת</th><th>חקלאי</th><th>גידול</th><th>מצב</th><th>כמות</th></tr></thead>
+          <thead><tr><th>תאריך</th><th>משמרת</th><th>חקלאי</th><th>גידול</th><th>מצב</th><th>שעות</th><th>כמות</th></tr></thead>
           <tbody>
             {rows.map(x => (
               <tr key={x.id}>
@@ -65,6 +67,7 @@ export default async function History() {
                 <td>{x.farm}</td>
                 <td>{x.crop}</td>
                 <td><span className={`tag${x.status === "CANCELLED" ? " bad" : ""}`}>{STATUS_LABEL[x.status]}</span></td>
+                <td><span dir="ltr" className="ltr-field">{hoursText(x)}</span></td>
                 <td>{quantityText(x.id)}</td>
               </tr>
             ))}

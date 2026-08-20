@@ -19,7 +19,7 @@ export default async function Shifts({ searchParams }: { searchParams: Promise<{
   for (const { farmId, ...field } of plantationFieldRows) (plantationFieldsByFarm[farmId] ??= []).push(field);
   const shifts = database
     .prepare(
-      `SELECT s.id,s.date,s.slot,s.status,s.notes,pf.farm_id,s.plantation_field_id,s.leader_id,u.name leader,f.name farm,pf.fruit_type,(SELECT COUNT(*) FROM shift_pickers WHERE shift_id=s.id) picker_count
+      `SELECT s.id,s.date,s.slot,s.status,s.notes,pf.farm_id,s.plantation_field_id,s.leader_id,u.name leader,f.name farm,pf.fruit_type,s.start_hour,s.end_hour,s.team_leader_details,(SELECT COUNT(*) FROM shift_pickers WHERE shift_id=s.id) picker_count
        FROM shifts s JOIN users u ON u.id=s.leader_id JOIN plantation_fields pf ON pf.id=s.plantation_field_id JOIN farms f ON f.id=pf.farm_id
        ORDER BY s.date DESC,CASE s.slot WHEN 'PRE_DAWN' THEN 0 WHEN 'MORNING' THEN 1 WHEN 'EVENING' THEN 2 ELSE 3 END LIMIT 100`
     )

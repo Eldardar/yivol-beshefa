@@ -35,8 +35,19 @@ export const availabilitySchema = z.object({
 export const availabilityMonthSchema = z.object({
   entries: z.array(availabilitySchema).min(1)
 }).strict();
+export const adminAvailabilityUpdateSchema = z.object({
+  userId: id,
+  entries: z.array(availabilitySchema).min(1)
+}).strict();
 
 const goalLineSchema = z.object({ unit: unitSchema, goal: z.coerce.number().finite().nonnegative() }).strict();
+const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "שעה אינה תקינה");
+
+export const shiftReportSchema = z.object({
+  startHour: timeSchema,
+  endHour: timeSchema,
+  teamLeaderDetails: z.string().trim().max(2000)
+}).strict();
 
 export const shiftSchema = z.object({
   date: isoDate,

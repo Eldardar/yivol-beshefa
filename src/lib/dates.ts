@@ -20,6 +20,12 @@ export function monthEditableDates(year:number,month:number,window:{start:string
  }
  return dates;
 }
+export const ADMIN_AVAILABILITY_DAYS=14;
+export function adminAvailabilityWindow(now=new Date()):{start:string;end:string}{
+ const today=jerusalemDate(now);
+ const [year,month,day]=today.split("-").map(Number) as [number,number,number];
+ return {start:today,end:new Date(Date.UTC(year,month-1,day+ADMIN_AVAILABILITY_DAYS)).toISOString().slice(0,10)};
+}
 export function shiftMonthKey(key:string,delta:number):string{
  const [year,month]=key.split("-").map(Number) as [number,number];
  const target=new Date(Date.UTC(year,month-1+delta,1));

@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function Leader({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
   const id = Number((await params).id);
-  const shift = db().prepare("SELECT id,date,slot,status,leader_id FROM shifts WHERE id=?").get(id) as { id: number; date: string; slot: string; status: string; leader_id: number } | undefined;
+  const shift = db().prepare("SELECT id,date,slot,status,leader_id,start_hour,end_hour,team_leader_details FROM shifts WHERE id=?").get(id) as { id: number; date: string; slot: string; status: string; leader_id: number; start_hour: string | null; end_hour: string | null; team_leader_details: string } | undefined;
   if (!shift || shift.status !== "PUBLISHED" || (user.role !== "ADMIN" && shift.leader_id !== user.id)) notFound();
   if (user.role !== "ADMIN" && shift.date > jerusalemDate()) notFound();
 
@@ -31,6 +31,11 @@ export default async function Leader({ params }: { params: Promise<{ id: string 
         <input type="hidden" name="action" value="quantities" />
         <input type="hidden" name="csrf" value={csrf} />
         <input type="hidden" name="shiftId" value={id} />
+        <div className="grid">
+          <div className="field"><label htmlFor="report-start-hour">שעת התחלה</label><input className="input" id="report-start-hour" type="time" name="startHour" required defaultValue={shift.start_hour ?? ""} /></div>
+          <div className="field"><label htmlFor="report-end-hour">שעת סיום</label><input className="input" id="report-end-hour" type="time" name="endHour" required defaultValue={shift.end_hour ?? ""} /></div>
+        </div>
+        <div className="field"><label htmlFor="report-leader-details">הערות מוביל המשמרת</label><textarea className="input" id="report-leader-details" name="teamLeaderDetails" maxLength={2000} defaultValue={shift.team_leader_details} /></div>
         {pickers.map(p => (
           <div className="field" key={p.id}>
             <span>{p.name}</span>

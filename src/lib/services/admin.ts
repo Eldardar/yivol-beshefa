@@ -1,5 +1,7 @@
 import type Database from "better-sqlite3";
 import { generatePassword, hashPassword } from "@/lib/security";
+import { adminAvailabilityUpdateSchema } from "@/lib/schemas";
+import { pushToUsers } from "@/lib/push";
 
 export type ManagedEntity = "USER" | "FARM" | "PLANTATION_FIELD" | "VEHICLE";
 const tables: Record<ManagedEntity,string> = { USER:"users", FARM:"farms", PLANTATION_FIELD:"plantation_fields", VEHICLE:"vehicles" };
@@ -49,5 +51,30 @@ export class AdminService {
       this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(actorId,"PASSWORD_RESET","USER",targetId);
     }).immediate();
     return password;
+  }
+
+  async setWorkerAvailability(actorId:number, raw:unknown, window:{start:string;end:string}):Promise<void> {
+    const input=adminAvailabilityUpdateSchema.parse(raw);
+    const actor=this.db.prepare("SELECT role,active FROM users WHERE id=?").get(actorId) as {role:string;active:number}|undefined;
+    if(!actor?.active || actor.role!=="ADMIN") throw new Error("אין הרשאה");
+    const target=this.db.prepare("SELECT role,active FROM users WHERE id=?").get(input.userId) as {role:string;active:number}|undefined;
+    if(!target?.active || target.role!=="PICKER") throw new Error("עובד לא נמצא");
+    const seen=new Set<string>();
+    for(const entry of input.entries){
+      if(seen.has(entry.date)) throw new Error("תאריך כפול בבקשה");
+      seen.add(entry.date);
+      if(entry.date<window.start || entry.date>=window.end) throw new Error("ניתן לעדכן זמינות רק לטווח המוצג");
+    }
+    const title="עדכון זמינות";
+    const body="מנהל/ת עדכן/ה את הזמינות שלך. אפשר לבדוק ולערוך בעמוד \"הזמינות שלי\".";
+    this.db.transaction(()=>{
+      const upsert=this.db.prepare(`INSERT INTO availability(user_id,date,status) VALUES(?,?,?)
+        ON CONFLICT(user_id,date) DO UPDATE SET status=excluded.status`);
+      const clear=this.db.prepare("DELETE FROM availability WHERE user_id=? AND date=?");
+      for(const entry of input.entries){if(entry.status===null)clear.run(input.userId,entry.date);else upsert.run(input.userId,entry.date,entry.status);}
+      this.db.prepare("INSERT INTO notifications(user_id,title,body) VALUES(?,?,?)").run(input.userId,title,body);
+      this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)").run(actorId,"UPDATE","AVAILABILITY",input.userId,JSON.stringify({dates:input.entries.map(e=>e.date)}));
+    }).immediate();
+    await pushToUsers(this.db,[{userId:input.userId,title,body}]);
   }
 }
