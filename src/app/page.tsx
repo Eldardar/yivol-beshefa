@@ -91,6 +91,9 @@ export default async function Home() {
           <h2>היסטוריה וכמויות</h2>
         </Link>
       </div>
+      <div style={{ display: "grid", justifyItems: "center" }}>
+        <img src="/worker-hero.png" alt="" style={{ maxWidth: "100%", width: 360, borderRadius: "var(--radius-md)" }} />
+      </div>
     </AppShell>
   );
 }
