@@ -17,7 +17,7 @@ export default async function History() {
     .prepare(
       `SELECT s.id,s.date,s.slot,s.status,f.name farm,pf.fruit_type crop,s.start_hour,s.end_hour FROM shift_pickers sp
        JOIN shifts s ON s.id=sp.shift_id JOIN plantation_fields pf ON pf.id=s.plantation_field_id JOIN farms f ON f.id=pf.farm_id
-       WHERE sp.user_id=? AND s.status IN ('PUBLISHED','COMPLETED','CANCELLED') AND (s.date<? OR s.status IN ('COMPLETED','CANCELLED'))
+       WHERE sp.user_id=? AND s.status IN ('PUBLISHED','COMPLETED') AND (s.date<? OR s.status='COMPLETED')
        ORDER BY s.date DESC`
     )
     .all(user.id, jerusalemDate()) as HistoryRow[];
