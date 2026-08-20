@@ -71,20 +71,6 @@ export default async function Home() {
       <section className="hero">
         <h1>שלום {firstName}</h1>
         <p>{next ? `השיבוץ הבא: ${formatHebrewDate(next.date)} · ${next.slot === "MORNING" ? "בוקר" : "ערב"} · ${next.farm}` : "אין שיבוצים קרובים"}</p>
-        <pre className="ascii-banner" dir="ltr" aria-hidden="true">
-{`                    XXXXXX
-          XXX     XX     XXX        XXXXXXX
-XXX      XX      XX        XX     XX      X
-  XX   XX       XX          XX    X       X
-   XX  X        X            X    X      XX
-    XXX               XX     X    X    XXX
-      XXX           XXXX     X    XXXXX
-      X XXX        X        XX    X
-      XX  XX       X        X     XX
-       XX  X       XXX    XXX      XX         XXXX
-        XXXX         XXXXX          XXXXXXXXXXX   `}
-        </pre>
-        <span className="sr-only">שפע</span>
       </section>
       <OnboardingChecklist steps={onboardingSteps} />
       <div className="grid">

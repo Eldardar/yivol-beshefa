@@ -242,19 +242,6 @@ img, svg { display: block; max-width: 100%; }
   background: radial-gradient(circle, rgba(255, 255, 255, 0.08), transparent 70%);
 }
 @media (max-width: 599px) { .hero { padding: var(--space-5); border-radius: var(--radius-lg); } }
-.ascii-banner {
-  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
-  font-size: clamp(0.4rem, 2.6vw, 0.75rem);
-  line-height: 1.05;
-  color: var(--white);
-  text-align: center;
-  white-space: pre;
-  margin: var(--space-2) 0 0;
-  opacity: 0.92;
-  max-width: 100%;
-  overflow-x: auto;
-}
-
 /* ==========================================================================
    Cards
    ========================================================================== */
@@ -486,6 +473,8 @@ select.input { appearance: auto; }
 .switch input:checked + .switch-track::before { transform: translateX(-1rem); }
 [dir="ltr"] .switch input:checked + .switch-track::before { transform: translateX(1rem); }
 .switch input:focus-visible + .switch-track { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.switch input:disabled { cursor: not-allowed; }
+.switch input:disabled + .switch-track { opacity: 0.5; cursor: not-allowed; }
 
 /* Worker/vehicle card list — mobile-first alternative to the desktop table */
 .record-list { display: grid; gap: var(--space-3); }
