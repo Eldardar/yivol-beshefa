@@ -70,6 +70,20 @@ export default async function Home() {
 
   return (
     <AppShell user={user}>
+      <img
+        src="/worker-hero.png"
+        alt=""
+        style={{
+          position: "fixed",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          opacity: 0.12,
+          zIndex: -1,
+          pointerEvents: "none",
+        }}
+      />
       <section className="hero">
         <h1>שלום {firstName}</h1>
         <p>{next ? `השיבוץ הבא: ${formatHebrewDate(next.date)} · ${SLOT_LABEL[next.slot] ?? next.slot} · ${next.farm}` : "אין שיבוצים קרובים"}</p>
@@ -90,9 +104,6 @@ export default async function Home() {
           <HistoryIcon size={22} className="muted" />
           <h2>היסטוריה וכמויות</h2>
         </Link>
-      </div>
-      <div style={{ display: "grid", justifyItems: "center" }}>
-        <img src="/worker-hero.png" alt="" style={{ maxWidth: "100%", width: 360, borderRadius: "var(--radius-md)" }} />
       </div>
     </AppShell>
   );
