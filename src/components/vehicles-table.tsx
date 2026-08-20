@@ -3,21 +3,25 @@ import { useState } from "react";
 import { AddVehicleButton } from "./add-vehicle-button";
 import { EditVehicleButton } from "./edit-vehicle-button";
 import { ActiveSwitch } from "./active-switch";
+import { ShowArchivedToggle } from "./show-archived-toggle";
 
 export type VehicleRow = { id: number; number: string; name: string; notes: string; active: number };
 
 export function VehiclesTable({ vehicles, csrf }: { vehicles: VehicleRow[]; csrf: string }) {
   const [search, setSearch] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
 
   const query = search.trim().toLowerCase();
+  const visible = showArchived ? vehicles : vehicles.filter(row => Boolean(row.active));
   const filtered = query
-    ? vehicles.filter(row => row.number.toLowerCase().includes(query) || row.name.toLowerCase().includes(query))
-    : vehicles;
+    ? visible.filter(row => row.number.toLowerCase().includes(query) || row.name.toLowerCase().includes(query))
+    : visible;
 
   return (
     <div className="stack">
       <div className="table-toolbar">
         <input className="input search-input" type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="חיפוש לפי מספר או שם" aria-label="חיפוש רכבים" />
+        <ShowArchivedToggle checked={showArchived} onChange={setShowArchived} />
         <AddVehicleButton csrf={csrf} />
       </div>
 

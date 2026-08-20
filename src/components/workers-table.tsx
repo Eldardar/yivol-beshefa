@@ -7,6 +7,7 @@ import { ResetPickerPassword } from "./reset-picker-password";
 import { AddWorkerButton } from "./add-worker-button";
 import { EditWorkerButton } from "./edit-worker-button";
 import { ActiveSwitch } from "./active-switch";
+import { ShowArchivedToggle } from "./show-archived-toggle";
 import { ChevronDownIcon } from "./icons";
 
 export type WorkerRow = { id: number; name: string; email: string; phone: string; national_id: string | null; notes: string; role: "ADMIN" | "PICKER"; active: number };
@@ -24,16 +25,19 @@ function initials(name: string) {
 export function WorkersTable({ users, shiftsByUser, csrf, currentUserId }: { users: WorkerRow[]; shiftsByUser: ShiftsByUser; csrf: string; currentUserId: number }) {
   const [expanded, setExpanded] = useState<number | null>(null);
   const [search, setSearch] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
 
   const query = search.trim().toLowerCase();
+  const visible = showArchived ? users : users.filter(row => Boolean(row.active));
   const filtered = query
-    ? users.filter(row => row.name.toLowerCase().includes(query) || row.email.toLowerCase().includes(query) || row.phone.toLowerCase().includes(query))
-    : users;
+    ? visible.filter(row => row.name.toLowerCase().includes(query) || row.email.toLowerCase().includes(query) || row.phone.toLowerCase().includes(query))
+    : visible;
 
   return (
     <div className="stack">
       <div className="table-toolbar">
         <input className="input search-input" type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="חיפוש לפי שם, דוא״ל או טלפון" aria-label="חיפוש עובדים" />
+        <ShowArchivedToggle checked={showArchived} onChange={setShowArchived} />
         <AddWorkerButton csrf={csrf} />
       </div>
 

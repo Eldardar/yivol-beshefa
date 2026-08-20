@@ -5,6 +5,7 @@ import { EditFarmerButton } from "./edit-farmer-button";
 import { AddPlantationFieldButton } from "./add-plantation-field-button";
 import { EditPlantationFieldButton } from "./edit-plantation-field-button";
 import { ActiveSwitch } from "./active-switch";
+import { ShowArchivedToggle } from "./show-archived-toggle";
 import { ChevronDownIcon } from "./icons";
 
 export type FarmRow = { id: number; name: string; contact_person: string; phone: string; address: string; navigation_link: string | null; notes: string; active: number };
@@ -14,16 +15,19 @@ export type PlantationFieldsByFarm = Record<number, PlantationFieldRow[]>;
 export function FarmersTable({ farms, plantationFieldsByFarm, csrf }: { farms: FarmRow[]; plantationFieldsByFarm: PlantationFieldsByFarm; csrf: string }) {
   const [expanded, setExpanded] = useState<number | null>(null);
   const [search, setSearch] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
 
   const query = search.trim().toLowerCase();
+  const visible = showArchived ? farms : farms.filter(row => Boolean(row.active));
   const filtered = query
-    ? farms.filter(row => row.name.toLowerCase().includes(query) || row.contact_person.toLowerCase().includes(query) || row.phone.toLowerCase().includes(query) || row.address.toLowerCase().includes(query))
-    : farms;
+    ? visible.filter(row => row.name.toLowerCase().includes(query) || row.contact_person.toLowerCase().includes(query) || row.phone.toLowerCase().includes(query) || row.address.toLowerCase().includes(query))
+    : visible;
 
   return (
     <div className="stack">
       <div className="table-toolbar">
         <input className="input search-input" type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="חיפוש לפי שם, איש קשר, טלפון או כתובת" aria-label="חיפוש חקלאים" />
+        <ShowArchivedToggle checked={showArchived} onChange={setShowArchived} />
         <AddFarmerButton csrf={csrf} />
       </div>
 
@@ -56,7 +60,7 @@ export function FarmersTable({ farms, plantationFieldsByFarm, csrf }: { farms: F
               {isOpen && (
                 <div className="record-card-details">
                   <div className="sub-tables">
-                    <PlantationFieldsList fields={fields} farmId={row.id} farmName={row.name} csrf={csrf} />
+                    <PlantationFieldsList fields={fields} farmId={row.id} farmName={row.name} csrf={csrf} showArchived={showArchived} />
                   </div>
                 </div>
               )}
@@ -98,7 +102,7 @@ export function FarmersTable({ farms, plantationFieldsByFarm, csrf }: { farms: F
                     <tr className="worker-expand-row">
                       <td colSpan={7}>
                         <div className="sub-tables">
-                          <PlantationFieldsList fields={fields} farmId={row.id} farmName={row.name} csrf={csrf} />
+                          <PlantationFieldsList fields={fields} farmId={row.id} farmName={row.name} csrf={csrf} showArchived={showArchived} />
                         </div>
                       </td>
                     </tr>
@@ -113,19 +117,20 @@ export function FarmersTable({ farms, plantationFieldsByFarm, csrf }: { farms: F
   );
 }
 
-function PlantationFieldsList({ fields, farmId, farmName, csrf }: { fields: PlantationFieldRow[]; farmId: number; farmName: string; csrf: string }) {
+function PlantationFieldsList({ fields, farmId, farmName, csrf, showArchived }: { fields: PlantationFieldRow[]; farmId: number; farmName: string; csrf: string; showArchived: boolean }) {
+  const visibleFields = showArchived ? fields : fields.filter(f => Boolean(f.active));
   return (
     <div className="stack">
       <div className="table-toolbar">
         <h3>חלקות גידול</h3>
         <AddPlantationFieldButton csrf={csrf} farmId={farmId} farmName={farmName} />
       </div>
-      {fields.length === 0 ? <p className="muted">אין חלקות רשומות</p> : (
+      {visibleFields.length === 0 ? <p className="muted">אין חלקות רשומות</p> : (
         <div className="table-wrap">
           <table className="table">
             <thead><tr><th>שם</th><th>סוג פרי</th><th>תת-סוג</th><th>גודל</th><th>מיקום</th><th>מצב</th><th>פעולה</th></tr></thead>
             <tbody>
-              {fields.map(f => (
+              {visibleFields.map(f => (
                 <tr key={f.id}>
                   <td>{f.name}</td>
                   <td>{f.fruit_type}</td>
