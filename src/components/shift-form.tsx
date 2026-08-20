@@ -1,7 +1,10 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { UnitLines } from "./unit-lines";
 import type { Unit } from "@/lib/units";
+
+const LEADER_ERRORS = ["קוטף אינו זמין", "שיבוץ כפול", "קוטף אינו פעיל"];
+const FIELD_ERRORS = ["חלקת הגידול אינה פעילה"];
 
 export type Picker = { id: number; name: string };
 export type FarmOption = { id: number; name: string };
@@ -26,7 +29,8 @@ export function ShiftForm({
   shift,
   existingPickerIds,
   existingVehicleIds,
-  existingGoals
+  existingGoals,
+  onSuccess
 }: {
   csrf: string;
   pickers: Picker[];
@@ -36,10 +40,18 @@ export function ShiftForm({
   existingPickerIds: number[];
   existingVehicleIds: number[];
   existingGoals: Array<{ value: number; unit: Unit }>;
+  onSuccess?: (redirectTo: string) => void;
 }) {
   const [leaderId, setLeaderId] = useState(shift ? String(shift.leader_id) : "");
   const [farmId, setFarmId] = useState(shift ? String(shift.farm_id) : "");
   const [fieldId, setFieldId] = useState(shift ? String(shift.plantation_field_id) : "");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    if (error) formRef.current?.closest(".modal")?.scrollTo(0, 0);
+  }, [error]);
 
   const pickerIds = useMemo(() => {
     const set = new Set(existingPickerIds.map(String));
@@ -49,8 +61,31 @@ export function ShiftForm({
 
   const fields = farmId ? (plantationFieldsByFarm[Number(farmId)] ?? []) : [];
 
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/actions", { method: "POST", body: new FormData(e.currentTarget) });
+      const url = new URL(res.url);
+      const message = url.searchParams.get("error");
+      if (message) {
+        setError(message);
+        if (LEADER_ERRORS.some(m => message.includes(m))) setLeaderId("");
+        if (FIELD_ERRORS.some(m => message.includes(m))) { setFarmId(""); setFieldId(""); }
+        return;
+      }
+      onSuccess?.(url.pathname + url.search);
+    } catch {
+      setError("שגיאת תקשורת, נסו שוב");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    <form className="stack" method="post" action="/api/actions">
+    <form className="stack" ref={formRef} onSubmit={handleSubmit}>
+      {error && <p className="alert" role="alert">{error}</p>}
       <input type="hidden" name="csrf" value={csrf} />
       <input type="hidden" name="action" value={shift ? "shiftUpdate" : "shiftCreate"} />
       {shift && <input type="hidden" name="shiftId" value={shift.id} />}
@@ -94,7 +129,7 @@ export function ShiftForm({
       </div>
       <div className="field"><label htmlFor="shift-notes">הערות</label><textarea className="input" id="shift-notes" name="notes" maxLength={4000} defaultValue={shift?.notes} /></div>
       <div className="actions">
-        <button className="btn">{shift ? "שמירת שינויים" : "יצירת טיוטה"}</button>
+        <button className="btn" disabled={busy}>{busy ? "שומר…" : shift ? "שמירת שינויים" : "יצירת טיוטה"}</button>
       </div>
     </form>
   );
