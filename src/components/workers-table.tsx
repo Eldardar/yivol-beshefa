@@ -5,9 +5,10 @@ import { maskNationalId } from "@/lib/privacy";
 import { UNIT_LABEL, type Unit } from "@/lib/units";
 import { ResetPickerPassword } from "./reset-picker-password";
 import { AddWorkerButton } from "./add-worker-button";
+import { EditWorkerButton } from "./edit-worker-button";
 import { ChevronDownIcon, TrashIcon } from "./icons";
 
-export type WorkerRow = { id: number; name: string; email: string; phone: string; national_id: string | null; role: "ADMIN" | "PICKER"; active: number };
+export type WorkerRow = { id: number; name: string; email: string; phone: string; national_id: string | null; notes: string; role: "ADMIN" | "PICKER"; active: number };
 export type WorkerShiftRow = { id: number; date: string; slot: "MORNING" | "EVENING"; status: string; farm: string; crop: string; lines: Array<{ quantity: number; unit: Unit }> };
 export type ShiftsByUser = Record<number, { past: WorkerShiftRow[]; future: WorkerShiftRow[] }>;
 
@@ -62,6 +63,7 @@ export function WorkersTable({ users, shiftsByUser, csrf, currentUserId }: { use
                 )}
               </div>
               <div className="record-card-actions">
+                <EditWorkerButton csrf={csrf} worker={row} />
                 {row.role === "PICKER" && Boolean(row.active) && <ResetPickerPassword csrf={csrf} userId={row.id} />}
                 {row.id !== currentUserId && <ActiveForm csrf={csrf} id={row.id} active={!row.active} />}
               </div>
@@ -104,6 +106,7 @@ export function WorkersTable({ users, shiftsByUser, csrf, currentUserId }: { use
                     <td><span className={`tag ${row.active ? "" : "bad"}`}>{row.active ? "פעיל" : "בארכיון"}</span></td>
                     <td>
                       <div className="actions-cell">
+                        <EditWorkerButton csrf={csrf} worker={row} />
                         {row.role === "PICKER" && Boolean(row.active) && <ResetPickerPassword csrf={csrf} userId={row.id} />}
                         {row.id !== currentUserId && <ActiveForm csrf={csrf} id={row.id} active={!row.active} />}
                       </div>

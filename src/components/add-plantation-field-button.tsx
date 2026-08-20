@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Modal } from "./modal";
-import { CreatePlantationField } from "./create-plantation-field";
+import { PlantationFieldForm } from "./plantation-field-form";
 import { SproutIcon } from "./icons";
 
 export function AddPlantationFieldButton({ csrf, farmId, farmName }: { csrf: string; farmId: number; farmName: string }) {
@@ -9,7 +9,7 @@ export function AddPlantationFieldButton({ csrf, farmId, farmName }: { csrf: str
   return (
     <>
       <button type="button" className="icon-btn" title="הוספת חלקת גידול" aria-label="הוספת חלקת גידול" onClick={() => setOpen(true)}><SproutIcon size={18} /></button>
-      {open && <Modal title={`הוספת חלקה ל${farmName}`} onClose={() => setOpen(false)}><CreatePlantationField csrf={csrf} farmId={farmId} /></Modal>}
+      {open && <Modal title={`הוספת חלקה ל${farmName}`} onClose={() => setOpen(false)}><PlantationFieldForm csrf={csrf} farmId={farmId} /></Modal>}
     </>
   );
 }

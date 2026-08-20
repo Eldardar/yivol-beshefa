@@ -1,10 +1,12 @@
 "use client";
 import { Fragment, useState } from "react";
 import { AddFarmerButton } from "./add-farmer-button";
+import { EditFarmerButton } from "./edit-farmer-button";
 import { AddPlantationFieldButton } from "./add-plantation-field-button";
+import { EditPlantationFieldButton } from "./edit-plantation-field-button";
 import { ChevronDownIcon, TrashIcon } from "./icons";
 
-export type FarmRow = { id: number; name: string; contact_person: string; phone: string; address: string; active: number };
+export type FarmRow = { id: number; name: string; contact_person: string; phone: string; address: string; navigation_link: string | null; notes: string; active: number };
 export type PlantationFieldRow = { id: number; farm_id: number; name: string; fruit_type: string; fruit_subtype: string; size: number | null; location: string; details: string; active: number };
 export type PlantationFieldsByFarm = Record<number, PlantationFieldRow[]>;
 
@@ -48,13 +50,14 @@ export function FarmersTable({ farms, plantationFieldsByFarm, csrf }: { farms: F
                 </button>
               </div>
               <div className="record-card-actions">
+                <EditFarmerButton csrf={csrf} farm={row} />
                 <AddPlantationFieldButton csrf={csrf} farmId={row.id} farmName={row.name} />
                 <ActiveForm csrf={csrf} id={row.id} active={!row.active} />
               </div>
               {isOpen && (
                 <div className="record-card-details">
                   <div className="sub-tables">
-                    <PlantationFieldsList fields={fields} csrf={csrf} />
+                    <PlantationFieldsList fields={fields} farmId={row.id} csrf={csrf} />
                   </div>
                 </div>
               )}
@@ -88,6 +91,7 @@ export function FarmersTable({ farms, plantationFieldsByFarm, csrf }: { farms: F
                     <td><span className={`tag ${row.active ? "" : "bad"}`}>{row.active ? "פעיל" : "בארכיון"}</span></td>
                     <td>
                       <div className="actions-cell">
+                        <EditFarmerButton csrf={csrf} farm={row} />
                         <AddPlantationFieldButton csrf={csrf} farmId={row.id} farmName={row.name} />
                         <ActiveForm csrf={csrf} id={row.id} active={!row.active} />
                       </div>
@@ -97,7 +101,7 @@ export function FarmersTable({ farms, plantationFieldsByFarm, csrf }: { farms: F
                     <tr className="worker-expand-row">
                       <td colSpan={7}>
                         <div className="sub-tables">
-                          <PlantationFieldsList fields={fields} csrf={csrf} />
+                          <PlantationFieldsList fields={fields} farmId={row.id} csrf={csrf} />
                         </div>
                       </td>
                     </tr>
@@ -112,7 +116,7 @@ export function FarmersTable({ farms, plantationFieldsByFarm, csrf }: { farms: F
   );
 }
 
-function PlantationFieldsList({ fields, csrf }: { fields: PlantationFieldRow[]; csrf: string }) {
+function PlantationFieldsList({ fields, farmId, csrf }: { fields: PlantationFieldRow[]; farmId: number; csrf: string }) {
   return (
     <div className="stack">
       <h3>חלקות גידול</h3>
@@ -129,7 +133,12 @@ function PlantationFieldsList({ fields, csrf }: { fields: PlantationFieldRow[]; 
                   <td>{f.size ?? "—"}</td>
                   <td>{f.location || "—"}</td>
                   <td><span className={`tag ${f.active ? "" : "bad"}`}>{f.active ? "פעילה" : "בארכיון"}</span></td>
-                  <td><PlantationFieldActiveForm csrf={csrf} id={f.id} active={!f.active} /></td>
+                  <td>
+                    <div className="actions-cell">
+                      <EditPlantationFieldButton csrf={csrf} farmId={farmId} field={f} />
+                      <PlantationFieldActiveForm csrf={csrf} id={f.id} active={!f.active} />
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>

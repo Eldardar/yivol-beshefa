@@ -1,9 +1,10 @@
 "use client";
 import { useState } from "react";
 import { AddVehicleButton } from "./add-vehicle-button";
+import { EditVehicleButton } from "./edit-vehicle-button";
 import { TrashIcon } from "./icons";
 
-export type VehicleRow = { id: number; number: string; name: string; active: number };
+export type VehicleRow = { id: number; number: string; name: string; notes: string; active: number };
 
 export function VehiclesTable({ vehicles, csrf }: { vehicles: VehicleRow[]; csrf: string }) {
   const [search, setSearch] = useState("");
@@ -33,6 +34,7 @@ export function VehiclesTable({ vehicles, csrf }: { vehicles: VehicleRow[]; csrf
               </div>
             </div>
             <div className="record-card-actions">
+              <EditVehicleButton csrf={csrf} vehicle={row} />
               <ActiveForm csrf={csrf} id={row.id} active={!row.active} />
             </div>
           </article>
@@ -52,6 +54,7 @@ export function VehiclesTable({ vehicles, csrf }: { vehicles: VehicleRow[]; csrf
                 <td><span className={`tag ${row.active ? "" : "bad"}`}>{row.active ? "פעיל" : "בארכיון"}</span></td>
                 <td>
                   <div className="actions-cell">
+                    <EditVehicleButton csrf={csrf} vehicle={row} />
                     <ActiveForm csrf={csrf} id={row.id} active={!row.active} />
                   </div>
                 </td>

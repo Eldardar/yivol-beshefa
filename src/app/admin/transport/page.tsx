@@ -10,7 +10,7 @@ export default async function Transport({ searchParams }: { searchParams: Promis
   const { saved, error } = await searchParams;
   const database = db();
 
-  const vehicles = database.prepare("SELECT id,number,name,active FROM vehicles ORDER BY active DESC,name").all() as VehicleRow[];
+  const vehicles = database.prepare("SELECT id,number,name,notes,active FROM vehicles ORDER BY active DESC,name").all() as VehicleRow[];
 
   return (
     <AppShell user={user}>

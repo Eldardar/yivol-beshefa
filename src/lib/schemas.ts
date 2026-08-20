@@ -15,6 +15,13 @@ export const pickerCreateSchema = z.object({
   nationalId: israeliIdSchema,
   notes: z.string().trim().max(2000).default("")
 }).strict();
+export const userUpdateSchema = z.object({
+  name: text(100),
+  email: z.string().trim().toLowerCase().email().max(254),
+  phone: text(30),
+  nationalId: z.union([z.literal(""), israeliIdSchema]).default(""),
+  notes: z.string().trim().max(2000).default("")
+}).strict();
 export const passwordChangeSchema=z.object({password:passwordSchema,confirmation:z.string()}).strict().refine(x=>x.password===x.confirmation,{message:"הסיסמאות אינן זהות",path:["confirmation"]});
 export const forgotPasswordSchema=z.object({email:z.string().trim().toLowerCase().email().max(254)}).strict();
 export const resetPasswordSchema=z.object({token:z.string().min(1).max(512),password:passwordSchema,confirmation:z.string()}).strict().refine(x=>x.password===x.confirmation,{message:"הסיסמאות אינן זהות",path:["confirmation"]});
