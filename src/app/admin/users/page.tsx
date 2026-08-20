@@ -22,7 +22,7 @@ export default async function Users({ searchParams }: { searchParams: Promise<{ 
     JOIN plantation_fields pf ON pf.id=s.plantation_field_id
     JOIN farms f ON f.id=pf.farm_id
     WHERE s.status IN ('PUBLISHED','COMPLETED','CANCELLED')
-    ORDER BY s.date DESC,s.slot
+    ORDER BY s.date DESC,CASE s.slot WHEN 'PRE_DAWN' THEN 0 WHEN 'MORNING' THEN 1 WHEN 'EVENING' THEN 2 ELSE 3 END
   `).all() as Array<Omit<WorkerShiftRow, "lines"> & { user_id: number }>;
 
   const quantityRows = database.prepare("SELECT shift_id,user_id,quantity,unit FROM quantities").all() as Array<{ shift_id: number; user_id: number; quantity: number; unit: Unit }>;

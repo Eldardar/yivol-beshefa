@@ -76,7 +76,7 @@ export class SchedulingService{
   const vehicleIds=(this.db.prepare("SELECT vehicle_id FROM shift_vehicles WHERE shift_id=?").all(shiftId) as Array<{vehicle_id:number}>).map(x=>x.vehicle_id);
   const goals=this.db.prepare("SELECT unit,goal FROM shift_goals WHERE shift_id=?").all(shiftId) as ShiftInput["goals"];
   const ids=new Set(pickerIds);ids.add(row.leader_id);
-  const raw:ShiftInput={date:row.date,slot:row.slot as "MORNING"|"EVENING",plantationFieldId:row.plantation_field_id,pickerIds:[...ids],leaderId:row.leader_id,vehicleIds,goals,notes:row.notes};
+  const raw:ShiftInput={date:row.date,slot:row.slot as "MORNING"|"EVENING"|"PRE_DAWN",plantationFieldId:row.plantation_field_id,pickerIds:[...ids],leaderId:row.leader_id,vehicleIds,goals,notes:row.notes};
   return this.updateShift(actorId,shiftId,raw);
  }
  listAvailableVehicles(shiftId:number):Array<{id:number;number:string;name:string;conflict:boolean;assigned:boolean}>{
@@ -95,7 +95,7 @@ export class SchedulingService{
   if(!row)throw new Error("המשמרת לא נמצאה");
   const pickerIds=(this.db.prepare("SELECT user_id FROM shift_pickers WHERE shift_id=?").all(shiftId) as Array<{user_id:number}>).map(x=>x.user_id);
   const goals=this.db.prepare("SELECT unit,goal FROM shift_goals WHERE shift_id=?").all(shiftId) as ShiftInput["goals"];
-  const raw:ShiftInput={date:row.date,slot:row.slot as "MORNING"|"EVENING",plantationFieldId:row.plantation_field_id,pickerIds,leaderId:row.leader_id,vehicleIds:[...new Set(vehicleIds)],goals,notes:row.notes};
+  const raw:ShiftInput={date:row.date,slot:row.slot as "MORNING"|"EVENING"|"PRE_DAWN",plantationFieldId:row.plantation_field_id,pickerIds,leaderId:row.leader_id,vehicleIds:[...new Set(vehicleIds)],goals,notes:row.notes};
   return this.updateShift(actorId,shiftId,raw);
  }
 }

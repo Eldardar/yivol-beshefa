@@ -6,7 +6,7 @@ import { Modal } from "./modal";
 
 export type CalendarShift = {
   id: number;
-  slot: "MORNING" | "EVENING";
+  slot: "MORNING" | "EVENING" | "PRE_DAWN";
   farm: string;
   address: string;
   navigationLink: string | null;
@@ -20,7 +20,8 @@ export type CalendarShift = {
 export type CalendarDay = { date: string; day: number; weekday: number; isToday: boolean; shifts: CalendarShift[]; birthdays: string[] };
 
 const WEEKDAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
-const SLOT_LABEL: Record<string, string> = { MORNING: "בוקר", EVENING: "ערב" };
+const SLOT_LABEL: Record<string, string> = { MORNING: "בוקר", EVENING: "ערב", PRE_DAWN: "לפנות בוקר" };
+const SLOT_TAG: Record<string, string> = { MORNING: "info", EVENING: "warn", PRE_DAWN: "dim" };
 
 export function CalendarView({ label, days }: { label: string; days: CalendarDay[] }) {
   const [selected, setSelected] = useState<{ date: string; shift: CalendarShift } | null>(null);
@@ -47,7 +48,7 @@ export function CalendarView({ label, days }: { label: string; days: CalendarDay
                       <button
                         type="button"
                         key={shift.id}
-                        className={`tag calendar-shift-btn ${shift.slot === "MORNING" ? "info" : "warn"}${isSelected ? " is-selected" : ""}`}
+                        className={`tag calendar-shift-btn ${SLOT_TAG[shift.slot]}${isSelected ? " is-selected" : ""}`}
                         aria-pressed={isSelected}
                         onClick={() => setSelected({ date: d.date, shift })}
                       >

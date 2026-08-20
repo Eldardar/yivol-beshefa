@@ -4,7 +4,8 @@ import { AddFarmerButton } from "./add-farmer-button";
 import { EditFarmerButton } from "./edit-farmer-button";
 import { AddPlantationFieldButton } from "./add-plantation-field-button";
 import { EditPlantationFieldButton } from "./edit-plantation-field-button";
-import { ChevronDownIcon, TrashIcon } from "./icons";
+import { ActiveSwitch } from "./active-switch";
+import { ChevronDownIcon } from "./icons";
 
 export type FarmRow = { id: number; name: string; contact_person: string; phone: string; address: string; navigation_link: string | null; notes: string; active: number };
 export type PlantationFieldRow = { id: number; farm_id: number; name: string; fruit_type: string; fruit_subtype: string; size: number | null; location: string; details: string; active: number };
@@ -43,21 +44,19 @@ export function FarmersTable({ farms, plantationFieldsByFarm, csrf }: { farms: F
                     <span>·</span>
                     <span dir="ltr" className="ltr-field">{row.phone}</span>
                   </div>
-                  <span className={`tag ${row.active ? "" : "bad"}`}>{row.active ? "פעיל" : "בארכיון"}</span>
                 </div>
                 <button type="button" className={`expand-btn${isOpen ? " is-open" : ""}`} aria-expanded={isOpen} aria-label={isOpen ? "סגירת פרטי חקלאי" : "פתיחת פרטי חקלאי"} onClick={() => setExpanded(isOpen ? null : row.id)}>
                   <ChevronDownIcon size={20} />
                 </button>
               </div>
               <div className="record-card-actions">
+                <ActiveSwitch csrf={csrf} entity="FARM" id={row.id} active={Boolean(row.active)} />
                 <EditFarmerButton csrf={csrf} farm={row} />
-                <AddPlantationFieldButton csrf={csrf} farmId={row.id} farmName={row.name} />
-                <ActiveForm csrf={csrf} id={row.id} active={!row.active} />
               </div>
               {isOpen && (
                 <div className="record-card-details">
                   <div className="sub-tables">
-                    <PlantationFieldsList fields={fields} farmId={row.id} csrf={csrf} />
+                    <PlantationFieldsList fields={fields} farmId={row.id} farmName={row.name} csrf={csrf} />
                   </div>
                 </div>
               )}
@@ -88,12 +87,10 @@ export function FarmersTable({ farms, plantationFieldsByFarm, csrf }: { farms: F
                     <td>{row.contact_person}</td>
                     <td><span dir="ltr" className="ltr-field">{row.phone}</span></td>
                     <td>{row.address}</td>
-                    <td><span className={`tag ${row.active ? "" : "bad"}`}>{row.active ? "פעיל" : "בארכיון"}</span></td>
+                    <td><ActiveSwitch csrf={csrf} entity="FARM" id={row.id} active={Boolean(row.active)} /></td>
                     <td>
                       <div className="actions-cell">
                         <EditFarmerButton csrf={csrf} farm={row} />
-                        <AddPlantationFieldButton csrf={csrf} farmId={row.id} farmName={row.name} />
-                        <ActiveForm csrf={csrf} id={row.id} active={!row.active} />
                       </div>
                     </td>
                   </tr>
@@ -101,7 +98,7 @@ export function FarmersTable({ farms, plantationFieldsByFarm, csrf }: { farms: F
                     <tr className="worker-expand-row">
                       <td colSpan={7}>
                         <div className="sub-tables">
-                          <PlantationFieldsList fields={fields} farmId={row.id} csrf={csrf} />
+                          <PlantationFieldsList fields={fields} farmId={row.id} farmName={row.name} csrf={csrf} />
                         </div>
                       </td>
                     </tr>
@@ -116,10 +113,13 @@ export function FarmersTable({ farms, plantationFieldsByFarm, csrf }: { farms: F
   );
 }
 
-function PlantationFieldsList({ fields, farmId, csrf }: { fields: PlantationFieldRow[]; farmId: number; csrf: string }) {
+function PlantationFieldsList({ fields, farmId, farmName, csrf }: { fields: PlantationFieldRow[]; farmId: number; farmName: string; csrf: string }) {
   return (
     <div className="stack">
-      <h3>חלקות גידול</h3>
+      <div className="table-toolbar">
+        <h3>חלקות גידול</h3>
+        <AddPlantationFieldButton csrf={csrf} farmId={farmId} farmName={farmName} />
+      </div>
       {fields.length === 0 ? <p className="muted">אין חלקות רשומות</p> : (
         <div className="table-wrap">
           <table className="table">
@@ -132,11 +132,10 @@ function PlantationFieldsList({ fields, farmId, csrf }: { fields: PlantationFiel
                   <td>{f.fruit_subtype}</td>
                   <td>{f.size ?? "—"}</td>
                   <td>{f.location || "—"}</td>
-                  <td><span className={`tag ${f.active ? "" : "bad"}`}>{f.active ? "פעילה" : "בארכיון"}</span></td>
+                  <td><ActiveSwitch csrf={csrf} entity="PLANTATION_FIELD" id={f.id} active={Boolean(f.active)} /></td>
                   <td>
                     <div className="actions-cell">
                       <EditPlantationFieldButton csrf={csrf} farmId={farmId} field={f} />
-                      <PlantationFieldActiveForm csrf={csrf} id={f.id} active={!f.active} />
                     </div>
                   </td>
                 </tr>
@@ -146,39 +145,5 @@ function PlantationFieldsList({ fields, farmId, csrf }: { fields: PlantationFiel
         </div>
       )}
     </div>
-  );
-}
-
-function ActiveForm({ csrf, id, active }: { csrf: string; id: number; active: boolean }) {
-  return (
-    <form action="/api/actions" method="post">
-      <input type="hidden" name="csrf" value={csrf} />
-      <input type="hidden" name="action" value="setActive" />
-      <input type="hidden" name="entity" value="FARM" />
-      <input type="hidden" name="entityId" value={id} />
-      <input type="hidden" name="active" value={active ? "1" : "0"} />
-      {active ? (
-        <button className="btn btn-sm secondary">שחזור</button>
-      ) : (
-        <button className="icon-btn danger" title="העברה לארכיון" aria-label="העברה לארכיון"><TrashIcon size={18} /></button>
-      )}
-    </form>
-  );
-}
-
-function PlantationFieldActiveForm({ csrf, id, active }: { csrf: string; id: number; active: boolean }) {
-  return (
-    <form action="/api/actions" method="post">
-      <input type="hidden" name="csrf" value={csrf} />
-      <input type="hidden" name="action" value="setActive" />
-      <input type="hidden" name="entity" value="PLANTATION_FIELD" />
-      <input type="hidden" name="entityId" value={id} />
-      <input type="hidden" name="active" value={active ? "1" : "0"} />
-      {active ? (
-        <button className="btn btn-sm secondary">שחזור</button>
-      ) : (
-        <button className="icon-btn danger" title="העברה לארכיון" aria-label="העברה לארכיון"><TrashIcon size={18} /></button>
-      )}
-    </form>
   );
 }

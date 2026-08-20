@@ -11,7 +11,7 @@ export type PlantationFieldsByFarm = Record<number, PlantationFieldOption[]>;
 export type EditableShift = {
   id: number;
   date: string;
-  slot: "MORNING" | "EVENING";
+  slot: "MORNING" | "EVENING" | "PRE_DAWN";
   farm_id: number;
   plantation_field_id: number;
   leader_id: number;
@@ -61,6 +61,7 @@ export function ShiftForm({
         <div className="field">
           <label htmlFor="shift-slot">חלק יום</label>
           <select className="input" id="shift-slot" name="slot" defaultValue={shift?.slot ?? "MORNING"}>
+            <option value="PRE_DAWN">לפנות בוקר</option>
             <option value="MORNING">בוקר</option>
             <option value="EVENING">ערב</option>
           </select>

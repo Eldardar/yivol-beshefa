@@ -405,6 +405,7 @@ select.input { appearance: auto; }
 .tag.warn { background: var(--color-warning-surface); color: #7a5417; }
 .tag.bad { background: var(--color-danger-surface); color: #7a3222; }
 .tag.info { background: var(--color-info-surface); color: #2c5a6b; }
+.tag.dim { background: var(--neutral-200); color: var(--neutral-700); }
 
 /* ==========================================================================
    Alerts / banners
@@ -475,6 +476,7 @@ select.input { appearance: auto; }
 .switch input:focus-visible + .switch-track { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .switch input:disabled { cursor: not-allowed; }
 .switch input:disabled + .switch-track { opacity: 0.5; cursor: not-allowed; }
+.switch-status { display: inline-block; min-width: 3.75rem; }
 
 /* Worker/vehicle card list — mobile-first alternative to the desktop table */
 .record-list { display: grid; gap: var(--space-3); }

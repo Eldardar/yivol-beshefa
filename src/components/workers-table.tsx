@@ -6,13 +6,15 @@ import { UNIT_LABEL, type Unit } from "@/lib/units";
 import { ResetPickerPassword } from "./reset-picker-password";
 import { AddWorkerButton } from "./add-worker-button";
 import { EditWorkerButton } from "./edit-worker-button";
-import { ChevronDownIcon, TrashIcon } from "./icons";
+import { ActiveSwitch } from "./active-switch";
+import { ChevronDownIcon } from "./icons";
 
 export type WorkerRow = { id: number; name: string; email: string; phone: string; national_id: string | null; notes: string; role: "ADMIN" | "PICKER"; active: number };
-export type WorkerShiftRow = { id: number; date: string; slot: "MORNING" | "EVENING"; status: string; farm: string; crop: string; lines: Array<{ quantity: number; unit: Unit }> };
+export type WorkerShiftRow = { id: number; date: string; slot: "MORNING" | "EVENING" | "PRE_DAWN"; status: string; farm: string; crop: string; lines: Array<{ quantity: number; unit: Unit }> };
 export type ShiftsByUser = Record<number, { past: WorkerShiftRow[]; future: WorkerShiftRow[] }>;
 
 const STATUS_LABEL: Record<string, string> = { DRAFT: "טיוטה", PUBLISHED: "פורסמה", COMPLETED: "הושלמה", CANCELLED: "בוטלה" };
+const SLOT_LABEL: Record<string, string> = { MORNING: "בוקר", EVENING: "ערב", PRE_DAWN: "לפנות בוקר" };
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/);
@@ -54,7 +56,6 @@ export function WorkersTable({ users, shiftsByUser, csrf, currentUserId }: { use
                     <span>·</span>
                     <span dir="ltr" className="ltr-field">{row.phone}</span>
                   </div>
-                  <span className={`tag ${row.active ? "" : "bad"}`}>{row.active ? "פעיל" : "בארכיון"}</span>
                 </div>
                 {canExpand && (
                   <button type="button" className={`expand-btn${isOpen ? " is-open" : ""}`} aria-expanded={isOpen} aria-label={isOpen ? "סגירת פרטי עובד" : "פתיחת פרטי עובד"} onClick={() => setExpanded(isOpen ? null : row.id)}>
@@ -63,9 +64,9 @@ export function WorkersTable({ users, shiftsByUser, csrf, currentUserId }: { use
                 )}
               </div>
               <div className="record-card-actions">
+                <ActiveSwitch csrf={csrf} entity="USER" id={row.id} active={Boolean(row.active)} disabled={row.id === currentUserId} disabledTitle="לא ניתן להשבית את החשבון שלך" />
                 <EditWorkerButton csrf={csrf} worker={row} />
                 {row.role === "PICKER" && Boolean(row.active) && <ResetPickerPassword csrf={csrf} userId={row.id} />}
-                {row.id !== currentUserId && <ActiveForm csrf={csrf} id={row.id} active={!row.active} />}
               </div>
               {isOpen && (
                 <div className="record-card-details">
@@ -103,12 +104,11 @@ export function WorkersTable({ users, shiftsByUser, csrf, currentUserId }: { use
                     <td>{row.role === "ADMIN" ? "מנהל" : "עובד"}</td>
                     <td>{row.email}</td>
                     <td><span dir="ltr" className="ltr-field">{row.phone}</span></td>
-                    <td><span className={`tag ${row.active ? "" : "bad"}`}>{row.active ? "פעיל" : "בארכיון"}</span></td>
+                    <td><ActiveSwitch csrf={csrf} entity="USER" id={row.id} active={Boolean(row.active)} disabled={row.id === currentUserId} disabledTitle="לא ניתן להשבית את החשבון שלך" /></td>
                     <td>
                       <div className="actions-cell">
                         <EditWorkerButton csrf={csrf} worker={row} />
                         {row.role === "PICKER" && Boolean(row.active) && <ResetPickerPassword csrf={csrf} userId={row.id} />}
-                        {row.id !== currentUserId && <ActiveForm csrf={csrf} id={row.id} active={!row.active} />}
                       </div>
                     </td>
                   </tr>
@@ -154,7 +154,7 @@ function ShiftsList({ title, rows, empty }: { title: string; rows: WorkerShiftRo
               {rows.map(s => (
                 <tr key={s.id}>
                   <td>{formatHebrewDate(s.date)}</td>
-                  <td>{s.slot === "MORNING" ? "בוקר" : "ערב"}</td>
+                  <td>{SLOT_LABEL[s.slot]}</td>
                   <td>{s.farm} · {s.crop}</td>
                   <td>{STATUS_LABEL[s.status] ?? s.status}</td>
                   <td>{s.lines.length ? s.lines.map((l) => `${l.quantity} ${UNIT_LABEL[l.unit]}`).join(" · ") : "—"}</td>
@@ -165,22 +165,5 @@ function ShiftsList({ title, rows, empty }: { title: string; rows: WorkerShiftRo
         </div>
       )}
     </div>
-  );
-}
-
-function ActiveForm({ csrf, id, active }: { csrf: string; id: number; active: boolean }) {
-  return (
-    <form action="/api/actions" method="post">
-      <input type="hidden" name="csrf" value={csrf} />
-      <input type="hidden" name="action" value="setActive" />
-      <input type="hidden" name="entity" value="USER" />
-      <input type="hidden" name="entityId" value={id} />
-      <input type="hidden" name="active" value={active ? "1" : "0"} />
-      {active ? (
-        <button className="btn btn-sm secondary">שחזור</button>
-      ) : (
-        <button className="icon-btn danger" title="העברה לארכיון" aria-label="העברה לארכיון"><TrashIcon size={18} /></button>
-      )}
-    </form>
   );
 }

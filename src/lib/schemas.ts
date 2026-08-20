@@ -40,7 +40,7 @@ const goalLineSchema = z.object({ unit: unitSchema, goal: z.coerce.number().fini
 
 export const shiftSchema = z.object({
   date: isoDate,
-  slot: z.enum(["MORNING", "EVENING"]),
+  slot: z.enum(["MORNING", "EVENING", "PRE_DAWN"]),
   plantationFieldId: id,
   pickerIds: z.array(id).min(1).transform((items) => [...new Set(items)]),
   leaderId: id,

@@ -6,6 +6,7 @@ import { UNIT_LABEL, type Unit } from "@/lib/units";
 export const dynamic = "force-dynamic";
 
 const STATUS_LABEL: Record<string, string> = { DRAFT: "טיוטה", PUBLISHED: "פורסמה", COMPLETED: "הושלמה", CANCELLED: "בוטלה" };
+const SLOT_LABEL: Record<string, string> = { MORNING: "בוקר", EVENING: "ערב", PRE_DAWN: "לפנות בוקר" };
 type HistoryRow = { id: number; date: string; slot: string; status: string; farm: string; crop: string };
 
 export default async function History() {
@@ -42,7 +43,7 @@ export default async function History() {
           <article className="record-card" key={x.id}>
             <div className="record-card-head">
               <div className="record-card-body">
-                <span className="record-card-name">{formatHebrewDate(x.date)} · {x.slot === "MORNING" ? "בוקר" : "ערב"}</span>
+                <span className="record-card-name">{formatHebrewDate(x.date)} · {SLOT_LABEL[x.slot] ?? x.slot}</span>
                 <div className="record-card-meta">{x.farm} · {x.crop}</div>
               </div>
               <span className={`tag${x.status === "CANCELLED" ? " bad" : ""}`}>{STATUS_LABEL[x.status]}</span>
@@ -60,7 +61,7 @@ export default async function History() {
             {rows.map(x => (
               <tr key={x.id}>
                 <td>{formatHebrewDate(x.date)}</td>
-                <td>{x.slot === "MORNING" ? "בוקר" : "ערב"}</td>
+                <td>{SLOT_LABEL[x.slot] ?? x.slot}</td>
                 <td>{x.farm}</td>
                 <td>{x.crop}</td>
                 <td><span className={`tag${x.status === "CANCELLED" ? " bad" : ""}`}>{STATUS_LABEL[x.status]}</span></td>

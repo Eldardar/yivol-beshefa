@@ -5,6 +5,7 @@ import { sendWhatsAppMessages } from "@/lib/whatsapp";
 import type { Unit } from "@/lib/units";
 
 const transitions:Record<string,Set<string>>={DRAFT:new Set(["PUBLISHED","CANCELLED"]),PUBLISHED:new Set(["COMPLETED","CANCELLED","DRAFT"]),COMPLETED:new Set(),CANCELLED:new Set(["DRAFT"])};
+const SLOT_LABEL:Record<string,string>={MORNING:"בוקר",EVENING:"ערב",PRE_DAWN:"לפנות בוקר"};
 
 export class ShiftService{
  constructor(private readonly db:Database.Database){}
@@ -19,8 +20,8 @@ export class ShiftService{
    if(target==="COMPLETED"){
     const counts=this.db.prepare(`SELECT
       (SELECT count(*) FROM shift_pickers WHERE shift_id=?) assigned,
-      (SELECT count(*) FROM quantities WHERE shift_id=?) reported,
-      (SELECT count(*) FROM quantities q JOIN shift_pickers sp ON sp.shift_id=q.shift_id AND sp.user_id=q.user_id WHERE q.shift_id=?) matched`).get(shiftId,shiftId,shiftId) as {assigned:number;reported:number;matched:number};
+      (SELECT count(DISTINCT user_id) FROM quantities WHERE shift_id=?) reported,
+      (SELECT count(DISTINCT q.user_id) FROM quantities q JOIN shift_pickers sp ON sp.shift_id=q.shift_id AND sp.user_id=q.user_id WHERE q.shift_id=?) matched`).get(shiftId,shiftId,shiftId) as {assigned:number;reported:number;matched:number};
     if(counts.assigned<1||counts.reported!==counts.assigned||counts.matched!==counts.assigned)throw new Error("לא ניתן להשלים משמרת לפני דיווח מלא לכל הקוטפים");
    }
    const warnings=(target==="PUBLISHED"||(shift.status==="CANCELLED"&&target==="DRAFT"))?new SchedulingService(this.db).validateExistingShift(shiftId):[];
@@ -28,7 +29,7 @@ export class ShiftService{
    let title:string|undefined;
    if(target==="PUBLISHED")title="שיבוץ למשמרת";else if(target==="CANCELLED")title="משמרת בוטלה";else if(shift.status==="PUBLISHED"&&target==="DRAFT")title="פרסום המשמרת נמשך";
    if(title){
-    const body=`${shift.date} · ${shift.slot==="MORNING"?"בוקר":"ערב"}`;
+    const body=`${shift.date} · ${SLOT_LABEL[shift.slot]??shift.slot}`;
     this.db.prepare("INSERT INTO notifications(user_id,title,body) SELECT user_id,?,? FROM shift_pickers WHERE shift_id=?").run(title,body,shiftId);
     const pickers=(this.db.prepare("SELECT sp.user_id,u.phone FROM shift_pickers sp JOIN users u ON u.id=sp.user_id WHERE sp.shift_id=?").all(shiftId) as Array<{user_id:number;phone:string}>);
     pushItems=pickers.map(p=>({userId:p.user_id,title:title!,body}));

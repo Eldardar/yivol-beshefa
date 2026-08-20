@@ -8,6 +8,8 @@ import { CalendarIcon, ClipboardListIcon, HistoryIcon } from "@/components/icons
 
 export const dynamic = "force-dynamic";
 
+const SLOT_LABEL: Record<string, string> = { MORNING: "בוקר", EVENING: "ערב", PRE_DAWN: "לפנות בוקר" };
+
 export default async function Home() {
   const user = await requireUser();
   const database = db();
@@ -70,7 +72,7 @@ export default async function Home() {
     <AppShell user={user}>
       <section className="hero">
         <h1>שלום {firstName}</h1>
-        <p>{next ? `השיבוץ הבא: ${formatHebrewDate(next.date)} · ${next.slot === "MORNING" ? "בוקר" : "ערב"} · ${next.farm}` : "אין שיבוצים קרובים"}</p>
+        <p>{next ? `השיבוץ הבא: ${formatHebrewDate(next.date)} · ${SLOT_LABEL[next.slot] ?? next.slot} · ${next.farm}` : "אין שיבוצים קרובים"}</p>
       </section>
       <OnboardingChecklist steps={onboardingSteps} />
       <div className="grid">

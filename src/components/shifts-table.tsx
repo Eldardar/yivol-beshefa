@@ -10,7 +10,7 @@ import { AssignVehiclesButton } from "./assign-vehicles-button";
 import { ChevronDownIcon, TrashIcon } from "./icons";
 import type { Picker, FarmOption, PlantationFieldsByFarm } from "./shift-form";
 
-export type ShiftRow = { id: number; date: string; slot: "MORNING" | "EVENING"; status: string; notes: string; farm_id: number; plantation_field_id: number; leader_id: number; leader: string; farm: string; fruit_type: string; picker_count: number };
+export type ShiftRow = { id: number; date: string; slot: "MORNING" | "EVENING" | "PRE_DAWN"; status: string; notes: string; farm_id: number; plantation_field_id: number; leader_id: number; leader: string; farm: string; fruit_type: string; picker_count: number };
 export type UnitInfo = { unit: Unit; goal: number; produced: number };
 export type UnitsByShift = Record<number, UnitInfo[]>;
 export type PickerNamesByShift = Record<number, string[]>;
@@ -18,7 +18,7 @@ export type PickerIdsByShift = Record<number, number[]>;
 export type VehiclesByShift = Record<number, Array<{ number: string; name: string }>>;
 export type VehicleIdsByShift = Record<number, number[]>;
 
-const SLOT_LABEL: Record<string, string> = { MORNING: "בוקר", EVENING: "ערב" };
+const SLOT_LABEL: Record<string, string> = { MORNING: "בוקר", EVENING: "ערב", PRE_DAWN: "לפנות בוקר" };
 const STATUS_LABEL: Record<string, string> = { DRAFT: "טיוטה", PUBLISHED: "פורסמה", COMPLETED: "הושלמה", CANCELLED: "בוטלה" };
 const STATUS_TAG: Record<string, string> = { DRAFT: "warn", PUBLISHED: "", COMPLETED: "info", CANCELLED: "bad" };
 

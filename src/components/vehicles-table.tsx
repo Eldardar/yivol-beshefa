@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { AddVehicleButton } from "./add-vehicle-button";
 import { EditVehicleButton } from "./edit-vehicle-button";
-import { TrashIcon } from "./icons";
+import { ActiveSwitch } from "./active-switch";
 
 export type VehicleRow = { id: number; number: string; name: string; notes: string; active: number };
 
@@ -30,12 +30,11 @@ export function VehiclesTable({ vehicles, csrf }: { vehicles: VehicleRow[]; csrf
               <div className="record-card-body">
                 <span className="record-card-name" dir="ltr">{row.number}</span>
                 <div className="record-card-meta">{row.name}</div>
-                <span className={`tag ${row.active ? "" : "bad"}`}>{row.active ? "פעיל" : "בארכיון"}</span>
               </div>
             </div>
             <div className="record-card-actions">
+              <ActiveSwitch csrf={csrf} entity="VEHICLE" id={row.id} active={Boolean(row.active)} />
               <EditVehicleButton csrf={csrf} vehicle={row} />
-              <ActiveForm csrf={csrf} id={row.id} active={!row.active} />
             </div>
           </article>
         ))}
@@ -51,11 +50,10 @@ export function VehiclesTable({ vehicles, csrf }: { vehicles: VehicleRow[]; csrf
               <tr key={row.id}>
                 <td><span dir="ltr" className="ltr-field">{row.number}</span></td>
                 <td>{row.name}</td>
-                <td><span className={`tag ${row.active ? "" : "bad"}`}>{row.active ? "פעיל" : "בארכיון"}</span></td>
+                <td><ActiveSwitch csrf={csrf} entity="VEHICLE" id={row.id} active={Boolean(row.active)} /></td>
                 <td>
                   <div className="actions-cell">
                     <EditVehicleButton csrf={csrf} vehicle={row} />
-                    <ActiveForm csrf={csrf} id={row.id} active={!row.active} />
                   </div>
                 </td>
               </tr>
@@ -64,22 +62,5 @@ export function VehiclesTable({ vehicles, csrf }: { vehicles: VehicleRow[]; csrf
         </table>
       </div>
     </div>
-  );
-}
-
-function ActiveForm({ csrf, id, active }: { csrf: string; id: number; active: boolean }) {
-  return (
-    <form action="/api/actions" method="post">
-      <input type="hidden" name="csrf" value={csrf} />
-      <input type="hidden" name="action" value="setActive" />
-      <input type="hidden" name="entity" value="VEHICLE" />
-      <input type="hidden" name="entityId" value={id} />
-      <input type="hidden" name="active" value={active ? "1" : "0"} />
-      {active ? (
-        <button className="btn btn-sm secondary">שחזור</button>
-      ) : (
-        <button className="icon-btn danger" title="העברה לארכיון" aria-label="העברה לארכיון"><TrashIcon size={18} /></button>
-      )}
-    </form>
   );
 }
