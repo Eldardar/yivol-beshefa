@@ -13,12 +13,15 @@ export class SchedulingService{
  private validateAssignments(input:ParsedShift,excludeShiftId?:number):string[]{
   if(!input.pickerIds.includes(input.leaderId))throw new Error("המוביל חייב להיות חלק מהצוות");
   const warnings:string[]=[];
+  const isPastShift=input.date<jerusalemDate();
   for(const pickerId of input.pickerIds){
    const picker=this.db.prepare("SELECT role,active,name FROM users WHERE id=?").get(pickerId) as {role:string;active:number;name:string}|undefined;
    if(!picker?.active||picker.role!=="PICKER")throw new Error("קוטף אינו פעיל");
-   const availability=this.db.prepare("SELECT status FROM availability WHERE user_id=? AND date=?").get(pickerId,input.date) as {status:string}|undefined;
-   if(!availability||availability.status==="UNAVAILABLE")throw new Error("קוטף אינו זמין");
-   if(availability.status==="MAYBE")warnings.push(`${picker.name} סימן/ה אולי`);
+   if(!isPastShift){
+    const availability=this.db.prepare("SELECT status FROM availability WHERE user_id=? AND date=?").get(pickerId,input.date) as {status:string}|undefined;
+    if(!availability||availability.status==="UNAVAILABLE")throw new Error("קוטף אינו זמין");
+    if(availability.status==="MAYBE")warnings.push(`${picker.name} סימן/ה אולי`);
+   }
    const conflict=this.db.prepare(`SELECT 1 FROM shift_pickers sp JOIN shifts s ON s.id=sp.shift_id
     WHERE sp.user_id=? AND s.date=? AND s.slot=? AND s.status<>'CANCELLED' AND s.id<>?`).get(pickerId,input.date,input.slot,excludeShiftId??-1);
    if(conflict)throw new Error("שיבוץ כפול");

@@ -181,7 +181,7 @@ function RowActions({
   const editable = ["DRAFT", "PUBLISHED"].includes(row.status);
   return (
     <>
-      {editable && <AssignPickersButton shiftId={row.id} leaderId={row.leader_id} csrf={csrf} />}
+      {editable && <AssignPickersButton shiftId={row.id} leaderId={row.leader_id} date={row.date} csrf={csrf} />}
       {editable && <AssignVehiclesButton shiftId={row.id} csrf={csrf} />}
       {editable && (
         <EditShiftButton

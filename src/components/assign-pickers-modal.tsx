@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 
 type Candidate = { id: number; name: string; availability: string | null; conflict: boolean; assigned: boolean };
 
-export function AssignPickersModal({ shiftId, leaderId, csrf, onClose }: { shiftId: number; leaderId: number; csrf: string; onClose: () => void }) {
+export function AssignPickersModal({ shiftId, leaderId, date, csrf, onClose }: { shiftId: number; leaderId: number; date: string; csrf: string; onClose: () => void }) {
   const router = useRouter();
   const [candidates, setCandidates] = useState<Candidate[] | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -55,7 +55,9 @@ export function AssignPickersModal({ shiftId, leaderId, csrf, onClose }: { shift
     }
   }
 
-  const eligible = (candidates ?? []).filter(p => p.assigned || (["AVAILABLE", "MAYBE"].includes(p.availability ?? "") && !p.conflict));
+  const todayJerusalem = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jerusalem", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  const isPastShift = date < todayJerusalem;
+  const eligible = (candidates ?? []).filter(p => p.assigned || (!p.conflict && (isPastShift || ["AVAILABLE", "MAYBE"].includes(p.availability ?? ""))));
 
   return (
     <div className="stack">
