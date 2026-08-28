@@ -76,7 +76,14 @@ export function CalendarView({ label, days }: { label: string; days: CalendarDay
             </p>
             {selected.shift.address && <p className="muted">{selected.shift.address}</p>}
             <p>מוביל משמרת: {selected.shift.leader}</p>
-            <p>קוטפים: {selected.shift.pickers.length > 0 ? selected.shift.pickers.join(", ") : "טרם שובצו קוטפים"}</p>
+            <div>
+              <p>קוטפים:</p>
+              {selected.shift.pickers.length > 0 ? (
+                <ol className="numbered-list">{selected.shift.pickers.map((name, i) => <li key={`${name}-${i}`}>{name}</li>)}</ol>
+              ) : (
+                <p className="muted">טרם שובצו קוטפים</p>
+              )}
+            </div>
             {selected.shift.vehicles.length > 0 && (
               <p className="inline-icon-text">
                 <TruckIcon size={16} />
