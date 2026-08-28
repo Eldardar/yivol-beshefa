@@ -10,15 +10,15 @@ import { AssignVehiclesButton } from "./assign-vehicles-button";
 import { ChevronDownIcon, TrashIcon } from "./icons";
 import type { Picker, FarmOption, PlantationFieldsByFarm } from "./shift-form";
 
-export type ShiftRow = { id: number; date: string; slot: "MORNING" | "EVENING" | "PRE_DAWN"; status: string; notes: string; farm_id: number; plantation_field_id: number; leader_id: number; leader: string; farm: string; fruit_type: string; picker_count: number; start_hour: string | null; end_hour: string | null; team_leader_details: string };
+export type ShiftRow = { id: number; date: string; start_time: string; end_time: string; status: string; notes: string; farm_id: number; plantation_field_id: number; leader_id: number; leader: string; farm: string; fruit_type: string; picker_count: number; team_leader_details: string };
 export type UnitInfo = { unit: Unit; goal: number; produced: number };
 export type UnitsByShift = Record<number, UnitInfo[]>;
 export type PickerNamesByShift = Record<number, string[]>;
 export type PickerIdsByShift = Record<number, number[]>;
+export type PickerHoursByShift = Record<number, Array<{ name: string; startTime: string | null; endTime: string | null }>>;
 export type VehiclesByShift = Record<number, Array<{ number: string; name: string }>>;
 export type VehicleIdsByShift = Record<number, number[]>;
 
-const SLOT_LABEL: Record<string, string> = { MORNING: "בוקר", EVENING: "ערב", PRE_DAWN: "לפנות בוקר" };
 const STATUS_LABEL: Record<string, string> = { DRAFT: "טיוטה", PUBLISHED: "פורסמה", COMPLETED: "הושלמה", CANCELLED: "בוטלה" };
 const STATUS_TAG: Record<string, string> = { DRAFT: "warn", PUBLISHED: "", COMPLETED: "info", CANCELLED: "bad" };
 
@@ -30,6 +30,7 @@ export function ShiftsTable({
   unitsByShift,
   pickerNamesByShift,
   pickerIdsByShift,
+  pickerHoursByShift,
   vehiclesByShift,
   vehicleIdsByShift,
   csrf
@@ -41,6 +42,7 @@ export function ShiftsTable({
   unitsByShift: UnitsByShift;
   pickerNamesByShift: PickerNamesByShift;
   pickerIdsByShift: PickerIdsByShift;
+  pickerHoursByShift: PickerHoursByShift;
   vehiclesByShift: VehiclesByShift;
   vehicleIdsByShift: VehicleIdsByShift;
   csrf: string;
@@ -81,7 +83,7 @@ export function ShiftsTable({
             <article className="record-card" key={row.id}>
               <div className="record-card-head">
                 <div className="record-card-body">
-                  <span className="record-card-name">{formatHebrewDate(row.date)} · {SLOT_LABEL[row.slot]}</span>
+                  <span className="record-card-name">{formatHebrewDate(row.date)} · <span dir="ltr" className="ltr-field">{row.start_time}–{row.end_time}</span></span>
                   <div className="record-card-meta">
                     <span>{row.farm} · {row.fruit_type}</span>
                     <span>·</span>
@@ -98,7 +100,7 @@ export function ShiftsTable({
               </div>
               {isOpen && (
                 <div className="record-card-details">
-                  <ShiftDetails units={units} pickerNames={pickerNamesByShift[row.id] ?? []} vehicles={vehiclesByShift[row.id] ?? []} notes={row.notes} startHour={row.start_hour} endHour={row.end_hour} teamLeaderDetails={row.team_leader_details} />
+                  <ShiftDetails units={units} pickerNames={pickerNamesByShift[row.id] ?? []} pickerHours={pickerHoursByShift[row.id] ?? []} vehicles={vehiclesByShift[row.id] ?? []} notes={row.notes} plannedStart={row.start_time} plannedEnd={row.end_time} teamLeaderDetails={row.team_leader_details} />
                 </div>
               )}
             </article>
@@ -110,7 +112,7 @@ export function ShiftsTable({
       <div className="table-wrap desktop-only">
         <table className="table">
           <thead>
-            <tr><th aria-hidden="true"></th><th>תאריך</th><th>חלק יום</th><th>חקלאי וגידול</th><th>מוביל משמרת</th><th>קוטפים</th><th>יעד / בפועל</th><th>מצב</th><th>פעולות</th></tr>
+            <tr><th aria-hidden="true"></th><th>תאריך</th><th>שעות</th><th>חקלאי וגידול</th><th>מוביל משמרת</th><th>קוטפים</th><th>יעד / בפועל</th><th>מצב</th><th>פעולות</th></tr>
           </thead>
           <tbody>
             {filtered.map(row => {
@@ -125,7 +127,7 @@ export function ShiftsTable({
                       </button>
                     </td>
                     <td>{formatHebrewDate(row.date)}</td>
-                    <td>{SLOT_LABEL[row.slot]}</td>
+                    <td><span dir="ltr" className="ltr-field">{row.start_time}–{row.end_time}</span></td>
                     <td>{row.farm} · {row.fruit_type}</td>
                     <td>{row.leader}</td>
                     <td>{row.picker_count}</td>
@@ -145,7 +147,7 @@ export function ShiftsTable({
                   {isOpen && (
                     <tr className="worker-expand-row">
                       <td colSpan={9}>
-                        <ShiftDetails units={units} pickerNames={pickerNamesByShift[row.id] ?? []} vehicles={vehiclesByShift[row.id] ?? []} notes={row.notes} startHour={row.start_hour} endHour={row.end_hour} teamLeaderDetails={row.team_leader_details} />
+                        <ShiftDetails units={units} pickerNames={pickerNamesByShift[row.id] ?? []} pickerHours={pickerHoursByShift[row.id] ?? []} vehicles={vehiclesByShift[row.id] ?? []} notes={row.notes} plannedStart={row.start_time} plannedEnd={row.end_time} teamLeaderDetails={row.team_leader_details} />
                       </td>
                     </tr>
                   )}
@@ -189,7 +191,7 @@ function RowActions({
           pickers={pickers}
           farms={farms}
           plantationFieldsByFarm={plantationFieldsByFarm}
-          shift={{ id: row.id, date: row.date, slot: row.slot, farm_id: row.farm_id, plantation_field_id: row.plantation_field_id, leader_id: row.leader_id, notes: row.notes }}
+          shift={{ id: row.id, date: row.date, start_time: row.start_time, end_time: row.end_time, farm_id: row.farm_id, plantation_field_id: row.plantation_field_id, leader_id: row.leader_id, notes: row.notes }}
           existingPickerIds={pickerIdsByShift[row.id] ?? []}
           existingVehicleIds={vehicleIdsByShift[row.id] ?? []}
           existingGoals={(unitsByShift[row.id] ?? []).map(u => ({ value: u.goal, unit: u.unit }))}
@@ -209,7 +211,7 @@ function RowActions({
   );
 }
 
-function ShiftDetails({ units, pickerNames, vehicles, notes, startHour, endHour, teamLeaderDetails }: { units: UnitInfo[]; pickerNames: string[]; vehicles: Array<{ number: string; name: string }>; notes: string; startHour: string | null; endHour: string | null; teamLeaderDetails: string }) {
+function ShiftDetails({ units, pickerNames, pickerHours, vehicles, notes, plannedStart, plannedEnd, teamLeaderDetails }: { units: UnitInfo[]; pickerNames: string[]; pickerHours: Array<{ name: string; startTime: string | null; endTime: string | null }>; vehicles: Array<{ number: string; name: string }>; notes: string; plannedStart: string; plannedEnd: string; teamLeaderDetails: string }) {
   return (
     <div className="sub-tables">
       <div className="stack">
@@ -230,7 +232,12 @@ function ShiftDetails({ units, pickerNames, vehicles, notes, startHour, endHour,
       </div>
       <div className="stack">
         <h3>שעות משמרת</h3>
-        {startHour && endHour ? <p><span dir="ltr" className="ltr-field">{startHour}–{endHour}</span></p> : <p className="muted">טרם דווח</p>}
+        <p>מתוכנן: <span dir="ltr" className="ltr-field">{plannedStart}–{plannedEnd}</span></p>
+        {pickerHours.length === 0 ? <p className="muted">טרם דווחו שעות בפועל</p> : (
+          <ul>{pickerHours.map((p, i) => (
+            <li key={`${p.name}-${i}`}>{p.name}: {p.startTime && p.endTime ? <span dir="ltr" className="ltr-field">{p.startTime}–{p.endTime}</span> : <span className="muted">טרם דווח</span>}</li>
+          ))}</ul>
+        )}
       </div>
       {teamLeaderDetails && (
         <div className="stack">

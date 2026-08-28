@@ -8,7 +8,8 @@ export const dynamic = "force-dynamic";
 type ShiftRow = {
   id: number;
   date: string;
-  slot: "MORNING" | "EVENING" | "PRE_DAWN";
+  start_time: string;
+  end_time: string;
   notes: string;
   leader: string;
   farm: string;
@@ -32,10 +33,10 @@ export default async function CalendarPage() {
   const database = db();
   const shifts = database
     .prepare(
-      `SELECT s.id,s.date,s.slot,s.notes,u.name leader,f.name farm,f.address,f.navigation_link,pf.fruit_type,pf.fruit_subtype
+      `SELECT s.id,s.date,s.start_time,s.end_time,s.notes,u.name leader,f.name farm,f.address,f.navigation_link,pf.fruit_type,pf.fruit_subtype
        FROM shifts s JOIN users u ON u.id=s.leader_id JOIN plantation_fields pf ON pf.id=s.plantation_field_id JOIN farms f ON f.id=pf.farm_id
        WHERE s.status='PUBLISHED' AND s.date>=? AND s.date<?
-       ORDER BY s.date,CASE s.slot WHEN 'PRE_DAWN' THEN 0 WHEN 'MORNING' THEN 1 WHEN 'EVENING' THEN 2 ELSE 3 END`
+       ORDER BY s.date,s.start_time`
     )
     .all(monthStart, monthEnd) as ShiftRow[];
 
@@ -75,7 +76,8 @@ export default async function CalendarPage() {
   for (const s of shifts) {
     const shift: CalendarShift = {
       id: s.id,
-      slot: s.slot,
+      startTime: s.start_time,
+      endTime: s.end_time,
       farm: s.farm,
       address: s.address,
       navigationLink: s.navigation_link,

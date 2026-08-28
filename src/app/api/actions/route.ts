@@ -7,7 +7,7 @@ import { AdminService, type ManagedEntity } from "@/lib/services/admin";
 import { PickerService } from "@/lib/services/picker";
 import { SchedulingService } from "@/lib/services/scheduling";
 import { ShiftService } from "@/lib/services/shifts";
-import { farmSchema, plantationFieldSchema, shiftReportSchema, shiftSchema, unitSchema, userUpdateSchema, vehicleSchema } from "@/lib/schemas";
+import { farmSchema, plantationFieldSchema, shiftReportSchema, shiftSchema, unitSchema, userUpdateSchema, vehicleSchema, workerHoursSchema } from "@/lib/schemas";
 import type { Unit } from "@/lib/units";
 import { requestBodyIssue, requestUrl } from "@/lib/http";
 
@@ -81,7 +81,7 @@ export async function POST(req:Request){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
       const goalUnits=form.getAll("goalUnit");const goalQtys=form.getAll("goalQty");
       const goals=goalUnits.map((unit,i)=>({unit,goal:goalQtys[i]}));
-      const input=shiftSchema.parse({date:form.get("date"),slot:form.get("slot"),plantationFieldId:form.get("plantationFieldId"),pickerIds:form.getAll("pickerIds"),leaderId:form.get("leaderId"),vehicleIds:form.getAll("vehicleIds"),goals,notes:form.get("notes")??""});
+      const input=shiftSchema.parse({date:form.get("date"),startTime:form.get("startTime"),endTime:form.get("endTime"),plantationFieldId:form.get("plantationFieldId"),pickerIds:form.getAll("pickerIds"),leaderId:form.get("leaderId"),vehicleIds:form.getAll("vehicleIds"),goals,notes:form.get("notes")??""});
       const scheduling=new SchedulingService(database);
       const result=action==="shiftCreate"?scheduling.createShift(user.id,input):scheduling.updateShift(user.id,positiveId.parse(form.get("shiftId")),input);warning=result.warnings.join(" · ");
     }else if(action==="shiftTransition"){
@@ -91,8 +91,10 @@ export async function POST(req:Request){
       const shiftId=positiveId.parse(form.get("shiftId"));const entries:Array<{userId:number;quantity:number;unit:Unit}>=[];
       const userIds=new Set<string>();for(const key of form.keys()){const match=/^qty_(\d+)$/.exec(key);if(match)userIds.add(match[1]!);}
       for(const uid of userIds){const qtys=form.getAll(`qty_${uid}`);const units=form.getAll(`unit_${uid}`);for(let i=0;i<qtys.length;i++)entries.push({userId:positiveId.parse(uid),quantity:z.coerce.number().finite().nonnegative().max(1_000_000).parse(qtys[i]),unit:unitSchema.parse(units[i])});}
-      const report=shiftReportSchema.parse({startHour:form.get("startHour"),endHour:form.get("endHour"),teamLeaderDetails:form.get("teamLeaderDetails")??""});
-      new ShiftService(database).saveQuantities(user.id,shiftId,entries,report);
+      const hourUserIds=new Set<string>();for(const key of form.keys()){const match=/^hoursStart_(\d+)$/.exec(key);if(match)hourUserIds.add(match[1]!);}
+      const hours=[...hourUserIds].filter(uid=>form.get(`hoursStart_${uid}`)&&form.get(`hoursEnd_${uid}`)).map(uid=>workerHoursSchema.parse({userId:uid,startTime:form.get(`hoursStart_${uid}`),endTime:form.get(`hoursEnd_${uid}`)}));
+      const report=shiftReportSchema.parse({teamLeaderDetails:form.get("teamLeaderDetails")??""});
+      new ShiftService(database).saveQuantities(user.id,shiftId,entries,report,hours);
     }else if(action==="readNotification"){
       new PickerService(database).markRead(user.id,positiveId.parse(form.get("notificationId")));
     }else if(action==="readAllNotifications"){

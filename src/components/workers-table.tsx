@@ -11,11 +11,10 @@ import { ShowArchivedToggle } from "./show-archived-toggle";
 import { ChevronDownIcon } from "./icons";
 
 export type WorkerRow = { id: number; name: string; email: string; phone: string; national_id: string | null; notes: string; role: "ADMIN" | "PICKER"; active: number };
-export type WorkerShiftRow = { id: number; date: string; slot: "MORNING" | "EVENING" | "PRE_DAWN"; status: string; farm: string; crop: string; lines: Array<{ quantity: number; unit: Unit }> };
+export type WorkerShiftRow = { id: number; date: string; start_time: string; end_time: string; status: string; farm: string; crop: string; lines: Array<{ quantity: number; unit: Unit }> };
 export type ShiftsByUser = Record<number, { past: WorkerShiftRow[]; future: WorkerShiftRow[] }>;
 
 const STATUS_LABEL: Record<string, string> = { DRAFT: "טיוטה", PUBLISHED: "פורסמה", COMPLETED: "הושלמה", CANCELLED: "בוטלה" };
-const SLOT_LABEL: Record<string, string> = { MORNING: "בוקר", EVENING: "ערב", PRE_DAWN: "לפנות בוקר" };
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/);
@@ -153,12 +152,12 @@ function ShiftsList({ title, rows, empty }: { title: string; rows: WorkerShiftRo
       {rows.length === 0 ? <p className="muted">{empty}</p> : (
         <div className="table-wrap">
           <table className="table">
-            <thead><tr><th>תאריך</th><th>חלק יום</th><th>חקלאי וגידול</th><th>מצב</th><th>כמות</th></tr></thead>
+            <thead><tr><th>תאריך</th><th>שעות</th><th>חקלאי וגידול</th><th>מצב</th><th>כמות</th></tr></thead>
             <tbody>
               {rows.map(s => (
                 <tr key={s.id}>
                   <td>{formatHebrewDate(s.date)}</td>
-                  <td>{SLOT_LABEL[s.slot]}</td>
+                  <td><span dir="ltr" className="ltr-field">{s.start_time}–{s.end_time}</span></td>
                   <td>{s.farm} · {s.crop}</td>
                   <td>{STATUS_LABEL[s.status] ?? s.status}</td>
                   <td>{s.lines.length ? s.lines.map((l) => `${l.quantity} ${UNIT_LABEL[l.unit]}`).join(" · ") : "—"}</td>

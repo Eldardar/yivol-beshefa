@@ -6,9 +6,7 @@ import { MapPinIcon, TruckIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
-const SLOT_LABEL: Record<string, string> = { MORNING: "בוקר", EVENING: "ערב", PRE_DAWN: "לפנות בוקר" };
-
-type AssignmentRow = { id: number; date: string; slot: string; leader_id: number; farm: string; address: string; navigation_link: string | null; fruit_type: string; vehicles: string | null };
+type AssignmentRow = { id: number; date: string; start_time: string; end_time: string; leader_id: number; farm: string; address: string; navigation_link: string | null; fruit_type: string; vehicles: string | null };
 
 export default async function Assignments() {
   const user = await requireUser();
@@ -17,7 +15,7 @@ export default async function Assignments() {
   const today = jerusalemDate();
   const rows = db()
     .prepare(
-      `SELECT s.id,s.date,s.slot,s.leader_id,f.name farm,f.address,f.navigation_link,pf.fruit_type,GROUP_CONCAT(v.name,', ') vehicles
+      `SELECT s.id,s.date,s.start_time,s.end_time,s.leader_id,f.name farm,f.address,f.navigation_link,pf.fruit_type,GROUP_CONCAT(v.name,', ') vehicles
        FROM shift_pickers sp
        JOIN shifts s ON s.id=sp.shift_id
        JOIN plantation_fields pf ON pf.id=s.plantation_field_id
@@ -25,7 +23,7 @@ export default async function Assignments() {
        LEFT JOIN shift_vehicles sv ON sv.shift_id=s.id
        LEFT JOIN vehicles v ON v.id=sv.vehicle_id
        WHERE sp.user_id=? AND s.status='PUBLISHED' AND s.date>=?
-       GROUP BY s.id ORDER BY s.date,CASE s.slot WHEN 'PRE_DAWN' THEN 0 WHEN 'MORNING' THEN 1 WHEN 'EVENING' THEN 2 ELSE 3 END`
+       GROUP BY s.id ORDER BY s.date,s.start_time`
     )
     .all(user.id, jerusalemDate()) as AssignmentRow[];
 
@@ -35,7 +33,7 @@ export default async function Assignments() {
       <div className="grid">
         {rows.map(x => (
           <article className="card" key={x.id}>
-            <span className="tag">{SLOT_LABEL[x.slot] ?? x.slot}</span>
+            <span className="tag"><span dir="ltr">{x.start_time}–{x.end_time}</span></span>
             <h2>{formatHebrewDate(x.date)} · {x.farm}</h2>
             <p className="muted inline-icon-text"><MapPinIcon size={16} /><span>{x.fruit_type} · {x.address}</span></p>
             {x.vehicles && <p className="muted inline-icon-text"><TruckIcon size={16} /><span>{x.vehicles}</span></p>}

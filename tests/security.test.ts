@@ -14,8 +14,8 @@ describe("אבטחה", () => {
   it("ממסך תעודת זהות בתצוגה",()=>{expect(maskNationalId("316250257")).toBe("•••••0257");});
   it("דורש תעודת זהות ביצירת קוטף ודוחה שדות תפקיד והרשאות",()=>{const input={name:"שם",email:"a@b.co",phone:"0500000000",nationalId:"316250257",notes:""};expect(pickerCreateSchema.parse(input)).toEqual(input);expect(()=>pickerCreateSchema.parse({...input,role:"ADMIN"})).toThrow();expect(()=>pickerCreateSchema.parse({name:input.name,email:input.email,phone:input.phone,notes:input.notes})).toThrow();});
   it("דוחה תאריך לוח שנה שאינו קיים",()=>{expect(()=>availabilitySchema.parse({date:"2026-02-30",status:"AVAILABLE"})).toThrow("תאריך אינו תקין");});
-  it("דוחה כמויות שליליות", () => { expect(() => shiftSchema.parse({date:"2026-08-10",slot:"MORNING",plantationFieldId:1,pickerIds:[1],leaderId:1,vehicleIds:[],goals:[{unit:"KG",goal:-1}],notes:""})).toThrow(); });
-  it("דוחה יעד עם יחידת מידה כפולה", () => { expect(() => shiftSchema.parse({date:"2026-08-10",slot:"MORNING",plantationFieldId:1,pickerIds:[1],leaderId:1,vehicleIds:[],goals:[{unit:"KG",goal:1},{unit:"KG",goal:2}],notes:""})).toThrow(); });
+  it("דוחה כמויות שליליות", () => { expect(() => shiftSchema.parse({date:"2026-08-10",startTime:"06:00",endTime:"12:00",plantationFieldId:1,pickerIds:[1],leaderId:1,vehicleIds:[],goals:[{unit:"KG",goal:-1}],notes:""})).toThrow(); });
+  it("דוחה יעד עם יחידת מידה כפולה", () => { expect(() => shiftSchema.parse({date:"2026-08-10",startTime:"06:00",endTime:"12:00",plantationFieldId:1,pickerIds:[1],leaderId:1,vehicleIds:[],goals:[{unit:"KG",goal:1},{unit:"KG",goal:2}],notes:""})).toThrow(); });
   it("מחשב יום וחודש לפי ירושלים גם בגבול UTC",()=>{const instant=new Date("2026-07-31T21:30:00Z");expect(jerusalemDate(instant)).toBe("2026-08-01");expect(nextJerusalemMonth(instant)).toEqual({start:"2026-09-01",end:"2026-10-01"});});
   it("מחשב טווח 60 יום החל ממחר לפי ירושלים",()=>{expect(availabilityWindow(new Date("2026-07-31T21:30:00Z"))).toEqual({start:"2026-08-02",end:"2026-10-01"});});
   it("מחשב ימים ניתנים לעריכה בתוך חודש חלקי ומחוץ לטווח",()=>{

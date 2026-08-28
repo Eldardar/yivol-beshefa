@@ -5,7 +5,7 @@ import { XIcon, PlusIcon } from "./icons";
 
 type Line = { key: number; value: number | string; unit: Unit };
 let nextKey = 0;
-const makeLine = (value: number | string = 0, unit: Unit = "KG"): Line => ({ key: nextKey++, value, unit });
+const makeLine = (value: number | string = "", unit: Unit = "KG"): Line => ({ key: nextKey++, value, unit });
 
 export function UnitLines({ valueName, unitName, initial, addLabel, valueLabel, unitLabel }: { valueName: string; unitName: string; initial: Array<{ value: number; unit: Unit }>; addLabel: string; valueLabel?: string; unitLabel?: string }) {
   const [lines, setLines] = useState<Line[]>(() => (initial.length ? initial.map((l) => makeLine(l.value, l.unit)) : [makeLine()]));

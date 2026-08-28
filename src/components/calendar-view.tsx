@@ -6,7 +6,8 @@ import { Modal } from "./modal";
 
 export type CalendarShift = {
   id: number;
-  slot: "MORNING" | "EVENING" | "PRE_DAWN";
+  startTime: string;
+  endTime: string;
   farm: string;
   address: string;
   navigationLink: string | null;
@@ -20,8 +21,12 @@ export type CalendarShift = {
 export type CalendarDay = { date: string; day: number; weekday: number; isToday: boolean; shifts: CalendarShift[]; birthdays: string[] };
 
 const WEEKDAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
-const SLOT_LABEL: Record<string, string> = { MORNING: "בוקר", EVENING: "ערב", PRE_DAWN: "לפנות בוקר" };
-const SLOT_TAG: Record<string, string> = { MORNING: "info", EVENING: "warn", PRE_DAWN: "dim" };
+function timeTag(startTime: string): string {
+  const hour = Number(startTime.slice(0, 2));
+  if (hour < 6) return "dim";
+  if (hour < 14) return "info";
+  return "warn";
+}
 
 export function CalendarView({ label, days }: { label: string; days: CalendarDay[] }) {
   const [selected, setSelected] = useState<{ date: string; shift: CalendarShift } | null>(null);
@@ -48,11 +53,11 @@ export function CalendarView({ label, days }: { label: string; days: CalendarDay
                       <button
                         type="button"
                         key={shift.id}
-                        className={`tag calendar-shift-btn ${SLOT_TAG[shift.slot]}${isSelected ? " is-selected" : ""}`}
+                        className={`tag calendar-shift-btn ${timeTag(shift.startTime)}${isSelected ? " is-selected" : ""}`}
                         aria-pressed={isSelected}
                         onClick={() => setSelected({ date: d.date, shift })}
                       >
-                        {SLOT_LABEL[shift.slot]} · {shift.farm}
+                        <span dir="ltr">{shift.startTime}–{shift.endTime}</span> · {shift.farm}
                       </button>
                     );
                   })}
@@ -63,7 +68,7 @@ export function CalendarView({ label, days }: { label: string; days: CalendarDay
         </div>
       </section>
       {selected && (
-        <Modal title={`${formatHebrewDate(selected.date)} · ${SLOT_LABEL[selected.shift.slot]}`} onClose={() => setSelected(null)}>
+        <Modal title={`${formatHebrewDate(selected.date)} · ${selected.shift.startTime}–${selected.shift.endTime}`} onClose={() => setSelected(null)}>
           <div className="stack">
             <p className="muted inline-icon-text">
               <MapPinIcon size={16} />

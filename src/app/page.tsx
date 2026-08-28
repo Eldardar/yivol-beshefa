@@ -8,8 +8,6 @@ import { CalendarIcon, ClipboardListIcon, HistoryIcon } from "@/components/icons
 
 export const dynamic = "force-dynamic";
 
-const SLOT_LABEL: Record<string, string> = { MORNING: "בוקר", EVENING: "ערב", PRE_DAWN: "לפנות בוקר" };
-
 export default async function Home() {
   const user = await requireUser();
   const database = db();
@@ -52,11 +50,11 @@ export default async function Home() {
 
   const next = database
     .prepare(
-      `SELECT s.id,s.date,s.slot,f.name farm,pf.fruit_type FROM shift_pickers sp
+      `SELECT s.id,s.date,s.start_time,s.end_time,f.name farm,pf.fruit_type FROM shift_pickers sp
        JOIN shifts s ON s.id=sp.shift_id JOIN plantation_fields pf ON pf.id=s.plantation_field_id JOIN farms f ON f.id=pf.farm_id
        WHERE sp.user_id=? AND s.status='PUBLISHED' AND s.date>=? ORDER BY s.date LIMIT 1`
     )
-    .get(user.id, today) as { id: number; date: string; slot: string; farm: string; fruit_type: string } | undefined;
+    .get(user.id, today) as { id: number; date: string; start_time: string; end_time: string; farm: string; fruit_type: string } | undefined;
 
   const personalDetails = new PickerService(database).personalDetails(user.id);
   const profileComplete = Boolean(personalDetails?.dateOfBirth) && Boolean(personalDetails?.favoriteFruit?.trim());
@@ -86,7 +84,7 @@ export default async function Home() {
       />
       <section className="hero">
         <h1>שלום {firstName}</h1>
-        <p>{next ? `השיבוץ הבא: ${formatHebrewDate(next.date)} · ${SLOT_LABEL[next.slot] ?? next.slot} · ${next.farm}` : "אין שיבוצים קרובים"}</p>
+        <p>{next ? `השיבוץ הבא: ${formatHebrewDate(next.date)} · ${next.start_time}–${next.end_time} · ${next.farm}` : "אין שיבוצים קרובים"}</p>
       </section>
       <OnboardingChecklist steps={onboardingSteps} />
       <div className="grid">

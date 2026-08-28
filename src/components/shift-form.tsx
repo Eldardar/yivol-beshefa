@@ -14,7 +14,8 @@ export type PlantationFieldsByFarm = Record<number, PlantationFieldOption[]>;
 export type EditableShift = {
   id: number;
   date: string;
-  slot: "MORNING" | "EVENING" | "PRE_DAWN";
+  start_time: string;
+  end_time: string;
   farm_id: number;
   plantation_field_id: number;
   leader_id: number;
@@ -93,14 +94,8 @@ export function ShiftForm({
       {existingVehicleIds.map(id => <input type="hidden" name="vehicleIds" value={id} key={id} />)}
       <div className="grid">
         <div className="field"><label htmlFor="shift-date">תאריך</label><input className="input" id="shift-date" type="date" name="date" required defaultValue={shift?.date} /></div>
-        <div className="field">
-          <label htmlFor="shift-slot">חלק יום</label>
-          <select className="input" id="shift-slot" name="slot" defaultValue={shift?.slot ?? "MORNING"}>
-            <option value="PRE_DAWN">לפנות בוקר</option>
-            <option value="MORNING">בוקר</option>
-            <option value="EVENING">ערב</option>
-          </select>
-        </div>
+        <div className="field"><label htmlFor="shift-start-time">שעת התחלה</label><input className="input" id="shift-start-time" type="time" name="startTime" required defaultValue={shift?.start_time ?? "06:00"} /></div>
+        <div className="field"><label htmlFor="shift-end-time">שעת סיום משוערת</label><input className="input" id="shift-end-time" type="time" name="endTime" required defaultValue={shift?.end_time ?? "14:00"} /></div>
         <div className="field">
           <label htmlFor="shift-farm">חקלאי</label>
           <select className="input" id="shift-farm" required value={farmId} onChange={e => { setFarmId(e.target.value); setFieldId(""); }}>

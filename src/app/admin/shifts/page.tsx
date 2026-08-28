@@ -1,5 +1,5 @@
 import { AppShell } from "@/components/nav";
-import { ShiftsTable, type ShiftRow, type UnitsByShift, type PickerNamesByShift, type PickerIdsByShift, type VehiclesByShift, type VehicleIdsByShift } from "@/components/shifts-table";
+import { ShiftsTable, type ShiftRow, type UnitsByShift, type PickerNamesByShift, type PickerIdsByShift, type PickerHoursByShift, type VehiclesByShift, type VehicleIdsByShift } from "@/components/shifts-table";
 import type { Picker, FarmOption, PlantationFieldOption, PlantationFieldsByFarm } from "@/components/shift-form";
 import { csrfValue, db, requireAdmin } from "@/lib/server";
 import type { Unit } from "@/lib/units";
@@ -19,9 +19,9 @@ export default async function Shifts({ searchParams }: { searchParams: Promise<{
   for (const { farmId, ...field } of plantationFieldRows) (plantationFieldsByFarm[farmId] ??= []).push(field);
   const shifts = database
     .prepare(
-      `SELECT s.id,s.date,s.slot,s.status,s.notes,pf.farm_id,s.plantation_field_id,s.leader_id,u.name leader,f.name farm,pf.fruit_type,s.start_hour,s.end_hour,s.team_leader_details,(SELECT COUNT(*) FROM shift_pickers WHERE shift_id=s.id) picker_count
+      `SELECT s.id,s.date,s.start_time,s.end_time,s.status,s.notes,pf.farm_id,s.plantation_field_id,s.leader_id,u.name leader,f.name farm,pf.fruit_type,s.team_leader_details,(SELECT COUNT(*) FROM shift_pickers WHERE shift_id=s.id) picker_count
        FROM shifts s JOIN users u ON u.id=s.leader_id JOIN plantation_fields pf ON pf.id=s.plantation_field_id JOIN farms f ON f.id=pf.farm_id
-       ORDER BY s.date DESC,CASE s.slot WHEN 'PRE_DAWN' THEN 0 WHEN 'MORNING' THEN 1 WHEN 'EVENING' THEN 2 ELSE 3 END LIMIT 100`
+       ORDER BY s.date DESC,s.start_time DESC LIMIT 100`
     )
     .all() as ShiftRow[];
 
@@ -36,13 +36,20 @@ export default async function Shifts({ searchParams }: { searchParams: Promise<{
   }
 
   const pickerRows = database
-    .prepare("SELECT sp.shift_id,u.id user_id,u.name FROM shift_pickers sp JOIN users u ON u.id=sp.user_id ORDER BY u.name")
-    .all() as Array<{ shift_id: number; user_id: number; name: string }>;
+    .prepare(
+      `SELECT sp.shift_id,u.id user_id,u.name,sh.start_time,sh.end_time
+       FROM shift_pickers sp JOIN users u ON u.id=sp.user_id
+       LEFT JOIN shift_hours sh ON sh.shift_id=sp.shift_id AND sh.user_id=sp.user_id
+       ORDER BY u.name`
+    )
+    .all() as Array<{ shift_id: number; user_id: number; name: string; start_time: string | null; end_time: string | null }>;
   const pickerNamesByShift: PickerNamesByShift = {};
   const pickerIdsByShift: PickerIdsByShift = {};
+  const pickerHoursByShift: PickerHoursByShift = {};
   for (const p of pickerRows) {
     (pickerNamesByShift[p.shift_id] ??= []).push(p.name);
     (pickerIdsByShift[p.shift_id] ??= []).push(p.user_id);
+    (pickerHoursByShift[p.shift_id] ??= []).push({ name: p.name, startTime: p.start_time, endTime: p.end_time });
   }
 
   const vehicleRows = database
@@ -70,6 +77,7 @@ export default async function Shifts({ searchParams }: { searchParams: Promise<{
           unitsByShift={unitsByShift}
           pickerNamesByShift={pickerNamesByShift}
           pickerIdsByShift={pickerIdsByShift}
+          pickerHoursByShift={pickerHoursByShift}
           vehiclesByShift={vehiclesByShift}
           vehicleIdsByShift={vehicleIdsByShift}
           csrf={csrf}

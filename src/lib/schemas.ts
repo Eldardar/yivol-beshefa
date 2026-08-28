@@ -44,21 +44,29 @@ const goalLineSchema = z.object({ unit: unitSchema, goal: z.coerce.number().fini
 const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "שעה אינה תקינה");
 
 export const shiftReportSchema = z.object({
-  startHour: timeSchema,
-  endHour: timeSchema,
   teamLeaderDetails: z.string().trim().max(2000)
 }).strict();
 
+const timeRangeRefine = <T extends { startTime: string; endTime: string }>(x: T) => x.startTime < x.endTime;
+const TIME_RANGE_ISSUE = { message: "שעת סיום חייבת להיות אחרי שעת התחלה", path: ["endTime"] };
+
+export const workerHoursSchema = z.object({
+  userId: id,
+  startTime: timeSchema,
+  endTime: timeSchema
+}).strict().refine(timeRangeRefine, TIME_RANGE_ISSUE);
+
 export const shiftSchema = z.object({
   date: isoDate,
-  slot: z.enum(["MORNING", "EVENING", "PRE_DAWN"]),
+  startTime: timeSchema,
+  endTime: timeSchema,
   plantationFieldId: id,
   pickerIds: z.array(id).min(1).transform((items) => [...new Set(items)]),
   leaderId: id,
   vehicleIds: z.array(id).transform((items) => [...new Set(items)]),
   goals: z.array(goalLineSchema).min(1).refine((items) => new Set(items.map((x) => x.unit)).size === items.length, "כל יחידת מידה יכולה להופיע פעם אחת ביעד"),
   notes: z.string().trim().max(4000)
-}).strict();
+}).strict().refine(timeRangeRefine, TIME_RANGE_ISSUE);
 
 export type ShiftInput = z.input<typeof shiftSchema>;
 
