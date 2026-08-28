@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { ComponentType } from "react";
-import { HomeIcon, CalendarIcon, ClipboardListIcon, HistoryIcon, UsersIcon, SproutIcon, TruckIcon, BarChartIcon, ChevronDownIcon } from "./icons";
+import { HomeIcon, CalendarIcon, CalendarDaysIcon, ClipboardListIcon, HistoryIcon, UsersIcon, SproutIcon, TruckIcon, BarChartIcon, ChevronDownIcon } from "./icons";
 
 export type NavChild = { href: string; label: string; icon: ComponentType<{ size?: number; className?: string }> };
 export type NavItem = { href: string; label: string; icon: ComponentType<{ size?: number; className?: string }>; children?: NavChild[] };
@@ -29,6 +29,7 @@ const ADMIN_NAV: NavItem[] = [
       { href: "/admin/shifts/availability", label: "זמינות עובדים", icon: CalendarIcon },
     ],
   },
+  { href: "/calendar", label: "לוח חודשי", icon: CalendarDaysIcon },
   { href: "/admin/reports", label: "דוחות", icon: BarChartIcon },
 ];
 
