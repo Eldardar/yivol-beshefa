@@ -49,20 +49,6 @@ export function CalendarIcon(props: IconProps) {
   );
 }
 
-export function CalendarDaysIcon(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <rect x="3.5" y="5" width="17" height="15.5" rx="2" />
-      <path d="M3.5 9.5h17" />
-      <path d="M8 3v3.5M16 3v3.5" />
-      <circle cx="8" cy="13.5" r="1.1" fill="currentColor" stroke="none" />
-      <circle cx="12" cy="13.5" r="1.1" fill="currentColor" stroke="none" />
-      <circle cx="16" cy="13.5" r="1.1" fill="currentColor" stroke="none" />
-      <circle cx="8" cy="17.3" r="1.1" fill="currentColor" stroke="none" />
-    </Svg>
-  );
-}
-
 export function ClipboardListIcon(props: IconProps) {
   return (
     <Svg {...props}>
