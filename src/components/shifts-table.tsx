@@ -7,7 +7,7 @@ import { AddShiftButton } from "./add-shift-button";
 import { EditShiftButton } from "./edit-shift-button";
 import { AssignPickersButton } from "./assign-pickers-button";
 import { AssignVehiclesButton } from "./assign-vehicles-button";
-import { ChevronDownIcon, TrashIcon } from "./icons";
+import { ChevronDownIcon, TrashIcon, AlertTriangleIcon } from "./icons";
 import type { Picker, FarmOption, PlantationFieldsByFarm } from "./shift-form";
 
 export type ShiftRow = { id: number; date: string; start_time: string; end_time: string; status: string; notes: string; farm_id: number; plantation_field_id: number; leader_id: number; leader: string; farm: string; fruit_type: string; picker_count: number; team_leader_details: string };
@@ -18,9 +18,23 @@ export type PickerIdsByShift = Record<number, number[]>;
 export type PickerHoursByShift = Record<number, Array<{ name: string; startTime: string | null; endTime: string | null }>>;
 export type VehiclesByShift = Record<number, Array<{ number: string; name: string }>>;
 export type VehicleIdsByShift = Record<number, number[]>;
+export type RatedUnitsByField = Record<number, Unit[]>;
 
 const STATUS_LABEL: Record<string, string> = { DRAFT: "טיוטה", PUBLISHED: "פורסמה", COMPLETED: "הושלמה", CANCELLED: "בוטלה" };
 const STATUS_TAG: Record<string, string> = { DRAFT: "warn", PUBLISHED: "", COMPLETED: "info", CANCELLED: "bad" };
+
+function unratedUnits(units: UnitInfo[], plantationFieldId: number, ratedUnitsByField: RatedUnitsByField): Unit[] {
+  const rated = ratedUnitsByField[plantationFieldId] ?? [];
+  return units.filter(u => u.goal > 0 && !rated.includes(u.unit)).map(u => u.unit);
+}
+
+function UnratedUnitsWarning({ units }: { units: Unit[] }) {
+  if (units.length === 0) return null;
+  const title = units.length === 1
+    ? "יש להגדיר תעריף ליחידה זו בעמוד ניהול חקלאים"
+    : "יש להגדיר תעריפים ליחידות אלו בעמוד ניהול חקלאים";
+  return <span className="warn-icon" title={title} aria-label={title} role="img"><AlertTriangleIcon size={18} /></span>;
+}
 
 export function ShiftsTable({
   shifts,
@@ -28,6 +42,7 @@ export function ShiftsTable({
   farms,
   plantationFieldsByFarm,
   unitsByShift,
+  ratedUnitsByField,
   pickerNamesByShift,
   pickerIdsByShift,
   pickerHoursByShift,
@@ -40,6 +55,7 @@ export function ShiftsTable({
   farms: FarmOption[];
   plantationFieldsByFarm: PlantationFieldsByFarm;
   unitsByShift: UnitsByShift;
+  ratedUnitsByField: RatedUnitsByField;
   pickerNamesByShift: PickerNamesByShift;
   pickerIdsByShift: PickerIdsByShift;
   pickerHoursByShift: PickerHoursByShift;
@@ -79,6 +95,7 @@ export function ShiftsTable({
         {filtered.map(row => {
           const isOpen = expanded === row.id;
           const units = unitsByShift[row.id] ?? [];
+          const unrated = unratedUnits(units, row.plantation_field_id, ratedUnitsByField);
           return (
             <article className="record-card" key={row.id}>
               <div className="record-card-head">
@@ -89,7 +106,10 @@ export function ShiftsTable({
                     <span>·</span>
                     <span>{row.leader}</span>
                   </div>
-                  <span className={`tag ${STATUS_TAG[row.status] ?? ""}`}>{STATUS_LABEL[row.status] ?? row.status}</span>
+                  <span className="actions-cell">
+                    <span className={`tag ${STATUS_TAG[row.status] ?? ""}`}>{STATUS_LABEL[row.status] ?? row.status}</span>
+                    <UnratedUnitsWarning units={unrated} />
+                  </span>
                 </div>
                 <button type="button" className={`expand-btn${isOpen ? " is-open" : ""}`} aria-expanded={isOpen} aria-label={isOpen ? "סגירת פרטי משמרת" : "פתיחת פרטי משמרת"} onClick={() => setExpanded(isOpen ? null : row.id)}>
                   <ChevronDownIcon size={20} />
@@ -118,6 +138,7 @@ export function ShiftsTable({
             {filtered.map(row => {
               const isOpen = expanded === row.id;
               const units = unitsByShift[row.id] ?? [];
+              const unrated = unratedUnits(units, row.plantation_field_id, ratedUnitsByField);
               return (
                 <Fragment key={row.id}>
                   <tr>
@@ -131,12 +152,15 @@ export function ShiftsTable({
                     <td>{row.farm} · {row.fruit_type}</td>
                     <td>{row.leader}</td>
                     <td>{row.picker_count}</td>
-                    <td>{units.length ? units.map((u, i) => (
-                      <span key={u.unit}>
-                        {i > 0 && " · "}
-                        <span dir="ltr" className="ltr-field">{u.produced}/{u.goal}</span> {UNIT_LABEL[u.unit]}
-                      </span>
-                    )) : "—"}</td>
+                    <td>
+                      {units.length ? units.map((u, i) => (
+                        <span key={u.unit}>
+                          {i > 0 && " · "}
+                          <span dir="ltr" className="ltr-field">{u.produced}/{u.goal}</span> {UNIT_LABEL[u.unit]}
+                        </span>
+                      )) : "—"}
+                      {unrated.length > 0 && <> <UnratedUnitsWarning units={unrated} /></>}
+                    </td>
                     <td><span className={`tag ${STATUS_TAG[row.status] ?? ""}`}>{STATUS_LABEL[row.status] ?? row.status}</span></td>
                     <td>
                       <div className="actions-cell">

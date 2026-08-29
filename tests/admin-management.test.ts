@@ -62,3 +62,22 @@ describe("עריכת משמרת",()=>{
   it("עריכה חומרית של משמרת שפורסמה מודיעה לקוטפים המושפעים",()=>{const x=setup();for(const id of [x.p1,x.p2])db.prepare("INSERT INTO availability(user_id,date,status) VALUES(?,?,?)").run(id,"2099-08-10","AVAILABLE");const scheduling=new SchedulingService(db);const shift=scheduling.createShift(x.admin,{date:"2099-08-10",startTime:"06:00",endTime:"12:00",plantationFieldId:x.field,pickerIds:[x.p1],leaderId:x.p1,vehicleIds:[],goals:[{unit:"KG",goal:10}],notes:""}).shiftId;db.prepare("UPDATE shifts SET status='PUBLISHED' WHERE id=?").run(shift);scheduling.updateShift(x.admin,shift,{date:"2099-08-10",startTime:"06:00",endTime:"12:00",plantationFieldId:x.field,pickerIds:[x.p2],leaderId:x.p2,vehicleIds:[],goals:[{unit:"KG",goal:20}],notes:"שינוי"});expect(db.prepare("SELECT count(*) count FROM notifications WHERE user_id IN (?,?)").get(x.p1,x.p2)).toEqual({count:2});});
   it("עריכת משמרת שפורסמה בעבר אינה מודיעה לקוטפים",()=>{const x=setup();const scheduling=new SchedulingService(db);const shift=scheduling.createShift(x.admin,{date:"2026-08-10",startTime:"06:00",endTime:"12:00",plantationFieldId:x.field,pickerIds:[x.p1],leaderId:x.p1,vehicleIds:[],goals:[{unit:"KG",goal:10}],notes:""}).shiftId;db.prepare("UPDATE shifts SET status='PUBLISHED' WHERE id=?").run(shift);scheduling.updateShift(x.admin,shift,{date:"2026-08-10",startTime:"06:00",endTime:"12:00",plantationFieldId:x.field,pickerIds:[x.p2],leaderId:x.p2,vehicleIds:[],goals:[{unit:"KG",goal:20}],notes:"שינוי"});expect(db.prepare("SELECT count(*) count FROM notifications WHERE user_id IN (?,?)").get(x.p1,x.p2)).toEqual({count:0});});
 });
+
+describe("תעריפי יחידות לחלקה",()=>{
+  it("מנהל שומר תעריפים, מחליף רשימה קודמת ורושם אירוע ביקורת",()=>{
+    const x=setup(); const service=new AdminService(db);
+    service.setFieldUnitRates(x.admin,x.field,{rates:[{unit:"KG",rateNis:2.5},{unit:"CRATE_SMALL",rateNis:15}]});
+    expect(service.listFieldUnitRates(x.field)).toEqual([{unit:"CRATE_SMALL",rateNis:15},{unit:"KG",rateNis:2.5}]);
+    expect(db.prepare("SELECT action FROM audit_events WHERE entity_type='FIELD_UNIT_RATES' AND entity_id=?").get(x.field)).toEqual({action:"UPDATE"});
+    service.setFieldUnitRates(x.admin,x.field,{rates:[{unit:"TON",rateNis:1000}]});
+    expect(service.listFieldUnitRates(x.field)).toEqual([{unit:"TON",rateNis:1000}]);
+  });
+  it("דוחה יחידה כפולה, סכום לא חיובי, מזהה מזויף ומשתמש שאינו מנהל",()=>{
+    const x=setup(); const service=new AdminService(db);
+    expect(()=>service.setFieldUnitRates(x.admin,x.field,{rates:[{unit:"KG",rateNis:1},{unit:"KG",rateNis:2}]})).toThrow();
+    expect(()=>service.setFieldUnitRates(x.admin,x.field,{rates:[{unit:"KG",rateNis:0}]})).toThrow();
+    expect(()=>service.setFieldUnitRates(x.admin,-1,{rates:[]})).toThrow("מזהה אינו תקין");
+    expect(()=>service.setFieldUnitRates(x.p1,x.field,{rates:[]})).toThrow("אין הרשאה");
+  });
+  it("דוחה חלקה שלא קיימת",()=>{const x=setup();const service=new AdminService(db);expect(()=>service.setFieldUnitRates(x.admin,999,{rates:[]})).toThrow("החלקה לא נמצאה");expect(()=>service.listFieldUnitRates(999)).toThrow("החלקה לא נמצאה");});
+});

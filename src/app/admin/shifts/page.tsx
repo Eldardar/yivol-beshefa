@@ -1,5 +1,5 @@
 import { AppShell } from "@/components/nav";
-import { ShiftsTable, type ShiftRow, type UnitsByShift, type PickerNamesByShift, type PickerIdsByShift, type PickerHoursByShift, type VehiclesByShift, type VehicleIdsByShift } from "@/components/shifts-table";
+import { ShiftsTable, type ShiftRow, type UnitsByShift, type PickerNamesByShift, type PickerIdsByShift, type PickerHoursByShift, type VehiclesByShift, type VehicleIdsByShift, type RatedUnitsByField } from "@/components/shifts-table";
 import type { Picker, FarmOption, PlantationFieldOption, PlantationFieldsByFarm } from "@/components/shift-form";
 import { csrfValue, db, requireAdmin } from "@/lib/server";
 import type { Unit } from "@/lib/units";
@@ -52,6 +52,10 @@ export default async function Shifts({ searchParams }: { searchParams: Promise<{
     (pickerHoursByShift[p.shift_id] ??= []).push({ name: p.name, startTime: p.start_time, endTime: p.end_time });
   }
 
+  const rateRows = database.prepare("SELECT field_id,unit FROM field_unit_rates").all() as Array<{ field_id: number; unit: Unit }>;
+  const ratedUnitsByField: RatedUnitsByField = {};
+  for (const r of rateRows) (ratedUnitsByField[r.field_id] ??= []).push(r.unit);
+
   const vehicleRows = database
     .prepare("SELECT sv.shift_id,v.id vehicle_id,v.number,v.name FROM shift_vehicles sv JOIN vehicles v ON v.id=sv.vehicle_id ORDER BY v.number")
     .all() as Array<{ shift_id: number; vehicle_id: number; number: string; name: string }>;
@@ -75,6 +79,7 @@ export default async function Shifts({ searchParams }: { searchParams: Promise<{
           farms={farms}
           plantationFieldsByFarm={plantationFieldsByFarm}
           unitsByShift={unitsByShift}
+          ratedUnitsByField={ratedUnitsByField}
           pickerNamesByShift={pickerNamesByShift}
           pickerIdsByShift={pickerIdsByShift}
           pickerHoursByShift={pickerHoursByShift}

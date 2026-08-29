@@ -4,6 +4,7 @@ import { AddFarmerButton } from "./add-farmer-button";
 import { EditFarmerButton } from "./edit-farmer-button";
 import { AddPlantationFieldButton } from "./add-plantation-field-button";
 import { EditPlantationFieldButton } from "./edit-plantation-field-button";
+import { FieldFinancialsButton } from "./field-financials-button";
 import { ActiveSwitch } from "./active-switch";
 import { ShowArchivedToggle } from "./show-archived-toggle";
 import { ChevronDownIcon } from "./icons";
@@ -141,6 +142,7 @@ function PlantationFieldsList({ fields, farmId, farmName, csrf, showArchived }: 
                   <td>
                     <div className="actions-cell">
                       <EditPlantationFieldButton csrf={csrf} farmId={farmId} field={f} />
+                      <FieldFinancialsButton csrf={csrf} field={f} />
                     </div>
                   </td>
                 </tr>

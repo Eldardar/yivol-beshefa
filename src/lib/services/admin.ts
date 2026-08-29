@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 import { generatePassword, hashPassword } from "@/lib/security";
-import { adminAvailabilityUpdateSchema } from "@/lib/schemas";
+import { adminAvailabilityUpdateSchema, fieldUnitRatesSchema } from "@/lib/schemas";
 import { pushToUsers } from "@/lib/push";
 
 export type ManagedEntity = "USER" | "FARM" | "PLANTATION_FIELD" | "VEHICLE";
@@ -76,5 +76,27 @@ export class AdminService {
       this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)").run(actorId,"UPDATE","AVAILABILITY",input.userId,JSON.stringify({dates:input.entries.map(e=>e.date)}));
     }).immediate();
     await pushToUsers(this.db,[{userId:input.userId,title,body}]);
+  }
+
+  listFieldUnitRates(fieldId:number):Array<{unit:string;rateNis:number}> {
+    if(!Number.isSafeInteger(fieldId)||fieldId<1) throw new Error("מזהה אינו תקין");
+    const field=this.db.prepare("SELECT id FROM plantation_fields WHERE id=?").get(fieldId);
+    if(!field) throw new Error("החלקה לא נמצאה");
+    return this.db.prepare("SELECT unit,rate_nis AS rateNis FROM field_unit_rates WHERE field_id=? ORDER BY unit").all(fieldId) as Array<{unit:string;rateNis:number}>;
+  }
+
+  setFieldUnitRates(actorId:number, fieldId:number, raw:unknown):void {
+    const input=fieldUnitRatesSchema.parse(raw);
+    const actor=this.db.prepare("SELECT role,active FROM users WHERE id=?").get(actorId) as {role:string;active:number}|undefined;
+    if(!actor?.active || actor.role!=="ADMIN") throw new Error("אין הרשאה");
+    if(!Number.isSafeInteger(fieldId)||fieldId<1) throw new Error("מזהה אינו תקין");
+    this.db.transaction(()=>{
+      const field=this.db.prepare("SELECT id FROM plantation_fields WHERE id=?").get(fieldId);
+      if(!field) throw new Error("החלקה לא נמצאה");
+      this.db.prepare("DELETE FROM field_unit_rates WHERE field_id=?").run(fieldId);
+      const insert=this.db.prepare("INSERT INTO field_unit_rates(field_id,unit,rate_nis) VALUES(?,?,?)");
+      for(const r of input.rates) insert.run(fieldId,r.unit,r.rateNis);
+      this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)").run(actorId,"UPDATE","FIELD_UNIT_RATES",fieldId,JSON.stringify({units:input.rates.map(r=>r.unit)}));
+    }).immediate();
   }
 }

@@ -73,3 +73,5 @@ export type ShiftInput = z.input<typeof shiftSchema>;
 export const farmSchema=z.object({name:text(150),contactPerson:text(150),phone:text(30),address:text(300),navigationUrl:z.union([z.literal(""),z.string().url().refine(v=>/^https?:/.test(v))]).default(""),notes:z.string().trim().max(2000).default("")}).strict();
 export const plantationFieldSchema=z.object({farmId:id,name:text(150),fruitType:text(150),fruitSubtype:text(150),size:z.union([z.literal(""),z.coerce.number().positive()]).optional().default("").transform(v=>v===""?null:v),location:z.string().trim().max(300).default(""),details:z.string().trim().max(2000).default("")}).strict();
 export const vehicleSchema=z.object({number:text(50),name:text(150),notes:z.string().trim().max(2000).default("")}).strict();
+const fieldUnitRateSchema=z.object({unit:unitSchema,rateNis:z.coerce.number().finite().positive()}).strict();
+export const fieldUnitRatesSchema=z.object({rates:z.array(fieldUnitRateSchema).refine(items=>new Set(items.map(x=>x.unit)).size===items.length,"כל יחידת מידה יכולה להופיע פעם אחת")}).strict();

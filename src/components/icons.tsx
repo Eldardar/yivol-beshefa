@@ -212,6 +212,25 @@ export function PlusIcon(props: IconProps) {
   );
 }
 
+export function DollarIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 3v18" />
+      <path d="M16.5 7.8c0-1.8-2-3.3-4.5-3.3s-4.5 1.3-4.5 3c0 1.9 1.8 2.6 4.5 3.4s4.5 1.5 4.5 3.4c0 1.7-2 3-4.5 3s-4.5-1.5-4.5-3.3" />
+    </Svg>
+  );
+}
+
+export function AlertTriangleIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 3.5 21.5 20h-19L12 3.5Z" />
+      <path d="M12 9.5v4.2" />
+      <path d="M12 16.8v.1" />
+    </Svg>
+  );
+}
+
 export function KeyIcon(props: IconProps) {
   return (
     <Svg {...props}>
