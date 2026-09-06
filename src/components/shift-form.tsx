@@ -1,8 +1,10 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { UnitLines } from "./unit-lines";
+import { Modal } from "./modal";
 import type { Unit } from "@/lib/units";
 
+const LEADER_CONFLICT_MARKER = "שיבוץ כפול למוביל המשמרת";
 const LEADER_ERRORS = ["קוטף אינו זמין", "שיבוץ כפול", "קוטף אינו פעיל"];
 const FIELD_ERRORS = ["חלקת הגידול אינה פעילה"];
 
@@ -48,6 +50,7 @@ export function ShiftForm({
   const [fieldId, setFieldId] = useState(shift ? String(shift.plantation_field_id) : "");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [leaderConflict, setLeaderConflict] = useState<{ message: string; formData: FormData } | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -62,15 +65,18 @@ export function ShiftForm({
 
   const fields = farmId ? (plantationFieldsByFarm[Number(farmId)] ?? []) : [];
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  async function submitForm(formData: FormData) {
     setBusy(true);
     setError("");
     try {
-      const res = await fetch("/api/actions", { method: "POST", body: new FormData(e.currentTarget) });
+      const res = await fetch("/api/actions", { method: "POST", body: formData });
       const url = new URL(res.url);
       const message = url.searchParams.get("error");
       if (message) {
+        if (message.includes(LEADER_CONFLICT_MARKER)) {
+          setLeaderConflict({ message, formData });
+          return;
+        }
         setError(message);
         if (LEADER_ERRORS.some(m => message.includes(m))) setLeaderId("");
         if (FIELD_ERRORS.some(m => message.includes(m))) { setFarmId(""); setFieldId(""); }
@@ -82,6 +88,19 @@ export function ShiftForm({
     } finally {
       setBusy(false);
     }
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    await submitForm(new FormData(e.currentTarget));
+  }
+
+  function confirmLeaderConflict() {
+    if (!leaderConflict) return;
+    leaderConflict.formData.set("overrideLeaderConflict", "1");
+    const formData = leaderConflict.formData;
+    setLeaderConflict(null);
+    void submitForm(formData);
   }
 
   return (
@@ -126,6 +145,18 @@ export function ShiftForm({
       <div className="actions">
         <button className="btn" disabled={busy}>{busy ? "שומר…" : shift ? "שמירת שינויים" : "יצירת טיוטה"}</button>
       </div>
+      {leaderConflict && (
+        <Modal title="שיבוץ כפול למוביל המשמרת" onClose={() => setLeaderConflict(null)}>
+          <div className="stack">
+            <p role="alert">{leaderConflict.message}</p>
+            <p>ליצור את המשמרת בכל זאת?</p>
+            <div className="actions">
+              <button type="button" className="btn" disabled={busy} onClick={confirmLeaderConflict}>{busy ? "שומר…" : shift ? "שמירה בכל זאת" : "יצירה בכל זאת"}</button>
+              <button type="button" className="btn secondary" disabled={busy} onClick={() => setLeaderConflict(null)}>ביטול</button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </form>
   );
 }

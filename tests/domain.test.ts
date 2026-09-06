@@ -42,4 +42,11 @@ describe("כללי שיבוץ", () => {
     expect(() => service.createShift(x.admin,{date:"2099-08-10",startTime:"06:00",endTime:"12:00",plantationFieldId:x.field,pickerIds:[x.p1],leaderId:x.p1,vehicleIds:[],goals:[{unit:"KG",goal:1}],notes:""})).toThrow("שיבוץ כפול");
     expect(() => service.createShift(x.admin,{date:"2099-08-10",startTime:"06:00",endTime:"12:00",plantationFieldId:x.field,pickerIds:[x.p2],leaderId:x.p2,vehicleIds:[x.vehicle],goals:[{unit:"KG",goal:1}],notes:""})).toThrow("רכב כבר משובץ");
   });
+  it("מאפשר לעקוף שיבוץ כפול של מוביל המשמרת עם אזהרה", () => {
+    const x=setup(); const service=new SchedulingService(db);
+    service.createShift(x.admin,{date:"2099-08-10",startTime:"06:00",endTime:"12:00",plantationFieldId:x.field,pickerIds:[x.p1],leaderId:x.p1,vehicleIds:[],goals:[{unit:"KG",goal:1}],notes:""});
+    expect(() => service.createShift(x.admin,{date:"2099-08-10",startTime:"06:00",endTime:"12:00",plantationFieldId:x.field,pickerIds:[x.p1,x.p2],leaderId:x.p1,vehicleIds:[],goals:[{unit:"KG",goal:1}],notes:""})).toThrow("שיבוץ כפול למוביל המשמרת");
+    const result=service.createShift(x.admin,{date:"2099-08-10",startTime:"06:00",endTime:"12:00",plantationFieldId:x.field,pickerIds:[x.p1,x.p2],leaderId:x.p1,vehicleIds:[],goals:[{unit:"KG",goal:1}],notes:""},{allowLeaderConflict:true});
+    expect(result.warnings.some(w=>w.includes("מוביל המשמרת"))).toBe(true);
+  });
 });
