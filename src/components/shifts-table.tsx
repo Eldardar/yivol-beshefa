@@ -44,6 +44,25 @@ function pickerEarnings(quantities: Array<{ unit: Unit; quantity: number }>, rat
   return rated ? total : null;
 }
 
+function totalsByUnit(pickerHours: Array<{ quantities: Array<{ unit: Unit; quantity: number }> }>): Array<{ unit: Unit; quantity: number }> {
+  const totals = new Map<Unit, number>();
+  for (const p of pickerHours) {
+    for (const q of p.quantities) totals.set(q.unit, (totals.get(q.unit) ?? 0) + q.quantity);
+  }
+  return Array.from(totals, ([unit, quantity]) => ({ unit, quantity }));
+}
+
+function totalEarnings(pickerHours: Array<{ quantities: Array<{ unit: Unit; quantity: number }> }>, rates: Partial<Record<Unit, number>>): number {
+  let total = 0;
+  for (const p of pickerHours) {
+    for (const q of p.quantities) {
+      const rate = rates[q.unit];
+      if (rate != null) total += q.quantity * rate;
+    }
+  }
+  return total;
+}
+
 const STATUS_LABEL: Record<string, string> = { DRAFT: "טיוטה", PUBLISHED: "פורסמה", COMPLETED: "הושלמה", CANCELLED: "בוטלה" };
 const STATUS_TAG: Record<string, string> = { DRAFT: "warn", PUBLISHED: "", COMPLETED: "info", CANCELLED: "bad" };
 
@@ -290,29 +309,51 @@ function ShiftDetails({ units, pickerNames, pickerHours, unitRates, vehicles, no
                 <tr><th>#</th><th>שם</th><th>שעות</th><th>כמות תוצרת</th><th>ש"ח לשעה</th><th>סה"כ הכנסה</th></tr>
               </thead>
               <tbody>
-                {pickerHours.map((p, i) => {
-                  const hours = hoursBetween(p.startTime, p.endTime);
-                  const earnings = pickerEarnings(p.quantities, unitRates);
-                  const perHour = earnings != null && hours ? earnings / hours : null;
-                  return (
-                    <tr key={`${p.name}-${i}`}>
-                      <td>{i + 1}</td>
-                      <td>{p.name}</td>
-                      <td>{p.startTime && p.endTime ? <span dir="ltr" className="ltr-field">{p.startTime}–{p.endTime}</span> : <span className="muted">טרם דווח</span>}</td>
-                      <td>
-                        {p.quantities.length === 0 ? "—" : p.quantities.map((q, qi) => (
-                          <span key={q.unit}>
-                            {qi > 0 && " · "}
-                            <span dir="ltr" className="ltr-field">{q.quantity}</span> {UNIT_LABEL[q.unit]}
-                          </span>
-                        ))}
-                      </td>
-                      <td>{perHour != null ? formatMoney(perHour) : "—"}</td>
-                      <td>{earnings != null ? formatMoney(earnings) : "—"}</td>
-                    </tr>
-                  );
-                })}
+                {(() => {
+                  const maxEarnings = pickerHours.reduce((max, p) => {
+                    const e = pickerEarnings(p.quantities, unitRates);
+                    return e != null && e > max ? e : max;
+                  }, 0);
+                  return pickerHours.map((p, i) => {
+                    const hours = hoursBetween(p.startTime, p.endTime);
+                    const earnings = pickerEarnings(p.quantities, unitRates);
+                    const perHour = earnings != null && hours ? earnings / hours : null;
+                    const isTopEarner = earnings != null && earnings > 0 && earnings === maxEarnings;
+                    return (
+                      <tr key={`${p.name}-${i}`}>
+                        <td>{i + 1}</td>
+                        <td>{p.name}</td>
+                        <td>{p.startTime && p.endTime ? <span dir="ltr" className="ltr-field">{p.startTime}–{p.endTime}</span> : <span className="muted">טרם דווח</span>}</td>
+                        <td>
+                          {p.quantities.length === 0 ? "—" : p.quantities.map((q, qi) => (
+                            <span key={q.unit}>
+                              {qi > 0 && " · "}
+                              <span dir="ltr" className="ltr-field">{q.quantity}</span> {UNIT_LABEL[q.unit]}
+                            </span>
+                          ))}
+                        </td>
+                        <td>{perHour != null ? formatMoney(perHour) : "—"}</td>
+                        <td>{earnings != null ? formatMoney(earnings) : "—"}{isTopEarner && <span title="הכנסה גבוהה ביותר במשמרת" aria-label="הכנסה גבוהה ביותר במשמרת"> 👑</span>}</td>
+                      </tr>
+                    );
+                  });
+                })()}
               </tbody>
+              <tfoot>
+                <tr className="totals-row">
+                  <td colSpan={3}>סה&quot;כ</td>
+                  <td>
+                    {totalsByUnit(pickerHours).length === 0 ? "—" : totalsByUnit(pickerHours).map((t, i) => (
+                      <span key={t.unit}>
+                        {i > 0 && " · "}
+                        <span dir="ltr" className="ltr-field">{t.quantity}</span> {UNIT_LABEL[t.unit]}
+                      </span>
+                    ))}
+                  </td>
+                  <td></td>
+                  <td>{formatMoney(totalEarnings(pickerHours, unitRates))}</td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         )}

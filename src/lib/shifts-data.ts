@@ -13,6 +13,7 @@ import type {
   UnitRatesByField,
 } from "@/components/shifts-table";
 import type { Unit } from "@/lib/units";
+import type { EmployeeShiftRow, ShiftsByWorker } from "@/components/employee-performance-report";
 
 export type ShiftsPageData = {
   pickers: Picker[];
@@ -97,4 +98,38 @@ export function loadShiftsPageData(database: Database.Database, opts: { dateFrom
   }
 
   return { pickers, farms, plantationFieldsByFarm, shifts, unitsByShift, ratedUnitsByField, unitRatesByField, pickerNamesByShift, pickerIdsByShift, pickerHoursByShift, vehiclesByShift, vehicleIdsByShift };
+}
+
+export function getRecentShiftsByWorker(database: Database.Database, today: string, limit = 7): ShiftsByWorker {
+  const rows = database
+    .prepare(
+      `SELECT user_id,id,date,start_time,end_time,actual_start,actual_end,plantation_field_id,farm,fruit_type,leader,status FROM (
+         SELECT sp.user_id user_id, s.id id, s.date date, s.start_time start_time, s.end_time end_time,
+                sh.start_time actual_start, sh.end_time actual_end,
+                s.plantation_field_id plantation_field_id, f.name farm, pf.fruit_type fruit_type, u.name leader, s.status status,
+                ROW_NUMBER() OVER (PARTITION BY sp.user_id ORDER BY s.date DESC, s.start_time DESC) rn
+         FROM shift_pickers sp
+         JOIN shifts s ON s.id = sp.shift_id
+         JOIN plantation_fields pf ON pf.id = s.plantation_field_id
+         JOIN farms f ON f.id = pf.farm_id
+         JOIN users u ON u.id = s.leader_id
+         LEFT JOIN shift_hours sh ON sh.shift_id = s.id AND sh.user_id = sp.user_id
+         WHERE s.status IN ('PUBLISHED','COMPLETED') AND (s.date < ? OR s.status = 'COMPLETED')
+       ) ranked WHERE rn <= ?
+       ORDER BY user_id, date DESC, start_time DESC`
+    )
+    .all(today, limit) as Array<EmployeeShiftRow & { user_id: number }>;
+
+  const quantityRows = database.prepare("SELECT shift_id,user_id,unit,quantity FROM quantities").all() as Array<{ shift_id: number; user_id: number; unit: Unit; quantity: number }>;
+  const quantitiesByShiftUser = new Map<string, Array<{ unit: Unit; quantity: number }>>();
+  for (const q of quantityRows) {
+    const key = `${q.shift_id}_${q.user_id}`;
+    (quantitiesByShiftUser.get(key) ?? quantitiesByShiftUser.set(key, []).get(key)!).push({ unit: q.unit, quantity: q.quantity });
+  }
+
+  const shiftsByWorker: ShiftsByWorker = {};
+  for (const { user_id, ...row } of rows) {
+    (shiftsByWorker[user_id] ??= []).push({ ...row, quantities: quantitiesByShiftUser.get(`${row.id}_${user_id}`) ?? [] });
+  }
+  return shiftsByWorker;
 }

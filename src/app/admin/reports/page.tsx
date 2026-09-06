@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { AppShell } from "@/components/nav";
+import { ReportsTabs } from "@/components/reports-tabs";
 import { ShiftsTable } from "@/components/shifts-table";
 import { csrfValue, db, requireAdmin } from "@/lib/server";
 import { loadShiftsPageData } from "@/lib/shifts-data";
@@ -11,7 +11,6 @@ export const dynamic = "force-dynamic";
 const PERIODS = ["daily", "weekly", "monthly"] as const;
 type Period = (typeof PERIODS)[number];
 
-const PERIOD_LABELS: Record<Period, string> = { daily: "יומי", weekly: "שבועי", monthly: "חודשי" };
 const WORKED_SUFFIX: Record<Period, string> = { daily: "היום", weekly: "השבוע", monthly: "החודש" };
 const monthYearFormatter = new Intl.DateTimeFormat("he-IL", { timeZone: "Asia/Jerusalem", month: "long", year: "numeric" });
 
@@ -60,19 +59,7 @@ export default async function Reports({ searchParams }: { searchParams: Promise<
   return (
     <AppShell user={user}>
       <h1>דוחות</h1>
-      <div className="tabs" role="tablist">
-        {PERIODS.map(p => (
-          <Link
-            key={p}
-            href={`/admin/reports?period=${p}`}
-            role="tab"
-            aria-selected={p === period}
-            className={`tab${p === period ? " is-active" : ""}`}
-          >
-            {PERIOD_LABELS[p]}
-          </Link>
-        ))}
-      </div>
+      <ReportsTabs active={period} />
       <h2>{periodTitle(period, range, today)}</h2>
       <div className="kpi-grid">
         <article className="kpi-card">
