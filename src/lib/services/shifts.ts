@@ -64,6 +64,25 @@ export class ShiftService{
    this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)").run(actorId,"REPORT_UPDATE","SHIFT",shiftId,JSON.stringify({count:entries.length}));
   })();
  }
+ reportOwnQuantities(actorId:number,shiftId:number,entries:Array<{quantity:number;unit:Unit}>,hours?:{startTime:string;endTime:string}):void{
+  const actor=this.actor(actorId);const shift=this.db.prepare("SELECT status FROM shifts WHERE id=?").get(shiftId) as {status:string}|undefined;
+  if(!actor?.active||!shift)throw new Error("אין הרשאה");if(shift.status!=="PUBLISHED")throw new Error("מצב המשמרת אינו מאפשר דיווח");
+  const assigned=this.db.prepare("SELECT 1 FROM shift_pickers WHERE shift_id=? AND user_id=?").get(shiftId,actorId);
+  if(!assigned)throw new Error("אינך משובץ למשמרת זו");
+  if(entries.length===0)throw new Error("יש להזין לפחות שורת דיווח אחת");
+  const units=new Set<Unit>();
+  for(const entry of entries){
+   if(!Number.isFinite(entry.quantity)||entry.quantity<0||entry.quantity>1_000_000)throw new Error("כמות אינה תקינה");
+   if(units.has(entry.unit))throw new Error("יחידת מידה כפולה");units.add(entry.unit);
+  }
+  this.db.transaction(()=>{
+   this.db.prepare("DELETE FROM quantities WHERE shift_id=? AND user_id=?").run(shiftId,actorId);
+   const insert=this.db.prepare("INSERT INTO quantities(shift_id,user_id,quantity,unit,updated_by) VALUES(?,?,?,?,?)");for(const entry of entries)insert.run(shiftId,actorId,entry.quantity,entry.unit,actorId);
+   if(hours)this.db.prepare("INSERT INTO shift_hours(shift_id,user_id,start_time,end_time,updated_by,updated_at) VALUES(?,?,?,?,?,CURRENT_TIMESTAMP) ON CONFLICT(shift_id,user_id) DO UPDATE SET start_time=excluded.start_time,end_time=excluded.end_time,updated_by=excluded.updated_by,updated_at=CURRENT_TIMESTAMP").run(shiftId,actorId,hours.startTime,hours.endTime,actorId);
+   this.db.prepare("DELETE FROM shift_report_reminders WHERE shift_id=? AND user_id=?").run(shiftId,actorId);
+   this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)").run(actorId,"SELF_REPORT","SHIFT",shiftId,JSON.stringify({count:entries.length}));
+  })();
+ }
  totals(actorId:number,shiftId:number):Array<{unit:Unit;produced:number;goal:number}>{
   const actor=this.actor(actorId);const shift=this.db.prepare("SELECT leader_id,status FROM shifts WHERE id=?").get(shiftId) as {leader_id:number;status:string}|undefined;if(!actor?.active||!shift||!["PUBLISHED","COMPLETED"].includes(shift.status)||(actor.role!=="ADMIN"&&shift.leader_id!==actorId))throw new Error("אין הרשאה");
   const produced=this.db.prepare("SELECT unit,SUM(quantity) produced FROM quantities WHERE shift_id=? GROUP BY unit").all(shiftId) as Array<{unit:Unit;produced:number}>;

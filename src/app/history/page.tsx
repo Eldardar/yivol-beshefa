@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AppShell } from "@/components/nav";
 import { db, requireUser } from "@/lib/server";
 import { formatHebrewDate, jerusalemDate } from "@/lib/dates";
@@ -8,9 +9,10 @@ export const dynamic = "force-dynamic";
 const STATUS_LABEL: Record<string, string> = { DRAFT: "טיוטה", PUBLISHED: "פורסמה", COMPLETED: "הושלמה", CANCELLED: "בוטלה" };
 type HistoryRow = { id: number; date: string; status: string; farm: string; crop: string; start_time: string | null; end_time: string | null };
 
-export default async function History() {
+export default async function History({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string }> }) {
   const user = await requireUser();
   if (user.role !== "PICKER") return null;
+  const { saved, error } = await searchParams;
 
   const rows = db()
     .prepare(
@@ -38,17 +40,19 @@ export default async function History() {
   return (
     <AppShell user={user}>
       <h1>היסטוריה וכמויות</h1>
+      {saved && <p className="alert" role="status">הדיווח נשמר</p>}
+      {error && <p className="alert" role="alert">{error}</p>}
 
       <div className="table-wrap card">
         <table className="table">
-          <thead><tr><th>תאריך</th><th>חקלאי</th><th>גידול</th><th>מצב</th><th>שעות</th><th>כמות</th></tr></thead>
+          <thead><tr><th>תאריך</th><th></th><th>חקלאי</th><th>גידול</th><th>שעות</th><th>כמות</th></tr></thead>
           <tbody>
             {rows.map(x => (
               <tr key={x.id}>
                 <td>{formatHebrewDate(x.date)}</td>
+                <td>{x.status === "PUBLISHED" ? <Link className="btn secondary btn-sm" href={`/report/${x.id}`}>דיווח תוצאות</Link> : <span className={`tag${x.status === "CANCELLED" ? " bad" : ""}`}>{STATUS_LABEL[x.status]}</span>}</td>
                 <td>{x.farm}</td>
                 <td>{x.crop}</td>
-                <td><span className={`tag${x.status === "CANCELLED" ? " bad" : ""}`}>{STATUS_LABEL[x.status]}</span></td>
                 <td><span dir="ltr" className="ltr-field">{hoursText(x)}</span></td>
                 <td>{quantityText(x.id)}</td>
               </tr>

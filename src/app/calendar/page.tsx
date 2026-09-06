@@ -40,7 +40,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
     .prepare(
       `SELECT s.id,s.date,s.start_time,s.end_time,s.notes,u.name leader,f.name farm,f.address,f.navigation_link,pf.fruit_type,pf.fruit_subtype
        FROM shifts s JOIN users u ON u.id=s.leader_id JOIN plantation_fields pf ON pf.id=s.plantation_field_id JOIN farms f ON f.id=pf.farm_id
-       WHERE s.status='PUBLISHED' AND s.date>=? AND s.date<?
+       WHERE s.status IN ('PUBLISHED','COMPLETED') AND s.date>=? AND s.date<?
        ORDER BY s.date,s.start_time`
     )
     .all(monthStart, monthEnd) as ShiftRow[];

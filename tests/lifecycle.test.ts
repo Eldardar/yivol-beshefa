@@ -70,3 +70,33 @@ describe("מחזור משמרת ודיווח", () => {
     expect(db.prepare("SELECT start_time,end_time,updated_by FROM shift_hours WHERE shift_id=? AND user_id=?").get(x.shift,x.p2)).toEqual({start_time:"06:00",end_time:"11:00",updated_by:x.p1});
   });
 });
+
+describe("דיווח תוצאות עצמי של קוטף", () => {
+  it("חוסם דיווח עצמי במשמרת שאינה פורסמה",()=>{const x=setup();expect(()=>new ShiftService(db).reportOwnQuantities(x.p2,x.shift,[{quantity:1,unit:"KG"}])).toThrow("מצב המשמרת");});
+  it("חוסם דיווח עצמי לקוטף שאינו משובץ למשמרת",()=>{
+    const x=setup();db.prepare("UPDATE shifts SET status='PUBLISHED' WHERE id=?").run(x.shift);
+    const outsider=Number(db.prepare("INSERT INTO users(name,email,phone,role,password_hash) VALUES(?,?,?,?,?)").run("זר","outsider@example.com","0500000004","PICKER","x").lastInsertRowid);
+    expect(()=>new ShiftService(db).reportOwnQuantities(outsider,x.shift,[{quantity:1,unit:"KG"}])).toThrow("אינך משובץ");
+  });
+  it("מאפשר לקוטף לדווח על התוצאות שלו בלבד ולעדכן אותן",()=>{
+    const x=setup();const service=new ShiftService(db);db.prepare("UPDATE shifts SET status='PUBLISHED' WHERE id=?").run(x.shift);
+    service.reportOwnQuantities(x.p2,x.shift,[{quantity:4.5,unit:"KG"}]);
+    expect(db.prepare("SELECT quantity,unit,updated_by FROM quantities WHERE shift_id=? AND user_id=?").get(x.shift,x.p2)).toEqual({quantity:4.5,unit:"KG",updated_by:x.p2});
+    expect(db.prepare("SELECT count(*) count FROM quantities WHERE shift_id=?").get(x.shift)).toEqual({count:1});
+    service.reportOwnQuantities(x.p2,x.shift,[{quantity:6,unit:"KG"},{quantity:1,unit:"CRATE_LARGE"}]);
+    expect(db.prepare("SELECT count(*) count FROM quantities WHERE shift_id=? AND user_id=?").get(x.shift,x.p2)).toEqual({count:2});
+  });
+  it("חוסם כמות שלילית או יחידת מידה כפולה בדיווח עצמי",()=>{
+    const x=setup();const service=new ShiftService(db);db.prepare("UPDATE shifts SET status='PUBLISHED' WHERE id=?").run(x.shift);
+    expect(()=>service.reportOwnQuantities(x.p2,x.shift,[{quantity:-1,unit:"KG"}])).toThrow("כמות");
+    expect(()=>service.reportOwnQuantities(x.p2,x.shift,[{quantity:1,unit:"KG"},{quantity:2,unit:"KG"}])).toThrow("יחידת מידה כפולה");
+  });
+  it("מאפשר לקוטף לעדכן את שעות המשמרת בפועל שלו בעצמו",()=>{
+    const x=setup();const service=new ShiftService(db);db.prepare("UPDATE shifts SET status='PUBLISHED' WHERE id=?").run(x.shift);
+    service.reportOwnQuantities(x.p2,x.shift,[{quantity:1,unit:"KG"}],{startTime:"06:15",endTime:"10:45"});
+    expect(db.prepare("SELECT start_time,end_time,updated_by FROM shift_hours WHERE shift_id=? AND user_id=?").get(x.shift,x.p2)).toEqual({start_time:"06:15",end_time:"10:45",updated_by:x.p2});
+    service.reportOwnQuantities(x.p2,x.shift,[{quantity:2,unit:"KG"}],{startTime:"06:00",endTime:"11:00"});
+    expect(db.prepare("SELECT start_time,end_time FROM shift_hours WHERE shift_id=? AND user_id=?").get(x.shift,x.p2)).toEqual({start_time:"06:00",end_time:"11:00"});
+    expect(db.prepare("SELECT count(*) count FROM shift_hours WHERE shift_id=?").get(x.shift)).toEqual({count:1});
+  });
+});

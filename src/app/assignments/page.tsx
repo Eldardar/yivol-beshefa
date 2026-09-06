@@ -44,6 +44,7 @@ export default async function Assignments() {
                   ? <Link className="btn" href={`/leader/${x.id}`}>דיווח כמויות</Link>
                   : <span className="btn" aria-disabled="true" title="הדיווח ייפתח ביום המשמרת">דיווח כמויות</span>
               )}
+              {x.date <= today && <Link className="btn secondary" href={`/report/${x.id}`}>דיווח תוצאות אישי</Link>}
             </div>
           </article>
         ))}

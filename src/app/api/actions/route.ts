@@ -22,6 +22,7 @@ function destination(action:string,form:FormData):string {
   if(action.startsWith("vehicle"))return "/admin/transport?saved=1";
   if(action.startsWith("farm")||action.startsWith("plantationField"))return "/admin/resources?saved=1";
   if(action.startsWith("shift")||action==="quantities")return "/admin/shifts?saved=1";
+  if(action==="selfReport")return "/history?saved=1";
   if(action==="readNotification"||action==="readAllNotifications")return "/notifications";
   return "/";
 }
@@ -96,6 +97,12 @@ export async function POST(req:Request){
       const hours=[...hourUserIds].filter(uid=>form.get(`hoursStart_${uid}`)&&form.get(`hoursEnd_${uid}`)).map(uid=>workerHoursSchema.parse({userId:uid,startTime:form.get(`hoursStart_${uid}`),endTime:form.get(`hoursEnd_${uid}`)}));
       const report=shiftReportSchema.parse({teamLeaderDetails:form.get("teamLeaderDetails")??""});
       new ShiftService(database).saveQuantities(user.id,shiftId,entries,report,hours);
+    }else if(action==="selfReport"){
+      const shiftId=positiveId.parse(form.get("shiftId"));
+      const qtys=form.getAll("qty");const units=form.getAll("unit");
+      const entries=qtys.map((qty,i)=>({quantity:z.coerce.number().finite().nonnegative().max(1_000_000).parse(qty),unit:unitSchema.parse(units[i])}));
+      const hours=form.get("hoursStart")&&form.get("hoursEnd")?workerHoursSchema.parse({userId:user.id,startTime:form.get("hoursStart"),endTime:form.get("hoursEnd")}):undefined;
+      new ShiftService(database).reportOwnQuantities(user.id,shiftId,entries,hours);
     }else if(action==="readNotification"){
       new PickerService(database).markRead(user.id,positiveId.parse(form.get("notificationId")));
     }else if(action==="readAllNotifications"){
