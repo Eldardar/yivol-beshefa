@@ -44,7 +44,11 @@ export default async function Reports({ searchParams }: { searchParams: Promise<
   const data = loadShiftsPageData(database, { dateFrom: range.start, dateTo: range.end });
 
   const { workerCount } = database
-    .prepare("SELECT COUNT(DISTINCT sp.user_id) workerCount FROM shift_pickers sp JOIN shifts s ON s.id=sp.shift_id WHERE s.date>=? AND s.date<?")
+    .prepare(
+      `SELECT COUNT(DISTINCT sp.user_id) workerCount
+       FROM shift_pickers sp JOIN shifts s ON s.id=sp.shift_id
+       WHERE s.date>=? AND s.date<? AND s.status IN ('PUBLISHED','COMPLETED')`
+    )
     .get(range.start, range.end) as { workerCount: number };
 
   const { total } = database
@@ -52,7 +56,7 @@ export default async function Reports({ searchParams }: { searchParams: Promise<
       `SELECT COALESCE(SUM(q.quantity*r.rate_nis),0) total
        FROM quantities q JOIN shifts s ON s.id=q.shift_id
        JOIN field_unit_rates r ON r.field_id=s.plantation_field_id AND r.unit=q.unit
-       WHERE s.date>=? AND s.date<?`
+       WHERE s.date>=? AND s.date<? AND s.status IN ('PUBLISHED','COMPLETED')`
     )
     .get(range.start, range.end) as { total: number };
 
@@ -72,7 +76,7 @@ export default async function Reports({ searchParams }: { searchParams: Promise<
         </article>
       </div>
       <section className="card">
-        <ShiftsTable {...data} csrf={csrf} />
+        <ShiftsTable {...data} csrf={csrf} readOnly />
       </section>
     </AppShell>
   );

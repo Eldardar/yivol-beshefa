@@ -92,7 +92,8 @@ export function ShiftsTable({
   pickerHoursByShift,
   vehiclesByShift,
   vehicleIdsByShift,
-  csrf
+  csrf,
+  readOnly = false
 }: {
   shifts: ShiftRow[];
   pickers: Picker[];
@@ -107,6 +108,7 @@ export function ShiftsTable({
   vehiclesByShift: VehiclesByShift;
   vehicleIdsByShift: VehicleIdsByShift;
   csrf: string;
+  readOnly?: boolean;
 }) {
   const [expanded, setExpanded] = useState<number | null>(null);
   const [search, setSearch] = useState("");
@@ -121,17 +123,19 @@ export function ShiftsTable({
 
   return (
     <div className="stack">
-      <div className="table-toolbar">
-        <input className="input search-input" type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="חיפוש לפי חקלאי, גידול או מוביל משמרת" aria-label="חיפוש משמרות" />
-        <label className="switch-row">
-          <span className="switch">
-            <input type="checkbox" checked={showCancelled} onChange={e => setShowCancelled(e.target.checked)} />
-            <span className="switch-track" aria-hidden="true" />
-          </span>
-          <span>הצג משמרות מבוטלות</span>
-        </label>
-        <AddShiftButton csrf={csrf} pickers={pickers} farms={farms} plantationFieldsByFarm={plantationFieldsByFarm} />
-      </div>
+      {!readOnly && (
+        <div className="table-toolbar">
+          <input className="input search-input" type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="חיפוש לפי חקלאי, גידול או מוביל משמרת" aria-label="חיפוש משמרות" />
+          <label className="switch-row">
+            <span className="switch">
+              <input type="checkbox" checked={showCancelled} onChange={e => setShowCancelled(e.target.checked)} />
+              <span className="switch-track" aria-hidden="true" />
+            </span>
+            <span>הצג משמרות מבוטלות</span>
+          </label>
+          <AddShiftButton csrf={csrf} pickers={pickers} farms={farms} plantationFieldsByFarm={plantationFieldsByFarm} />
+        </div>
+      )}
 
       {filtered.length === 0 && <p className="muted">לא נמצאו משמרות</p>}
 
@@ -160,9 +164,15 @@ export function ShiftsTable({
                   <ChevronDownIcon size={28} />
                 </button>
               </div>
-              <div className="record-card-actions">
-                <RowActions row={row} csrf={csrf} pickers={pickers} farms={farms} plantationFieldsByFarm={plantationFieldsByFarm} pickerIdsByShift={pickerIdsByShift} vehicleIdsByShift={vehicleIdsByShift} unitsByShift={unitsByShift} />
-              </div>
+              {readOnly ? (
+                <div className="record-card-actions">
+                  <span className="record-card-total">{formatMoney(totalEarnings(pickerHoursByShift[row.id] ?? [], unitRatesByField[row.plantation_field_id] ?? {}))}</span>
+                </div>
+              ) : (
+                <div className="record-card-actions">
+                  <RowActions row={row} csrf={csrf} pickers={pickers} farms={farms} plantationFieldsByFarm={plantationFieldsByFarm} pickerIdsByShift={pickerIdsByShift} vehicleIdsByShift={vehicleIdsByShift} unitsByShift={unitsByShift} />
+                </div>
+              )}
               {isOpen && (
                 <div className="record-card-details">
                   <ShiftDetails units={units} pickerNames={pickerNamesByShift[row.id] ?? []} pickerHours={pickerHoursByShift[row.id] ?? []} unitRates={unitRatesByField[row.plantation_field_id] ?? {}} vehicles={vehiclesByShift[row.id] ?? []} notes={row.notes} plannedStart={row.start_time} plannedEnd={row.end_time} teamLeaderDetails={row.team_leader_details} />
@@ -177,7 +187,7 @@ export function ShiftsTable({
       <div className="table-wrap desktop-only">
         <table className="table">
           <thead>
-            <tr><th aria-hidden="true"></th><th>תאריך</th><th>שעות</th><th>חקלאי וגידול</th><th>מוביל משמרת</th><th>קוטפים</th><th>יעד / בפועל</th><th>מצב</th><th>פעולות</th></tr>
+            <tr><th aria-hidden="true"></th><th>תאריך</th><th>שעות</th><th>חקלאי וגידול</th><th>מוביל משמרת</th><th>קוטפים</th><th>יעד / בפועל</th><th>מצב</th><th>{readOnly ? "סה\"כ" : "פעולות"}</th></tr>
           </thead>
           <tbody>
             {filtered.map(row => {
@@ -208,9 +218,13 @@ export function ShiftsTable({
                     </td>
                     <td><span className={`tag ${STATUS_TAG[row.status] ?? ""}`}>{STATUS_LABEL[row.status] ?? row.status}</span></td>
                     <td>
-                      <div className="actions-cell">
-                        <RowActions row={row} csrf={csrf} pickers={pickers} farms={farms} plantationFieldsByFarm={plantationFieldsByFarm} pickerIdsByShift={pickerIdsByShift} vehicleIdsByShift={vehicleIdsByShift} unitsByShift={unitsByShift} />
-                      </div>
+                      {readOnly ? (
+                        formatMoney(totalEarnings(pickerHoursByShift[row.id] ?? [], unitRatesByField[row.plantation_field_id] ?? {}))
+                      ) : (
+                        <div className="actions-cell">
+                          <RowActions row={row} csrf={csrf} pickers={pickers} farms={farms} plantationFieldsByFarm={plantationFieldsByFarm} pickerIdsByShift={pickerIdsByShift} vehicleIdsByShift={vehicleIdsByShift} unitsByShift={unitsByShift} />
+                        </div>
+                      )}
                     </td>
                   </tr>
                   {isOpen && (

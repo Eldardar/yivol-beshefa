@@ -512,6 +512,7 @@ select.input { appearance: auto; }
 .record-card-name { font: var(--text-card-title); }
 .record-card-meta { color: var(--color-text-secondary); font: var(--text-body-sm); display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); }
 .record-card-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.record-card-total { font-weight: 600; font-variant-numeric: tabular-nums; }
 .record-card-details { border-top: 1px solid var(--color-border); padding-top: var(--space-5); display: grid; gap: var(--space-4); }
 
 .mobile-only { display: block; }
