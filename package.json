@@ -17,6 +17,7 @@
     "e2e": "playwright test"
   },
   "dependencies": {
+    "@hebcal/core": "^6.9.2",
     "@tailwindcss/postcss": "^4.3.3",
     "better-sqlite3": "^13.0.1",
     "next": "^16.2.12",

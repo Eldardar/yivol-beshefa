@@ -2,6 +2,7 @@ import { AppShell } from "@/components/nav";
 import { CalendarView, type CalendarDay, type CalendarShift } from "@/components/calendar-view";
 import { db, requireAdmin } from "@/lib/server";
 import { jerusalemDate } from "@/lib/dates";
+import { getHolidays } from "@/lib/holidays";
 
 export const dynamic = "force-dynamic";
 
@@ -19,13 +20,17 @@ type ShiftRow = {
   fruit_subtype: string;
 };
 
-export default async function CalendarPage() {
+export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ y?: string; m?: string }> }) {
   const user = await requireAdmin();
+  const query = await searchParams;
 
   const today = jerusalemDate();
-  const year = Number(today.slice(0, 4));
-  const month = Number(today.slice(5, 7));
-  const monthStart = `${today.slice(0, 7)}-01`;
+  const todayYear = Number(today.slice(0, 4));
+  const todayMonth = Number(today.slice(5, 7));
+  const requestedMonth = Number(query.m);
+  const year = Number.isInteger(Number(query.y)) && Number(query.y) >= 2000 && Number(query.y) <= 2100 ? Number(query.y) : todayYear;
+  const month = Number.isInteger(requestedMonth) && requestedMonth >= 1 && requestedMonth <= 12 ? requestedMonth : todayMonth;
+  const monthStart = `${year}-${String(month).padStart(2, "0")}-01`;
   const monthEnd = new Date(Date.UTC(year, month, 1)).toISOString().slice(0, 10);
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const label = new Intl.DateTimeFormat("he-IL", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${monthStart}T12:00:00Z`));
@@ -61,7 +66,7 @@ export default async function CalendarPage() {
     }
   }
 
-  const monthNumber = today.slice(5, 7);
+  const monthNumber = String(month).padStart(2, "0");
   const birthdayRows = database
     .prepare("SELECT name,substr(date_of_birth,9,2) day FROM users WHERE active=1 AND date_of_birth IS NOT NULL AND substr(date_of_birth,6,2)=?")
     .all(monthNumber) as { name: string; day: string }[];
@@ -70,6 +75,13 @@ export default async function CalendarPage() {
     const day = Number(b.day);
     const list = birthdaysByDay.get(day);
     if (list) list.push(b.name); else birthdaysByDay.set(day, [b.name]);
+  }
+
+  const holidaysByDay = new Map<number, { name: string; religion: "jewish" | "christian" | "muslim" }[]>();
+  for (const h of getHolidays(year, month)) {
+    const day = Number(h.date.slice(8, 10));
+    const list = holidaysByDay.get(day);
+    if (list) list.push({ name: h.name, religion: h.religion }); else holidaysByDay.set(day, [{ name: h.name, religion: h.religion }]);
   }
 
   const shiftsByDate = new Map<string, CalendarShift[]>();
@@ -96,14 +108,14 @@ export default async function CalendarPage() {
     const day = i + 1;
     const date = `${monthStart.slice(0, 8)}${String(day).padStart(2, "0")}`;
     const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
-    return { date, day, weekday, isToday: date === today, shifts: shiftsByDate.get(date) ?? [], birthdays: birthdaysByDay.get(day) ?? [] };
+    return { date, day, weekday, isToday: date === today, shifts: shiftsByDate.get(date) ?? [], birthdays: birthdaysByDay.get(day) ?? [], holidays: holidaysByDay.get(day) ?? [] };
   });
 
   return (
     <AppShell user={user}>
       <h1>לוח חודשי</h1>
       <p className="muted">כל המשמרות שפורסמו לחודש {label}. יש ללחוץ על משמרת לצפייה בפרטים.</p>
-      <CalendarView label={label} days={days} />
+      <CalendarView year={year} month={month} label={label} days={days} />
     </AppShell>
   );
 }
