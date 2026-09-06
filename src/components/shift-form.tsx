@@ -48,6 +48,8 @@ export function ShiftForm({
   const [leaderId, setLeaderId] = useState(shift ? String(shift.leader_id) : "");
   const [farmId, setFarmId] = useState(shift ? String(shift.farm_id) : "");
   const [fieldId, setFieldId] = useState(shift ? String(shift.plantation_field_id) : "");
+  const [startTime, setStartTime] = useState(shift?.start_time ?? "06:00");
+  const [endTime, setEndTime] = useState(shift?.end_time ?? "14:00");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [leaderConflict, setLeaderConflict] = useState<{ message: string; formData: FormData } | null>(null);
@@ -113,8 +115,14 @@ export function ShiftForm({
       {existingVehicleIds.map(id => <input type="hidden" name="vehicleIds" value={id} key={id} />)}
       <div className="grid">
         <div className="field"><label htmlFor="shift-date">תאריך</label><input className="input" id="shift-date" type="date" name="date" required defaultValue={shift?.date} /></div>
-        <div className="field"><label htmlFor="shift-start-time">שעת התחלה</label><input className="input" id="shift-start-time" type="time" name="startTime" required defaultValue={shift?.start_time ?? "06:00"} /></div>
-        <div className="field"><label htmlFor="shift-end-time">שעת סיום משוערת</label><input className="input" id="shift-end-time" type="time" name="endTime" required defaultValue={shift?.end_time ?? "14:00"} /></div>
+        <div className="field"><label htmlFor="shift-start-time">שעת התחלה</label><input className="input" id="shift-start-time" type="time" name="startTime" required value={startTime} onChange={e => setStartTime(e.target.value)} /></div>
+        <div className="field">
+          <label htmlFor="shift-end-time">שעת סיום משוערת</label>
+          <input className="input" id="shift-end-time" type="time" name="endTime" required value={endTime} onChange={e => setEndTime(e.target.value)} />
+          {startTime && endTime && endTime <= startTime && (
+            <p className="muted btn-icon-leading"><span aria-hidden="true">⚠️</span>שים לב, משמרת זו נגמרת ביום שאחרי</p>
+          )}
+        </div>
         <div className="field">
           <label htmlFor="shift-farm">חקלאי</label>
           <select className="input" id="shift-farm" required value={farmId} onChange={e => { setFarmId(e.target.value); setFieldId(""); }}>
