@@ -78,7 +78,7 @@ export default async function Reports({ searchParams }: { searchParams: Promise<
           <div className="metric">{workerCount}</div>
         </article>
         <article className="kpi-card">
-          <span className="kpi-label">סה&quot;כ הכנסה</span>
+          <span className="kpi-label">סה&quot;כ עלות עובדים ברוטו</span>
           <div className="metric">{formatMoney(total)}</div>
         </article>
       </div>
