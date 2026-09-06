@@ -15,10 +15,37 @@ export type UnitInfo = { unit: Unit; goal: number; produced: number };
 export type UnitsByShift = Record<number, UnitInfo[]>;
 export type PickerNamesByShift = Record<number, string[]>;
 export type PickerIdsByShift = Record<number, number[]>;
-export type PickerHoursByShift = Record<number, Array<{ name: string; startTime: string | null; endTime: string | null }>>;
+export type PickerHoursByShift = Record<number, Array<{ name: string; startTime: string | null; endTime: string | null; quantities: Array<{ unit: Unit; quantity: number }> }>>;
 export type VehiclesByShift = Record<number, Array<{ number: string; name: string }>>;
 export type VehicleIdsByShift = Record<number, number[]>;
 export type RatedUnitsByField = Record<number, Unit[]>;
+export type UnitRatesByField = Record<number, Partial<Record<Unit, number>>>;
+
+function formatMoney(value: number): string {
+  return `₪${value.toLocaleString("he-IL", { maximumFractionDigits: 2 })}`;
+}
+
+function toMinutes(time: string): number {
+  const [h, m] = time.split(":");
+  return Number(h) * 60 + Number(m);
+}
+
+function hoursBetween(startTime: string | null, endTime: string | null): number | null {
+  if (!startTime || !endTime) return null;
+  let minutes = toMinutes(endTime) - toMinutes(startTime);
+  if (minutes < 0) minutes += 24 * 60;
+  return minutes / 60;
+}
+
+function pickerEarnings(quantities: Array<{ unit: Unit; quantity: number }>, rates: Partial<Record<Unit, number>>): number | null {
+  let total = 0;
+  let rated = false;
+  for (const q of quantities) {
+    const rate = rates[q.unit];
+    if (rate != null) { total += q.quantity * rate; rated = true; }
+  }
+  return rated ? total : null;
+}
 
 const STATUS_LABEL: Record<string, string> = { DRAFT: "טיוטה", PUBLISHED: "פורסמה", COMPLETED: "הושלמה", CANCELLED: "בוטלה" };
 const STATUS_TAG: Record<string, string> = { DRAFT: "warn", PUBLISHED: "", COMPLETED: "info", CANCELLED: "bad" };
@@ -43,6 +70,7 @@ export function ShiftsTable({
   plantationFieldsByFarm,
   unitsByShift,
   ratedUnitsByField,
+  unitRatesByField,
   pickerNamesByShift,
   pickerIdsByShift,
   pickerHoursByShift,
@@ -56,6 +84,7 @@ export function ShiftsTable({
   plantationFieldsByFarm: PlantationFieldsByFarm;
   unitsByShift: UnitsByShift;
   ratedUnitsByField: RatedUnitsByField;
+  unitRatesByField: UnitRatesByField;
   pickerNamesByShift: PickerNamesByShift;
   pickerIdsByShift: PickerIdsByShift;
   pickerHoursByShift: PickerHoursByShift;
@@ -120,7 +149,7 @@ export function ShiftsTable({
               </div>
               {isOpen && (
                 <div className="record-card-details">
-                  <ShiftDetails units={units} pickerNames={pickerNamesByShift[row.id] ?? []} pickerHours={pickerHoursByShift[row.id] ?? []} vehicles={vehiclesByShift[row.id] ?? []} notes={row.notes} plannedStart={row.start_time} plannedEnd={row.end_time} teamLeaderDetails={row.team_leader_details} />
+                  <ShiftDetails units={units} pickerNames={pickerNamesByShift[row.id] ?? []} pickerHours={pickerHoursByShift[row.id] ?? []} unitRates={unitRatesByField[row.plantation_field_id] ?? {}} vehicles={vehiclesByShift[row.id] ?? []} notes={row.notes} plannedStart={row.start_time} plannedEnd={row.end_time} teamLeaderDetails={row.team_leader_details} />
                 </div>
               )}
             </article>
@@ -171,7 +200,7 @@ export function ShiftsTable({
                   {isOpen && (
                     <tr className="worker-expand-row">
                       <td colSpan={9}>
-                        <ShiftDetails units={units} pickerNames={pickerNamesByShift[row.id] ?? []} pickerHours={pickerHoursByShift[row.id] ?? []} vehicles={vehiclesByShift[row.id] ?? []} notes={row.notes} plannedStart={row.start_time} plannedEnd={row.end_time} teamLeaderDetails={row.team_leader_details} />
+                        <ShiftDetails units={units} pickerNames={pickerNamesByShift[row.id] ?? []} pickerHours={pickerHoursByShift[row.id] ?? []} unitRates={unitRatesByField[row.plantation_field_id] ?? {}} vehicles={vehiclesByShift[row.id] ?? []} notes={row.notes} plannedStart={row.start_time} plannedEnd={row.end_time} teamLeaderDetails={row.team_leader_details} />
                       </td>
                     </tr>
                   )}
@@ -235,7 +264,7 @@ function RowActions({
   );
 }
 
-function ShiftDetails({ units, pickerNames, pickerHours, vehicles, notes, plannedStart, plannedEnd, teamLeaderDetails }: { units: UnitInfo[]; pickerNames: string[]; pickerHours: Array<{ name: string; startTime: string | null; endTime: string | null }>; vehicles: Array<{ number: string; name: string }>; notes: string; plannedStart: string; plannedEnd: string; teamLeaderDetails: string }) {
+function ShiftDetails({ units, pickerNames, pickerHours, unitRates, vehicles, notes, plannedStart, plannedEnd, teamLeaderDetails }: { units: UnitInfo[]; pickerNames: string[]; pickerHours: Array<{ name: string; startTime: string | null; endTime: string | null; quantities: Array<{ unit: Unit; quantity: number }> }>; unitRates: Partial<Record<Unit, number>>; vehicles: Array<{ number: string; name: string }>; notes: string; plannedStart: string; plannedEnd: string; teamLeaderDetails: string }) {
   return (
     <div className="sub-tables">
       <div className="stack">
@@ -258,9 +287,37 @@ function ShiftDetails({ units, pickerNames, pickerHours, vehicles, notes, planne
         <h3>שעות משמרת</h3>
         <p>מתוכנן: <span dir="ltr" className="ltr-field">{plannedStart}–{plannedEnd}</span></p>
         {pickerHours.length === 0 ? <p className="muted">טרם דווחו שעות בפועל</p> : (
-          <ul>{pickerHours.map((p, i) => (
-            <li key={`${p.name}-${i}`}>{p.name}: {p.startTime && p.endTime ? <span dir="ltr" className="ltr-field">{p.startTime}–{p.endTime}</span> : <span className="muted">טרם דווח</span>}</li>
-          ))}</ul>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr><th>#</th><th>שם</th><th>שעות</th><th>כמות תוצרת</th><th>ש"ח לשעה</th><th>סה"כ הכנסה</th></tr>
+              </thead>
+              <tbody>
+                {pickerHours.map((p, i) => {
+                  const hours = hoursBetween(p.startTime, p.endTime);
+                  const earnings = pickerEarnings(p.quantities, unitRates);
+                  const perHour = earnings != null && hours ? earnings / hours : null;
+                  return (
+                    <tr key={`${p.name}-${i}`}>
+                      <td>{i + 1}</td>
+                      <td>{p.name}</td>
+                      <td>{p.startTime && p.endTime ? <span dir="ltr" className="ltr-field">{p.startTime}–{p.endTime}</span> : <span className="muted">טרם דווח</span>}</td>
+                      <td>
+                        {p.quantities.length === 0 ? "—" : p.quantities.map((q, qi) => (
+                          <span key={q.unit}>
+                            {qi > 0 && " · "}
+                            <span dir="ltr" className="ltr-field">{q.quantity}</span> {UNIT_LABEL[q.unit]}
+                          </span>
+                        ))}
+                      </td>
+                      <td>{perHour != null ? formatMoney(perHour) : "—"}</td>
+                      <td>{earnings != null ? formatMoney(earnings) : "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
       {teamLeaderDetails && (

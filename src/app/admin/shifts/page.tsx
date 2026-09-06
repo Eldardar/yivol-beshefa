@@ -1,5 +1,5 @@
 import { AppShell } from "@/components/nav";
-import { ShiftsTable, type ShiftRow, type UnitsByShift, type PickerNamesByShift, type PickerIdsByShift, type PickerHoursByShift, type VehiclesByShift, type VehicleIdsByShift, type RatedUnitsByField } from "@/components/shifts-table";
+import { ShiftsTable, type ShiftRow, type UnitsByShift, type PickerNamesByShift, type PickerIdsByShift, type PickerHoursByShift, type VehiclesByShift, type VehicleIdsByShift, type RatedUnitsByField, type UnitRatesByField } from "@/components/shifts-table";
 import type { Picker, FarmOption, PlantationFieldOption, PlantationFieldsByFarm } from "@/components/shift-form";
 import { csrfValue, db, requireAdmin } from "@/lib/server";
 import type { Unit } from "@/lib/units";
@@ -43,18 +43,28 @@ export default async function Shifts({ searchParams }: { searchParams: Promise<{
        ORDER BY u.name`
     )
     .all() as Array<{ shift_id: number; user_id: number; name: string; start_time: string | null; end_time: string | null }>;
+  const quantityRows = database.prepare("SELECT shift_id,user_id,unit,quantity FROM quantities").all() as Array<{ shift_id: number; user_id: number; unit: Unit; quantity: number }>;
+  const quantitiesByShiftUser = new Map<string, Array<{ unit: Unit; quantity: number }>>();
+  for (const q of quantityRows) {
+    const key = `${q.shift_id}_${q.user_id}`;
+    (quantitiesByShiftUser.get(key) ?? quantitiesByShiftUser.set(key, []).get(key)!).push({ unit: q.unit, quantity: q.quantity });
+  }
   const pickerNamesByShift: PickerNamesByShift = {};
   const pickerIdsByShift: PickerIdsByShift = {};
   const pickerHoursByShift: PickerHoursByShift = {};
   for (const p of pickerRows) {
     (pickerNamesByShift[p.shift_id] ??= []).push(p.name);
     (pickerIdsByShift[p.shift_id] ??= []).push(p.user_id);
-    (pickerHoursByShift[p.shift_id] ??= []).push({ name: p.name, startTime: p.start_time, endTime: p.end_time });
+    (pickerHoursByShift[p.shift_id] ??= []).push({ name: p.name, startTime: p.start_time, endTime: p.end_time, quantities: quantitiesByShiftUser.get(`${p.shift_id}_${p.user_id}`) ?? [] });
   }
 
-  const rateRows = database.prepare("SELECT field_id,unit FROM field_unit_rates").all() as Array<{ field_id: number; unit: Unit }>;
+  const rateRows = database.prepare("SELECT field_id,unit,rate_nis FROM field_unit_rates").all() as Array<{ field_id: number; unit: Unit; rate_nis: number }>;
   const ratedUnitsByField: RatedUnitsByField = {};
-  for (const r of rateRows) (ratedUnitsByField[r.field_id] ??= []).push(r.unit);
+  const unitRatesByField: UnitRatesByField = {};
+  for (const r of rateRows) {
+    (ratedUnitsByField[r.field_id] ??= []).push(r.unit);
+    (unitRatesByField[r.field_id] ??= {})[r.unit] = r.rate_nis;
+  }
 
   const vehicleRows = database
     .prepare("SELECT sv.shift_id,v.id vehicle_id,v.number,v.name FROM shift_vehicles sv JOIN vehicles v ON v.id=sv.vehicle_id ORDER BY v.number")
@@ -80,6 +90,7 @@ export default async function Shifts({ searchParams }: { searchParams: Promise<{
           plantationFieldsByFarm={plantationFieldsByFarm}
           unitsByShift={unitsByShift}
           ratedUnitsByField={ratedUnitsByField}
+          unitRatesByField={unitRatesByField}
           pickerNamesByShift={pickerNamesByShift}
           pickerIdsByShift={pickerIdsByShift}
           pickerHoursByShift={pickerHoursByShift}
