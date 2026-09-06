@@ -62,7 +62,7 @@ export function WorkersTable({ users, shiftsByUser, csrf, currentUserId }: { use
                 </div>
                 {canExpand && (
                   <button type="button" className={`expand-btn${isOpen ? " is-open" : ""}`} aria-expanded={isOpen} aria-label={isOpen ? "סגירת פרטי עובד" : "פתיחת פרטי עובד"} onClick={() => setExpanded(isOpen ? null : row.id)}>
-                    <ChevronDownIcon size={20} />
+                    <ChevronDownIcon size={24} />
                   </button>
                 )}
               </div>
@@ -98,7 +98,7 @@ export function WorkersTable({ users, shiftsByUser, csrf, currentUserId }: { use
                     <td>
                       {canExpand && (
                         <button type="button" className={`expand-btn${isOpen ? " is-open" : ""}`} aria-expanded={isOpen} aria-label={isOpen ? "סגירת פרטי עובד" : "פתיחת פרטי עובד"} onClick={() => setExpanded(isOpen ? null : row.id)}>
-                          <ChevronDownIcon size={18} />
+                          <ChevronDownIcon size={24} />
                         </button>
                       )}
                     </td>

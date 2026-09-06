@@ -112,7 +112,7 @@ export function ShiftsTable({
                   </span>
                 </div>
                 <button type="button" className={`expand-btn${isOpen ? " is-open" : ""}`} aria-expanded={isOpen} aria-label={isOpen ? "סגירת פרטי משמרת" : "פתיחת פרטי משמרת"} onClick={() => setExpanded(isOpen ? null : row.id)}>
-                  <ChevronDownIcon size={20} />
+                  <ChevronDownIcon size={24} />
                 </button>
               </div>
               <div className="record-card-actions">
@@ -144,7 +144,7 @@ export function ShiftsTable({
                   <tr>
                     <td>
                       <button type="button" className={`expand-btn${isOpen ? " is-open" : ""}`} aria-expanded={isOpen} aria-label={isOpen ? "סגירת פרטי משמרת" : "פתיחת פרטי משמרת"} onClick={() => setExpanded(isOpen ? null : row.id)}>
-                        <ChevronDownIcon size={18} />
+                        <ChevronDownIcon size={24} />
                       </button>
                     </td>
                     <td>{formatHebrewDate(row.date)}</td>

@@ -51,7 +51,7 @@ export function FarmersTable({ farms, plantationFieldsByFarm, csrf }: { farms: F
                   </div>
                 </div>
                 <button type="button" className={`expand-btn${isOpen ? " is-open" : ""}`} aria-expanded={isOpen} aria-label={isOpen ? "סגירת פרטי חקלאי" : "פתיחת פרטי חקלאי"} onClick={() => setExpanded(isOpen ? null : row.id)}>
-                  <ChevronDownIcon size={20} />
+                  <ChevronDownIcon size={24} />
                 </button>
               </div>
               <div className="record-card-actions">
@@ -85,7 +85,7 @@ export function FarmersTable({ farms, plantationFieldsByFarm, csrf }: { farms: F
                   <tr>
                     <td>
                       <button type="button" className={`expand-btn${isOpen ? " is-open" : ""}`} aria-expanded={isOpen} aria-label={isOpen ? "סגירת פרטי חקלאי" : "פתיחת פרטי חקלאי"} onClick={() => setExpanded(isOpen ? null : row.id)}>
-                        <ChevronDownIcon size={18} />
+                        <ChevronDownIcon size={24} />
                       </button>
                     </td>
                     <td>{row.name}</td>
