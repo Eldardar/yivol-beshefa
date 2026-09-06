@@ -12,10 +12,9 @@ export default async function Reports() {
       <section className="card empty-state" style={{ justifyItems: "center", textAlign: "center" }}>
         <img
           src="/reports-placeholder.jpg"
-          alt="נראלך?!"
-          style={{ maxWidth: "100%", width: 420, borderRadius: "var(--radius-md)" }}
+          alt=""
+          style={{ maxWidth: "100%", width: 240, borderRadius: "var(--radius-md)" }}
         />
-        <p style={{ fontSize: "1.25rem", fontWeight: 700 }}>נראלך?!</p>
       </section>
     </AppShell>
   );
