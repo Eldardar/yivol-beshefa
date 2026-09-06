@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Image from "next/image";
 import { WorkerPicker, type WorkerOption } from "./worker-picker";
 import { formatHebrewDate } from "@/lib/dates";
 import { UNIT_LABEL, type Unit } from "@/lib/units";
@@ -44,13 +45,21 @@ export function EmployeePerformanceReport({
 }) {
   const [selected, setSelected] = useState<WorkerOption | null>(null);
   const shifts = selected ? shiftsByWorker[selected.id] ?? [] : [];
+  const totalEarnings = shifts.reduce((sum, row) => sum + (shiftEarnings(row, unitRatesByField) ?? 0), 0);
 
   return (
     <div className="stack">
       <WorkerPicker workers={workers} selected={selected} onSelect={setSelected} />
 
       {!selected && (
-        <section className="card empty-state">
+        <section className="card empty-state" style={{ justifyItems: "center", textAlign: "center" }}>
+          <Image
+            src="/reports-placeholder.jpg"
+            alt=""
+            width={2316}
+            height={3088}
+            style={{ maxWidth: "100%", width: 240, height: "auto", borderRadius: "var(--radius-md)" }}
+          />
           <p>בחר/י עובד/ת כדי לראות את 7 המשמרות האחרונות שלה/ו.</p>
         </section>
       )}
@@ -96,6 +105,12 @@ export function EmployeePerformanceReport({
                 );
               })}
             </tbody>
+            <tfoot>
+              <tr className="totals-row">
+                <td colSpan={6}>סה&quot;כ הכנסה</td>
+                <td>{formatMoney(totalEarnings)}</td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       )}
