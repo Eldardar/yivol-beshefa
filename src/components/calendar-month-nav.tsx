@@ -8,8 +8,9 @@ const HEBREW_MONTHS = ["ינואר", "פברואר", "מרץ", "אפריל", "מ
 const MIN_YEAR = 2026;
 const YEAR_LIST_SIZE = 20;
 
-function monthHref(year: number, month: number): string {
-  return `/calendar?y=${year}&m=${month}`;
+function monthHref(basePath: string, year: number, month: number): string {
+  const separator = basePath.includes("?") ? "&" : "?";
+  return `${basePath}${separator}y=${year}&m=${month}`;
 }
 
 function shiftMonth(year: number, month: number, delta: number): { year: number; month: number } {
@@ -18,7 +19,7 @@ function shiftMonth(year: number, month: number, delta: number): { year: number;
   return { year: y, month: total - y * 12 + 1 };
 }
 
-export function CalendarMonthNav({ year, month }: { year: number; month: number }) {
+export function CalendarMonthNav({ year, month, basePath = "/calendar" }: { year: number; month: number; basePath?: string }) {
   const [open, setOpen] = useState<"month" | "year" | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -45,7 +46,7 @@ export function CalendarMonthNav({ year, month }: { year: number; month: number 
 
   return (
     <div className="calendar-nav" ref={rootRef}>
-      <Link href={monthHref(prev.year, prev.month)} className="calendar-nav-arrow" aria-label="חודש קודם">
+      <Link href={monthHref(basePath, prev.year, prev.month)} className="calendar-nav-arrow" aria-label="חודש קודם">
         <ArrowRightIcon size={18} />
       </Link>
       <div className="calendar-nav-pickers">
@@ -64,7 +65,7 @@ export function CalendarMonthNav({ year, month }: { year: number; month: number 
               {HEBREW_MONTHS.map((name, i) => (
                 <Link
                   key={name}
-                  href={monthHref(year, i + 1)}
+                  href={monthHref(basePath, year, i + 1)}
                   className={`calendar-nav-option${i + 1 === month ? " is-selected" : ""}`}
                   role="option"
                   aria-selected={i + 1 === month}
@@ -91,7 +92,7 @@ export function CalendarMonthNav({ year, month }: { year: number; month: number 
               {years.map(y => (
                 <Link
                   key={y}
-                  href={monthHref(y, month)}
+                  href={monthHref(basePath, y, month)}
                   className={`calendar-nav-option${y === year ? " is-selected" : ""}`}
                   role="option"
                   aria-selected={y === year}
@@ -104,7 +105,7 @@ export function CalendarMonthNav({ year, month }: { year: number; month: number 
           )}
         </div>
       </div>
-      <Link href={monthHref(next.year, next.month)} className="calendar-nav-arrow" aria-label="חודש הבא">
+      <Link href={monthHref(basePath, next.year, next.month)} className="calendar-nav-arrow" aria-label="חודש הבא">
         <ArrowLeftIcon size={18} />
       </Link>
     </div>

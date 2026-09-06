@@ -1,9 +1,10 @@
 import { AppShell } from "@/components/nav";
 import { ReportsTabs } from "@/components/reports-tabs";
 import { ShiftsTable } from "@/components/shifts-table";
+import { CalendarMonthNav } from "@/components/calendar-month-nav";
 import { csrfValue, db, requireAdmin } from "@/lib/server";
 import { loadShiftsPageData } from "@/lib/shifts-data";
-import { formatHebrewDate, jerusalemDate, currentJerusalemWeek, currentJerusalemMonth } from "@/lib/dates";
+import { formatHebrewDate, jerusalemDate, currentJerusalemWeek, monthRange } from "@/lib/dates";
 import { formatMoney } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -14,11 +15,11 @@ type Period = (typeof PERIODS)[number];
 const WORKED_SUFFIX: Record<Period, string> = { daily: "היום", weekly: "השבוע", monthly: "החודש" };
 const monthYearFormatter = new Intl.DateTimeFormat("he-IL", { timeZone: "Asia/Jerusalem", month: "long", year: "numeric" });
 
-function periodRange(period: Period, today: string): { start: string; end: string } {
+function periodRange(period: Period, today: string, month: { year: number; month: number }): { start: string; end: string } {
   if (period === "weekly") return currentJerusalemWeek();
-  if (period === "monthly") return currentJerusalemMonth();
-  const [year, month, day] = today.split("-").map(Number) as [number, number, number];
-  return { start: today, end: new Date(Date.UTC(year, month - 1, day + 1)).toISOString().slice(0, 10) };
+  if (period === "monthly") return monthRange(month.year, month.month);
+  const [year, monthNum, day] = today.split("-").map(Number) as [number, number, number];
+  return { start: today, end: new Date(Date.UTC(year, monthNum - 1, day + 1)).toISOString().slice(0, 10) };
 }
 
 function periodTitle(period: Period, range: { start: string; end: string }, today: string): string {
@@ -31,15 +32,20 @@ function periodTitle(period: Period, range: { start: string; end: string }, toda
   return `דוח יומי · ${formatHebrewDate(today)}`;
 }
 
-export default async function Reports({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
+export default async function Reports({ searchParams }: { searchParams: Promise<{ period?: string; y?: string; m?: string }> }) {
   const user = await requireAdmin();
   const csrf = await csrfValue();
   const database = db();
   const today = jerusalemDate();
+  const todayYear = Number(today.slice(0, 4));
+  const todayMonth = Number(today.slice(5, 7));
 
-  const requested = (await searchParams).period;
-  const period: Period = (PERIODS as readonly string[]).includes(requested ?? "") ? (requested as Period) : "daily";
-  const range = periodRange(period, today);
+  const query = await searchParams;
+  const period: Period = (PERIODS as readonly string[]).includes(query.period ?? "") ? (query.period as Period) : "daily";
+  const requestedMonth = Number(query.m);
+  const year = Number.isInteger(Number(query.y)) && Number(query.y) >= 2000 && Number(query.y) <= 2100 ? Number(query.y) : todayYear;
+  const month = Number.isInteger(requestedMonth) && requestedMonth >= 1 && requestedMonth <= 12 ? requestedMonth : todayMonth;
+  const range = periodRange(period, today, { year, month });
 
   const data = loadShiftsPageData(database, { dateFrom: range.start, dateTo: range.end });
 
@@ -64,6 +70,7 @@ export default async function Reports({ searchParams }: { searchParams: Promise<
     <AppShell user={user}>
       <h1>דוחות</h1>
       <ReportsTabs active={period} />
+      {period === "monthly" && <CalendarMonthNav year={year} month={month} basePath="/admin/reports?period=monthly" />}
       <h2>{periodTitle(period, range, today)}</h2>
       <div className="kpi-grid">
         <article className="kpi-card">
