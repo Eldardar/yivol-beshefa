@@ -242,6 +242,7 @@ img, svg { display: block; max-width: 100%; }
   background: radial-gradient(circle, rgba(255, 255, 255, 0.08), transparent 70%);
 }
 @media (max-width: 599px) { .hero { padding: var(--space-5); border-radius: var(--radius-lg); } }
+.home-hero-image { width: 100%; height: auto; border-radius: var(--radius-xl); display: block; }
 /* ==========================================================================
    Cards
    ========================================================================== */

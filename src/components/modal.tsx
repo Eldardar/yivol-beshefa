@@ -1,5 +1,6 @@
 "use client";
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { XIcon } from "./icons";
 
 export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
@@ -9,7 +10,7 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  return (
+  return createPortal(
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" role="dialog" aria-modal="true" aria-label={title} onClick={e => e.stopPropagation()}>
         <div className="modal-head">
@@ -18,6 +19,7 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

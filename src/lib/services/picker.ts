@@ -1,8 +1,9 @@
 import type Database from "better-sqlite3";
-import { availabilityMonthSchema, personalDetailsSchema } from "@/lib/schemas";
+import { availabilityMonthSchema, journalEntrySchema, personalDetailsSchema } from "@/lib/schemas";
 import { availabilityWindow } from "@/lib/dates";
 
 type Notification={id:number;title:string;body:string;read_at:string|null;created_at:string};
+type JournalEntry={id:number;message:string;created_at:string};
 export class PickerService{
  constructor(private readonly db:Database.Database){}
  profile(actorId:number,targetId:number){
@@ -44,5 +45,12 @@ export class PickerService{
    const clear=this.db.prepare("DELETE FROM availability WHERE user_id=? AND date=?");
    for(const entry of input.entries){if(entry.status===null)clear.run(actorId,entry.date);else upsert.run(actorId,entry.date,entry.status);}
   }).immediate();
+ }
+ addJournalEntry(actorId:number,raw:unknown):void{
+  const input=journalEntrySchema.parse(raw);
+  this.db.prepare("INSERT INTO journal_entries(user_id,message) VALUES(?,?)").run(actorId,input.message);
+ }
+ journalEntries(actorId:number):JournalEntry[]{
+  return this.db.prepare("SELECT id,message,created_at FROM journal_entries WHERE user_id=? ORDER BY created_at DESC").all(actorId) as JournalEntry[];
  }
 }

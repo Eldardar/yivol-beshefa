@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { AppShell } from "@/components/nav";
 import { OnboardingChecklist } from "@/components/onboarding";
-import { db, requireUser } from "@/lib/server";
-import { formatHebrewDate, jerusalemDate } from "@/lib/dates";
+import { csrfValue, db, requireUser } from "@/lib/server";
+import { formatHebrewDate, jerusalemDate, jerusalemHour, timeOfDayGreeting, timeOfDayWish } from "@/lib/dates";
 import { PickerService } from "@/lib/services/picker";
-import { CalendarIcon, ClipboardListIcon, HistoryIcon } from "@/components/icons";
+import { DayCheckIn } from "@/components/day-checkin";
 
 export const dynamic = "force-dynamic";
 
@@ -66,43 +66,21 @@ export default async function Home() {
     { key: "availability", title: "עדכון זמינות", description: "דווחו זמינות ליום אחד לפחות מתוך 60 הימים הקרובים", href: "/availability", done: hasAvailability },
   ];
 
+  const hour = jerusalemHour();
+  const greeting = timeOfDayGreeting(hour);
+  const wish = timeOfDayWish(hour);
+  const csrf = await csrfValue();
+
   return (
     <AppShell user={user}>
-      <img
-        src="/worker-hero.png"
-        alt=""
-        style={{
-          position: "fixed",
-          inset: 0,
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-          opacity: 0.12,
-          zIndex: -1,
-          pointerEvents: "none",
-        }}
-      />
       <section className="hero">
         <h1>שלום {firstName}</h1>
-        <p>{next ? `השיבוץ הבא: ${formatHebrewDate(next.date)} · ${next.start_time}–${next.end_time} · ${next.farm}` : "אין שיבוצים קרובים"}</p>
+        <p>{greeting}</p>
+        <DayCheckIn wish={wish} csrf={csrf} />
       </section>
       <OnboardingChecklist steps={onboardingSteps} />
-      <div className="grid">
-        <Link className="card" href="/availability">
-          <CalendarIcon size={22} className="muted" />
-          <h2>עדכון זמינות</h2>
-          <p className="muted">דיווח זמינות ל-60 הימים הקרובים</p>
-        </Link>
-        <Link className="card" href="/assignments">
-          <ClipboardListIcon size={22} className="muted" />
-          <h2>השיבוצים שלי</h2>
-          <p className="muted">פרטי עבודה וניווט</p>
-        </Link>
-        <Link className="card" href="/history">
-          <HistoryIcon size={22} className="muted" />
-          <h2>היסטוריה וכמויות</h2>
-        </Link>
-      </div>
+      <p>{next ? `השיבוץ הבא: ${formatHebrewDate(next.date)} · ${next.start_time}–${next.end_time} · ${next.farm}` : "אין שיבוצים קרובים"}</p>
+      <img src="/worker-hero.png" alt="" className="home-hero-image" />
     </AppShell>
   );
 }

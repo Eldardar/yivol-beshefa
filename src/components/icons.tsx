@@ -63,6 +63,15 @@ export function CalendarDaysIcon(props: IconProps) {
   );
 }
 
+export function BookOpenIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 6.5c-1.4-1.3-3.4-2-6-2-.8 0-1.5.07-2 .2v13.3c.5-.13 1.2-.2 2-.2 2.6 0 4.6.7 6 2 1.4-1.3 3.4-2 6-2 .8 0 1.5.07 2 .2V4.7c-.5-.13-1.2-.2-2-.2-2.6 0-4.6.7-6 2Z" />
+      <path d="M12 6.5v13.3" />
+    </Svg>
+  );
+}
+
 export function ClipboardListIcon(props: IconProps) {
   return (
     <Svg {...props}>
