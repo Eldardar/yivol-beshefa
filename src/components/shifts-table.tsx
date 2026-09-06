@@ -9,6 +9,7 @@ import { AssignPickersButton } from "./assign-pickers-button";
 import { AssignVehiclesButton } from "./assign-vehicles-button";
 import { ChevronDownIcon, TrashIcon, AlertTriangleIcon } from "./icons";
 import type { Picker, FarmOption, PlantationFieldsByFarm } from "./shift-form";
+import { formatMoney } from "@/lib/format";
 
 export type ShiftRow = { id: number; date: string; start_time: string; end_time: string; status: string; notes: string; farm_id: number; plantation_field_id: number; leader_id: number; leader: string; farm: string; fruit_type: string; picker_count: number; team_leader_details: string };
 export type UnitInfo = { unit: Unit; goal: number; produced: number };
@@ -20,10 +21,6 @@ export type VehiclesByShift = Record<number, Array<{ number: string; name: strin
 export type VehicleIdsByShift = Record<number, number[]>;
 export type RatedUnitsByField = Record<number, Unit[]>;
 export type UnitRatesByField = Record<number, Partial<Record<Unit, number>>>;
-
-function formatMoney(value: number): string {
-  return `₪${value.toLocaleString("he-IL", { maximumFractionDigits: 2 })}`;
-}
 
 function toMinutes(time: string): number {
   const [h, m] = time.split(":");
@@ -141,7 +138,7 @@ export function ShiftsTable({
                   </span>
                 </div>
                 <button type="button" className={`expand-btn${isOpen ? " is-open" : ""}`} aria-expanded={isOpen} aria-label={isOpen ? "סגירת פרטי משמרת" : "פתיחת פרטי משמרת"} onClick={() => setExpanded(isOpen ? null : row.id)}>
-                  <ChevronDownIcon size={24} />
+                  <ChevronDownIcon size={28} />
                 </button>
               </div>
               <div className="record-card-actions">
@@ -173,7 +170,7 @@ export function ShiftsTable({
                   <tr>
                     <td>
                       <button type="button" className={`expand-btn${isOpen ? " is-open" : ""}`} aria-expanded={isOpen} aria-label={isOpen ? "סגירת פרטי משמרת" : "פתיחת פרטי משמרת"} onClick={() => setExpanded(isOpen ? null : row.id)}>
-                        <ChevronDownIcon size={24} />
+                        <ChevronDownIcon size={28} />
                       </button>
                     </td>
                     <td>{formatHebrewDate(row.date)}</td>

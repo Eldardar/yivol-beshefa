@@ -48,14 +48,11 @@ export const shiftReportSchema = z.object({
   teamLeaderDetails: z.string().trim().max(2000)
 }).strict();
 
-const timeRangeRefine = <T extends { startTime: string; endTime: string }>(x: T) => x.startTime < x.endTime;
-const TIME_RANGE_ISSUE = { message: "שעת סיום חייבת להיות אחרי שעת התחלה", path: ["endTime"] };
-
 export const workerHoursSchema = z.object({
   userId: id,
   startTime: timeSchema,
   endTime: timeSchema
-}).strict().refine(timeRangeRefine, TIME_RANGE_ISSUE);
+}).strict();
 
 export const shiftSchema = z.object({
   date: isoDate,
@@ -67,7 +64,7 @@ export const shiftSchema = z.object({
   vehicleIds: z.array(id).transform((items) => [...new Set(items)]),
   goals: z.array(goalLineSchema).min(1).refine((items) => new Set(items.map((x) => x.unit)).size === items.length, "כל יחידת מידה יכולה להופיע פעם אחת ביעד"),
   notes: z.string().trim().max(4000)
-}).strict().refine(timeRangeRefine, TIME_RANGE_ISSUE);
+}).strict();
 
 export type ShiftInput = z.input<typeof shiftSchema>;
 

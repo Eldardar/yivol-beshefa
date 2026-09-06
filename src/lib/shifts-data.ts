@@ -1,0 +1,100 @@
+import "server-only";
+import type Database from "better-sqlite3";
+import type { Picker, FarmOption, PlantationFieldOption, PlantationFieldsByFarm } from "@/components/shift-form";
+import type {
+  ShiftRow,
+  UnitsByShift,
+  PickerNamesByShift,
+  PickerIdsByShift,
+  PickerHoursByShift,
+  VehiclesByShift,
+  VehicleIdsByShift,
+  RatedUnitsByField,
+  UnitRatesByField,
+} from "@/components/shifts-table";
+import type { Unit } from "@/lib/units";
+
+export type ShiftsPageData = {
+  pickers: Picker[];
+  farms: FarmOption[];
+  plantationFieldsByFarm: PlantationFieldsByFarm;
+  shifts: ShiftRow[];
+  unitsByShift: UnitsByShift;
+  ratedUnitsByField: RatedUnitsByField;
+  unitRatesByField: UnitRatesByField;
+  pickerNamesByShift: PickerNamesByShift;
+  pickerIdsByShift: PickerIdsByShift;
+  pickerHoursByShift: PickerHoursByShift;
+  vehiclesByShift: VehiclesByShift;
+  vehicleIdsByShift: VehicleIdsByShift;
+};
+
+const SHIFT_SELECT = `SELECT s.id,s.date,s.start_time,s.end_time,s.status,s.notes,pf.farm_id,s.plantation_field_id,s.leader_id,u.name leader,f.name farm,pf.fruit_type,s.team_leader_details,(SELECT COUNT(*) FROM shift_pickers WHERE shift_id=s.id) picker_count
+   FROM shifts s JOIN users u ON u.id=s.leader_id JOIN plantation_fields pf ON pf.id=s.plantation_field_id JOIN farms f ON f.id=pf.farm_id`;
+
+export function loadShiftsPageData(database: Database.Database, opts: { dateFrom?: string; dateTo?: string; limit?: number } = {}): ShiftsPageData {
+  const { dateFrom, dateTo, limit = 100 } = opts;
+
+  const pickers = database.prepare("SELECT id,name FROM users WHERE role='PICKER' AND active=1 ORDER BY name").all() as Picker[];
+  const farms = database.prepare("SELECT DISTINCT f.id,f.name FROM farms f JOIN plantation_fields pf ON pf.farm_id=f.id WHERE f.active=1 AND pf.active=1 ORDER BY f.name").all() as FarmOption[];
+  const plantationFieldRows = database.prepare("SELECT pf.id,pf.farm_id farmId,pf.name,pf.fruit_type fruitType,pf.fruit_subtype fruitSubtype FROM plantation_fields pf JOIN farms f ON f.id=pf.farm_id WHERE pf.active=1 AND f.active=1 ORDER BY pf.id DESC").all() as Array<PlantationFieldOption & { farmId: number }>;
+  const plantationFieldsByFarm: PlantationFieldsByFarm = {};
+  for (const { farmId, ...field } of plantationFieldRows) (plantationFieldsByFarm[farmId] ??= []).push(field);
+
+  const shifts = dateFrom && dateTo
+    ? (database.prepare(`${SHIFT_SELECT} WHERE s.date>=? AND s.date<? ORDER BY s.date DESC,s.start_time DESC`).all(dateFrom, dateTo) as ShiftRow[])
+    : (database.prepare(`${SHIFT_SELECT} ORDER BY s.date DESC,s.start_time DESC LIMIT ?`).all(limit) as ShiftRow[]);
+
+  const goalRows = database.prepare("SELECT shift_id,unit,goal FROM shift_goals").all() as Array<{ shift_id: number; unit: Unit; goal: number }>;
+  const producedRows = database.prepare("SELECT shift_id,unit,SUM(quantity) produced FROM quantities GROUP BY shift_id,unit").all() as Array<{ shift_id: number; unit: Unit; produced: number }>;
+  const unitsByShift: UnitsByShift = {};
+  for (const g of goalRows) (unitsByShift[g.shift_id] ??= []).push({ unit: g.unit, goal: g.goal, produced: 0 });
+  for (const p of producedRows) {
+    const list = unitsByShift[p.shift_id] ??= [];
+    const existing = list.find(x => x.unit === p.unit);
+    if (existing) existing.produced = p.produced; else list.push({ unit: p.unit, goal: 0, produced: p.produced });
+  }
+
+  const pickerRows = database
+    .prepare(
+      `SELECT sp.shift_id,u.id user_id,u.name,sh.start_time,sh.end_time
+       FROM shift_pickers sp JOIN users u ON u.id=sp.user_id
+       LEFT JOIN shift_hours sh ON sh.shift_id=sp.shift_id AND sh.user_id=sp.user_id
+       ORDER BY u.name`
+    )
+    .all() as Array<{ shift_id: number; user_id: number; name: string; start_time: string | null; end_time: string | null }>;
+  const quantityRows = database.prepare("SELECT shift_id,user_id,unit,quantity FROM quantities").all() as Array<{ shift_id: number; user_id: number; unit: Unit; quantity: number }>;
+  const quantitiesByShiftUser = new Map<string, Array<{ unit: Unit; quantity: number }>>();
+  for (const q of quantityRows) {
+    const key = `${q.shift_id}_${q.user_id}`;
+    (quantitiesByShiftUser.get(key) ?? quantitiesByShiftUser.set(key, []).get(key)!).push({ unit: q.unit, quantity: q.quantity });
+  }
+  const pickerNamesByShift: PickerNamesByShift = {};
+  const pickerIdsByShift: PickerIdsByShift = {};
+  const pickerHoursByShift: PickerHoursByShift = {};
+  for (const p of pickerRows) {
+    (pickerNamesByShift[p.shift_id] ??= []).push(p.name);
+    (pickerIdsByShift[p.shift_id] ??= []).push(p.user_id);
+    (pickerHoursByShift[p.shift_id] ??= []).push({ name: p.name, startTime: p.start_time, endTime: p.end_time, quantities: quantitiesByShiftUser.get(`${p.shift_id}_${p.user_id}`) ?? [] });
+  }
+
+  const rateRows = database.prepare("SELECT field_id,unit,rate_nis FROM field_unit_rates").all() as Array<{ field_id: number; unit: Unit; rate_nis: number }>;
+  const ratedUnitsByField: RatedUnitsByField = {};
+  const unitRatesByField: UnitRatesByField = {};
+  for (const r of rateRows) {
+    (ratedUnitsByField[r.field_id] ??= []).push(r.unit);
+    (unitRatesByField[r.field_id] ??= {})[r.unit] = r.rate_nis;
+  }
+
+  const vehicleRows = database
+    .prepare("SELECT sv.shift_id,v.id vehicle_id,v.number,v.name FROM shift_vehicles sv JOIN vehicles v ON v.id=sv.vehicle_id ORDER BY v.number")
+    .all() as Array<{ shift_id: number; vehicle_id: number; number: string; name: string }>;
+  const vehiclesByShift: VehiclesByShift = {};
+  const vehicleIdsByShift: VehicleIdsByShift = {};
+  for (const v of vehicleRows) {
+    (vehiclesByShift[v.shift_id] ??= []).push({ number: v.number, name: v.name });
+    (vehicleIdsByShift[v.shift_id] ??= []).push(v.vehicle_id);
+  }
+
+  return { pickers, farms, plantationFieldsByFarm, shifts, unitsByShift, ratedUnitsByField, unitRatesByField, pickerNamesByShift, pickerIdsByShift, pickerHoursByShift, vehiclesByShift, vehicleIdsByShift };
+}

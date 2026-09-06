@@ -27,6 +27,13 @@ export function timeOfDayWish(hour:number):string{
  return "שיהיה לך אחלה לילה";
 }
 export function nextJerusalemMonth(now=new Date()):{start:string;end:string}{const today=jerusalemDate(now),year=Number(today.slice(0,4)),month=Number(today.slice(5,7));return {start:new Date(Date.UTC(year,month,1)).toISOString().slice(0,10),end:new Date(Date.UTC(year,month+1,1)).toISOString().slice(0,10)};}
+export function currentJerusalemWeek(now=new Date()):{start:string;end:string}{
+ const today=jerusalemDate(now);
+ const [year,month,day]=today.split("-").map(Number) as [number,number,number];
+ const dow=new Date(Date.UTC(year,month-1,day)).getUTCDay();
+ return {start:new Date(Date.UTC(year,month-1,day-dow)).toISOString().slice(0,10),end:new Date(Date.UTC(year,month-1,day-dow+7)).toISOString().slice(0,10)};
+}
+export function currentJerusalemMonth(now=new Date()):{start:string;end:string}{const today=jerusalemDate(now),year=Number(today.slice(0,4)),month=Number(today.slice(5,7));return {start:new Date(Date.UTC(year,month-1,1)).toISOString().slice(0,10),end:new Date(Date.UTC(year,month,1)).toISOString().slice(0,10)};}
 export const AVAILABILITY_WINDOW_DAYS=60;
 export function availabilityWindow(now=new Date()):{start:string;end:string}{
  const today=jerusalemDate(now);
