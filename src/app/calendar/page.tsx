@@ -1,8 +1,10 @@
 import { AppShell } from "@/components/nav";
-import { CalendarView, type CalendarDay, type CalendarShift } from "@/components/calendar-view";
+import { CalendarView, type CalendarDay, type CalendarShift, type CalendarPicker } from "@/components/calendar-view";
+import type { UnitRatesByField } from "@/components/shifts-table";
 import { db, requireAdmin } from "@/lib/server";
 import { jerusalemDate } from "@/lib/dates";
 import { getHolidays } from "@/lib/holidays";
+import type { Unit } from "@/lib/units";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +20,7 @@ type ShiftRow = {
   navigation_link: string | null;
   fruit_type: string;
   fruit_subtype: string;
+  plantation_field_id: number;
 };
 
 export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ y?: string; m?: string }> }) {
@@ -38,7 +41,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const database = db();
   const shifts = database
     .prepare(
-      `SELECT s.id,s.date,s.start_time,s.end_time,s.notes,u.name leader,f.name farm,f.address,f.navigation_link,pf.fruit_type,pf.fruit_subtype
+      `SELECT s.id,s.date,s.start_time,s.end_time,s.notes,u.name leader,f.name farm,f.address,f.navigation_link,pf.fruit_type,pf.fruit_subtype,s.plantation_field_id
        FROM shifts s JOIN users u ON u.id=s.leader_id JOIN plantation_fields pf ON pf.id=s.plantation_field_id JOIN farms f ON f.id=pf.farm_id
        WHERE s.status IN ('PUBLISHED','COMPLETED') AND s.date>=? AND s.date<?
        ORDER BY s.date,s.start_time`
@@ -46,16 +49,30 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
     .all(monthStart, monthEnd) as ShiftRow[];
 
   const shiftIds = shifts.map(s => s.id);
-  const pickersByShift = new Map<number, string[]>();
+  const pickersByShift = new Map<number, CalendarPicker[]>();
   const vehiclesByShift = new Map<number, { number: string; name: string }[]>();
   if (shiftIds.length > 0) {
     const placeholders = shiftIds.map(() => "?").join(",");
     const pickerRows = database
-      .prepare(`SELECT sp.shift_id,u.name FROM shift_pickers sp JOIN users u ON u.id=sp.user_id WHERE sp.shift_id IN (${placeholders}) ORDER BY u.name`)
-      .all(...shiftIds) as { shift_id: number; name: string }[];
+      .prepare(
+        `SELECT sp.shift_id,u.id user_id,u.name,sh.start_time,sh.end_time
+         FROM shift_pickers sp JOIN users u ON u.id=sp.user_id
+         LEFT JOIN shift_hours sh ON sh.shift_id=sp.shift_id AND sh.user_id=sp.user_id
+         WHERE sp.shift_id IN (${placeholders}) ORDER BY u.name`
+      )
+      .all(...shiftIds) as { shift_id: number; user_id: number; name: string; start_time: string | null; end_time: string | null }[];
+    const quantityRows = database
+      .prepare(`SELECT shift_id,user_id,unit,quantity FROM quantities WHERE shift_id IN (${placeholders})`)
+      .all(...shiftIds) as { shift_id: number; user_id: number; unit: Unit; quantity: number }[];
+    const quantitiesByShiftUser = new Map<string, Array<{ unit: Unit; quantity: number }>>();
+    for (const q of quantityRows) {
+      const key = `${q.shift_id}_${q.user_id}`;
+      (quantitiesByShiftUser.get(key) ?? quantitiesByShiftUser.set(key, []).get(key)!).push({ unit: q.unit, quantity: q.quantity });
+    }
     for (const p of pickerRows) {
+      const picker: CalendarPicker = { name: p.name, startTime: p.start_time, endTime: p.end_time, quantities: quantitiesByShiftUser.get(`${p.shift_id}_${p.user_id}`) ?? [] };
       const list = pickersByShift.get(p.shift_id);
-      if (list) list.push(p.name); else pickersByShift.set(p.shift_id, [p.name]);
+      if (list) list.push(picker); else pickersByShift.set(p.shift_id, [picker]);
     }
     const vehicleRows = database
       .prepare(`SELECT sv.shift_id,v.number,v.name FROM shift_vehicles sv JOIN vehicles v ON v.id=sv.vehicle_id WHERE sv.shift_id IN (${placeholders}) ORDER BY v.number`)
@@ -65,6 +82,10 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
       if (list) list.push({ number: v.number, name: v.name }); else vehiclesByShift.set(v.shift_id, [{ number: v.number, name: v.name }]);
     }
   }
+
+  const rateRows = database.prepare("SELECT field_id,unit,rate_nis FROM field_unit_rates").all() as Array<{ field_id: number; unit: Unit; rate_nis: number }>;
+  const unitRatesByField: UnitRatesByField = {};
+  for (const r of rateRows) (unitRatesByField[r.field_id] ??= {})[r.unit] = r.rate_nis;
 
   const monthNumber = String(month).padStart(2, "0");
   const birthdayRows = database
@@ -97,6 +118,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
       fruitSubtype: s.fruit_subtype,
       leader: s.leader,
       notes: s.notes,
+      plantationFieldId: s.plantation_field_id,
       pickers: pickersByShift.get(s.id) ?? [],
       vehicles: vehiclesByShift.get(s.id) ?? []
     };
@@ -115,7 +137,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
     <AppShell user={user}>
       <h1>לוח חודשי</h1>
       <p className="muted">כל המשמרות שפורסמו לחודש {label}. יש ללחוץ על משמרת לצפייה בפרטים.</p>
-      <CalendarView year={year} month={month} label={label} days={days} />
+      <CalendarView year={year} month={month} label={label} days={days} unitRatesByField={unitRatesByField} />
     </AppShell>
   );
 }

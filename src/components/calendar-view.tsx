@@ -1,10 +1,14 @@
 "use client";
 import { useState } from "react";
 import { formatHebrewDate } from "@/lib/dates";
+import { formatMoney } from "@/lib/format";
+import { UNIT_LABEL, type Unit } from "@/lib/units";
 import { MapPinIcon, TruckIcon } from "./icons";
 import { Modal } from "./modal";
 import { CalendarMonthNav } from "./calendar-month-nav";
+import type { UnitRatesByField } from "./shifts-table";
 
+export type CalendarPicker = { name: string; startTime: string | null; endTime: string | null; quantities: Array<{ unit: Unit; quantity: number }> };
 export type CalendarShift = {
   id: number;
   startTime: string;
@@ -16,7 +20,8 @@ export type CalendarShift = {
   fruitSubtype: string;
   leader: string;
   notes: string;
-  pickers: string[];
+  plantationFieldId: number;
+  pickers: CalendarPicker[];
   vehicles: { number: string; name: string }[];
 };
 export type CalendarHoliday = { name: string; religion: "jewish" | "christian" | "muslim" };
@@ -31,7 +36,48 @@ function timeTag(startTime: string): string {
   return "warn";
 }
 
-export function CalendarView({ year, month, label, days }: { year: number; month: number; label: string; days: CalendarDay[] }) {
+function toMinutes(time: string): number {
+  const [h, m] = time.split(":");
+  return Number(h) * 60 + Number(m);
+}
+
+function hoursBetween(startTime: string | null, endTime: string | null): number | null {
+  if (!startTime || !endTime) return null;
+  let minutes = toMinutes(endTime) - toMinutes(startTime);
+  if (minutes < 0) minutes += 24 * 60;
+  return minutes / 60;
+}
+
+function pickerEarnings(quantities: Array<{ unit: Unit; quantity: number }>, rates: Partial<Record<Unit, number>>): number | null {
+  let total = 0;
+  let rated = false;
+  for (const q of quantities) {
+    const rate = rates[q.unit];
+    if (rate != null) { total += q.quantity * rate; rated = true; }
+  }
+  return rated ? total : null;
+}
+
+function totalEarnings(pickers: CalendarPicker[], rates: Partial<Record<Unit, number>>): number {
+  let total = 0;
+  for (const p of pickers) {
+    for (const q of p.quantities) {
+      const rate = rates[q.unit];
+      if (rate != null) total += q.quantity * rate;
+    }
+  }
+  return total;
+}
+
+function totalsByUnit(pickers: CalendarPicker[]): Array<{ unit: Unit; quantity: number }> {
+  const totals = new Map<Unit, number>();
+  for (const p of pickers) {
+    for (const q of p.quantities) totals.set(q.unit, (totals.get(q.unit) ?? 0) + q.quantity);
+  }
+  return Array.from(totals, ([unit, quantity]) => ({ unit, quantity }));
+}
+
+export function CalendarView({ year, month, label, days, unitRatesByField }: { year: number; month: number; label: string; days: CalendarDay[]; unitRatesByField: UnitRatesByField }) {
   const [selected, setSelected] = useState<{ date: string; shift: CalendarShift } | null>(null);
   const leading = days.length ? days[0]!.weekday : 0;
 
@@ -85,7 +131,52 @@ export function CalendarView({ year, month, label, days }: { year: number; month
             <div>
               <p>קוטפים:</p>
               {selected.shift.pickers.length > 0 ? (
-                <ol className="numbered-list">{selected.shift.pickers.map((name, i) => <li key={`${name}-${i}`}>{name}</li>)}</ol>
+                <div className="table-wrap">
+                  <table className="table">
+                    <thead>
+                      <tr><th>#</th><th>שם</th><th>כמות תוצרת</th><th>ש&quot;ח לשעה</th><th>סה&quot;כ הכנסה</th></tr>
+                    </thead>
+                    <tbody>
+                      {selected.shift.pickers.map((p, i) => {
+                        const rates = unitRatesByField[selected.shift.plantationFieldId] ?? {};
+                        const hours = hoursBetween(p.startTime, p.endTime);
+                        const earnings = pickerEarnings(p.quantities, rates);
+                        const perHour = earnings != null && hours ? earnings / hours : null;
+                        return (
+                          <tr key={`${p.name}-${i}`}>
+                            <td>{i + 1}</td>
+                            <td>{p.name}</td>
+                            <td>
+                              {p.quantities.length === 0 ? "—" : p.quantities.map((q, qi) => (
+                                <span key={q.unit}>
+                                  {qi > 0 && " · "}
+                                  <span dir="ltr" className="ltr-field">{q.quantity}</span> {UNIT_LABEL[q.unit]}
+                                </span>
+                              ))}
+                            </td>
+                            <td>{perHour != null ? formatMoney(perHour) : "—"}</td>
+                            <td>{earnings != null ? formatMoney(earnings) : "—"}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot>
+                      <tr className="totals-row">
+                        <td colSpan={2}>סה&quot;כ</td>
+                        <td>
+                          {totalsByUnit(selected.shift.pickers).length === 0 ? "—" : totalsByUnit(selected.shift.pickers).map((t, i) => (
+                            <span key={t.unit}>
+                              {i > 0 && " · "}
+                              <span dir="ltr" className="ltr-field">{t.quantity}</span> {UNIT_LABEL[t.unit]}
+                            </span>
+                          ))}
+                        </td>
+                        <td></td>
+                        <td>{formatMoney(totalEarnings(selected.shift.pickers, unitRatesByField[selected.shift.plantationFieldId] ?? {}))}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
               ) : (
                 <p className="muted">טרם שובצו קוטפים</p>
               )}
