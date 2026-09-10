@@ -22,6 +22,7 @@ export type EditableShift = {
   plantation_field_id: number;
   leader_id: number;
   notes: string;
+  status?: string;
 };
 
 export function ShiftForm({
@@ -53,6 +54,7 @@ export function ShiftForm({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [leaderConflict, setLeaderConflict] = useState<{ message: string; formData: FormData } | null>(null);
+  const [confirmCompletedEdit, setConfirmCompletedEdit] = useState<FormData | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -94,7 +96,12 @@ export function ShiftForm({
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    await submitForm(new FormData(e.currentTarget));
+    const formData = new FormData(e.currentTarget);
+    if (shift?.status === "COMPLETED") {
+      setConfirmCompletedEdit(formData);
+      return;
+    }
+    await submitForm(formData);
   }
 
   function confirmLeaderConflict() {
@@ -102,6 +109,13 @@ export function ShiftForm({
     leaderConflict.formData.set("overrideLeaderConflict", "1");
     const formData = leaderConflict.formData;
     setLeaderConflict(null);
+    void submitForm(formData);
+  }
+
+  function confirmCompletedEditAndSave() {
+    if (!confirmCompletedEdit) return;
+    const formData = confirmCompletedEdit;
+    setConfirmCompletedEdit(null);
     void submitForm(formData);
   }
 
@@ -161,6 +175,18 @@ export function ShiftForm({
             <div className="actions">
               <button type="button" className="btn" disabled={busy} onClick={confirmLeaderConflict}>{busy ? "שומר…" : shift ? "שמירה בכל זאת" : "יצירה בכל זאת"}</button>
               <button type="button" className="btn secondary" disabled={busy} onClick={() => setLeaderConflict(null)}>ביטול</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+      {confirmCompletedEdit && (
+        <Modal title="עריכת משמרת שהסתיימה" onClose={() => setConfirmCompletedEdit(null)}>
+          <div className="stack">
+            <p role="alert">המשמרת כבר סומנה כהושלמה. שינוי הפרטים עלול להשפיע על דיווחי הקוטפים והתשלומים שחושבו עבורה.</p>
+            <p>לשמור את השינויים בכל זאת?</p>
+            <div className="actions">
+              <button type="button" className="btn" disabled={busy} onClick={confirmCompletedEditAndSave}>{busy ? "שומר…" : "שמירה בכל זאת"}</button>
+              <button type="button" className="btn secondary" disabled={busy} onClick={() => setConfirmCompletedEdit(null)}>ביטול</button>
             </div>
           </div>
         </Modal>
