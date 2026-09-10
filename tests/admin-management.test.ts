@@ -69,8 +69,8 @@ describe("תעריפי יחידות לחלקה",()=>{
     service.setFieldUnitRates(x.admin,x.field,{rates:[{unit:"KG",rateNis:2.5},{unit:"CRATE_SMALL",rateNis:15}]});
     expect(service.listFieldUnitRates(x.field)).toEqual([{unit:"CRATE_SMALL",rateNis:15},{unit:"KG",rateNis:2.5}]);
     expect(db.prepare("SELECT action FROM audit_events WHERE entity_type='FIELD_UNIT_RATES' AND entity_id=?").get(x.field)).toEqual({action:"UPDATE"});
-    service.setFieldUnitRates(x.admin,x.field,{rates:[{unit:"TON",rateNis:1000}]});
-    expect(service.listFieldUnitRates(x.field)).toEqual([{unit:"TON",rateNis:1000}]);
+    service.setFieldUnitRates(x.admin,x.field,{rates:[{unit:"BUCKET",rateNis:1000}]});
+    expect(service.listFieldUnitRates(x.field)).toEqual([{unit:"BUCKET",rateNis:1000}]);
   });
   it("דוחה יחידה כפולה, סכום לא חיובי, מזהה מזויף ומשתמש שאינו מנהל",()=>{
     const x=setup(); const service=new AdminService(db);

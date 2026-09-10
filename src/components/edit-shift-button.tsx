@@ -23,7 +23,7 @@ export function EditShiftButton({
   shift: EditableShift;
   existingPickerIds: number[];
   existingVehicleIds: number[];
-  existingGoals: Array<{ value: number; unit: Unit }>;
+  existingGoals: Array<{ value: number; unit: Unit; actual?: number | null }>;
 }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();

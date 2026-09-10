@@ -21,6 +21,7 @@ const ADMIN_NAV: NavItem[] = [
   { href: "/admin/users", label: "עובדים", icon: UsersIcon },
   { href: "/admin/resources", label: "חקלאים", icon: SproutIcon },
   { href: "/admin/transport", label: "תחבורה", icon: TruckIcon },
+  { href: "/calendar", label: "לוח חודשי", icon: CalendarDaysIcon },
   {
     href: "/admin/shifts",
     label: "משמרות",
@@ -30,8 +31,15 @@ const ADMIN_NAV: NavItem[] = [
       { href: "/admin/shifts/availability", label: "זמינות עובדים", icon: CalendarIcon },
     ],
   },
-  { href: "/calendar", label: "לוח חודשי", icon: CalendarDaysIcon },
-  { href: "/admin/reports", label: "דוחות", icon: BarChartIcon },
+  {
+    href: "/admin/reports",
+    label: "דוחות",
+    icon: BarChartIcon,
+    children: [
+      { href: "/admin/reports/employee-performance", label: "דוח עובדים", icon: UsersIcon },
+      { href: "/admin/reports/harvest", label: "דוח נתוני קטיף", icon: SproutIcon },
+    ],
+  },
 ];
 
 function itemsFor(role: Role): NavItem[] {

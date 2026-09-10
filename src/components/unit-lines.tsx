@@ -3,7 +3,7 @@ import { useState } from "react";
 import { UNITS, UNIT_LABEL, type Unit } from "@/lib/units";
 import { XIcon, PlusIcon } from "./icons";
 
-const REPORT_UNITS = UNITS.filter((u) => u !== "KG" && u !== "TON");
+const REPORT_UNITS = UNITS.filter((u) => u !== "KG");
 
 type Line = { key: number; value: number | string; unit: Unit | "" };
 let nextKey = 0;

@@ -13,7 +13,7 @@ import { Modal } from "./modal";
 import { formatMoney } from "@/lib/format";
 
 export type ShiftRow = { id: number; date: string; start_time: string; end_time: string; status: string; notes: string; farm_id: number; plantation_field_id: number; leader_id: number; leader: string; farm: string; fruit_type: string; picker_count: number; team_leader_details: string };
-export type UnitInfo = { unit: Unit; goal: number; produced: number };
+export type UnitInfo = { unit: Unit; goal: number; produced: number | null };
 export type UnitsByShift = Record<number, UnitInfo[]>;
 export type PickerNamesByShift = Record<number, string[]>;
 export type PickerIdsByShift = Record<number, number[]>;
@@ -212,7 +212,7 @@ export function ShiftsTable({
                       {units.length ? units.map((u, i) => (
                         <span key={u.unit}>
                           {i > 0 && " · "}
-                          <span dir="ltr" className="ltr-field">{u.produced}/{u.goal}</span> {UNIT_LABEL[u.unit]}
+                          <span dir="ltr" className="ltr-field">{u.produced ?? "—"}/{u.goal}</span> {UNIT_LABEL[u.unit]}
                         </span>
                       )) : "—"}
                       {unrated.length > 0 && <> <UnratedUnitsWarning units={unrated} /></>}
@@ -278,14 +278,14 @@ function RowActions({
           shift={{ id: row.id, date: row.date, start_time: row.start_time, end_time: row.end_time, farm_id: row.farm_id, plantation_field_id: row.plantation_field_id, leader_id: row.leader_id, notes: row.notes }}
           existingPickerIds={pickerIdsByShift[row.id] ?? []}
           existingVehicleIds={vehicleIdsByShift[row.id] ?? []}
-          existingGoals={(unitsByShift[row.id] ?? []).map(u => ({ value: u.goal, unit: u.unit }))}
+          existingGoals={(unitsByShift[row.id] ?? []).map(u => ({ value: u.goal, unit: u.unit, actual: u.produced }))}
         />
       )}
       {row.status === "PUBLISHED" && <Link className="btn btn-sm secondary" href={`/leader/${row.id}`}>דוח</Link>}
       {row.status === "DRAFT" && <Transition csrf={csrf} id={row.id} target="PUBLISHED" label="פרסום" />}
       {row.status === "PUBLISHED" && (
         <>
-          <Transition csrf={csrf} id={row.id} target="COMPLETED" label="סיום" />
+          <CompleteShiftButton csrf={csrf} id={row.id} units={unitsByShift[row.id] ?? []} />
           <Transition csrf={csrf} id={row.id} target="DRAFT" label="החזרה לטיוטה" />
         </>
       )}
@@ -324,7 +324,7 @@ function CompletedEditButton({
         shift={{ id: row.id, date: row.date, start_time: row.start_time, end_time: row.end_time, farm_id: row.farm_id, plantation_field_id: row.plantation_field_id, leader_id: row.leader_id, notes: row.notes, status: row.status }}
         existingPickerIds={pickerIdsByShift[row.id] ?? []}
         existingVehicleIds={vehicleIdsByShift[row.id] ?? []}
-        existingGoals={(unitsByShift[row.id] ?? []).map(u => ({ value: u.goal, unit: u.unit }))}
+        existingGoals={(unitsByShift[row.id] ?? []).map(u => ({ value: u.goal, unit: u.unit, actual: u.produced }))}
       />
       <Link className="icon-btn" title="עריכת דיווח קוטפים" aria-label="עריכת דיווח קוטפים" href={`/leader/${row.id}`}>
         <UsersIcon size={18} />
@@ -339,7 +339,7 @@ function ShiftDetails({ units, pickerNames, pickerHours, unitRates, vehicles, no
       <div className="stack">
         <h3>יעד ותפוקה</h3>
         {units.length === 0 ? <p className="muted">לא הוגדר יעד</p> : (
-          <ul>{units.map(u => <li key={u.unit}><span dir="ltr" className="ltr-field">{u.produced}/{u.goal}</span> {UNIT_LABEL[u.unit]}</li>)}</ul>
+          <ul>{units.map(u => <li key={u.unit}><span dir="ltr" className="ltr-field">{u.produced ?? "—"}/{u.goal}</span> {UNIT_LABEL[u.unit]}</li>)}</ul>
         )}
       </div>
       <div className="stack">
@@ -485,6 +485,77 @@ function Transition({ csrf, id, target, label, danger, icon }: { csrf: string; i
               <button type="button" className="btn secondary" disabled={busy} onClick={() => setConflict(null)}>ביטול</button>
             </div>
           </div>
+        </Modal>
+      )}
+    </>
+  );
+}
+
+function CompleteShiftButton({ csrf, id, units }: { csrf: string; id: number; units: UnitInfo[] }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [error, setError] = useState("");
+
+  function openModal() {
+    setValues(Object.fromEntries(units.map(u => [u.unit, ""])));
+    setError("");
+    setOpen(true);
+  }
+
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      const formData = new FormData();
+      formData.set("csrf", csrf);
+      formData.set("action", "shiftTransition");
+      formData.set("shiftId", String(id));
+      formData.set("target", "COMPLETED");
+      for (const u of units) {
+        formData.append("resultUnit", u.unit);
+        formData.append("resultQty", values[u.unit] ?? "");
+      }
+      const res = await fetch("/api/actions", { method: "POST", body: formData });
+      const url = new URL(res.url);
+      const message = url.searchParams.get("error");
+      if (message) { setError(message); setBusy(false); return; }
+      window.location.href = res.url;
+    } catch {
+      setError("שגיאת תקשורת, נסו שוב");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <button type="button" className="btn btn-sm secondary" onClick={openModal}>סיום</button>
+      {open && (
+        <Modal title="תוצאה סופית של המשמרת" onClose={() => setOpen(false)}>
+          <form className="stack" onSubmit={submit}>
+            {error && <p className="alert" role="alert">{error}</p>}
+            <p>נא להזין את התוצאה הסופית של המשמרת, באותן יחידות מידה שנקבעו ביעד.</p>
+            {units.map(u => (
+              <div className="field" key={u.unit}>
+                <label htmlFor={`result-${id}-${u.unit}`}>{UNIT_LABEL[u.unit]} (יעד: <span dir="ltr" className="ltr-field">{u.goal}</span>)</label>
+                <input
+                  className="input"
+                  id={`result-${id}-${u.unit}`}
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  required
+                  value={values[u.unit] ?? ""}
+                  onChange={e => setValues(v => ({ ...v, [u.unit]: e.target.value }))}
+                />
+              </div>
+            ))}
+            <div className="actions">
+              <button type="submit" className="btn" disabled={busy}>{busy ? "מבצע…" : "סיום משמרת"}</button>
+              <button type="button" className="btn secondary" disabled={busy} onClick={() => setOpen(false)}>ביטול</button>
+            </div>
+          </form>
         </Modal>
       )}
     </>

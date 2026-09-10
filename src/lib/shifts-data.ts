@@ -14,6 +14,7 @@ import type {
 } from "@/components/shifts-table";
 import type { Unit } from "@/lib/units";
 import type { EmployeeShiftRow, ShiftsByWorker } from "@/components/employee-performance-report";
+import type { FarmerShiftRow, ShiftsByFarmer } from "@/components/farmer-performance-report";
 
 export type ShiftsPageData = {
   pickers: Picker[];
@@ -29,6 +30,17 @@ export type ShiftsPageData = {
   vehiclesByShift: VehiclesByShift;
   vehicleIdsByShift: VehicleIdsByShift;
 };
+
+function toMinutes(time: string): number {
+  const [h, m] = time.split(":");
+  return Number(h) * 60 + Number(m);
+}
+
+function hoursBetween(startTime: string, endTime: string): number {
+  let minutes = toMinutes(endTime) - toMinutes(startTime);
+  if (minutes < 0) minutes += 24 * 60;
+  return minutes / 60;
+}
 
 const SHIFT_SELECT = `SELECT s.id,s.date,s.start_time,s.end_time,s.status,s.notes,pf.farm_id,s.plantation_field_id,s.leader_id,u.name leader,f.name farm,pf.fruit_type,s.team_leader_details,(SELECT COUNT(*) FROM shift_pickers WHERE shift_id=s.id) picker_count
    FROM shifts s JOIN users u ON u.id=s.leader_id JOIN plantation_fields pf ON pf.id=s.plantation_field_id JOIN farms f ON f.id=pf.farm_id`;
@@ -46,15 +58,9 @@ export function loadShiftsPageData(database: Database.Database, opts: { dateFrom
     ? (database.prepare(`${SHIFT_SELECT} WHERE s.date>=? AND s.date<? ORDER BY s.date DESC,s.start_time DESC`).all(dateFrom, dateTo) as ShiftRow[])
     : (database.prepare(`${SHIFT_SELECT} ORDER BY s.date DESC,s.start_time DESC LIMIT ?`).all(limit) as ShiftRow[]);
 
-  const goalRows = database.prepare("SELECT shift_id,unit,goal FROM shift_goals").all() as Array<{ shift_id: number; unit: Unit; goal: number }>;
-  const producedRows = database.prepare("SELECT shift_id,unit,SUM(quantity) produced FROM quantities GROUP BY shift_id,unit").all() as Array<{ shift_id: number; unit: Unit; produced: number }>;
+  const goalRows = database.prepare("SELECT shift_id,unit,goal,actual FROM shift_goals").all() as Array<{ shift_id: number; unit: Unit; goal: number; actual: number | null }>;
   const unitsByShift: UnitsByShift = {};
-  for (const g of goalRows) (unitsByShift[g.shift_id] ??= []).push({ unit: g.unit, goal: g.goal, produced: 0 });
-  for (const p of producedRows) {
-    const list = unitsByShift[p.shift_id] ??= [];
-    const existing = list.find(x => x.unit === p.unit);
-    if (existing) existing.produced = p.produced; else list.push({ unit: p.unit, goal: 0, produced: p.produced });
-  }
+  for (const g of goalRows) (unitsByShift[g.shift_id] ??= []).push({ unit: g.unit, goal: g.goal, produced: g.actual });
 
   const pickerRows = database
     .prepare(
@@ -132,4 +138,45 @@ export function getRecentShiftsByWorker(database: Database.Database, today: stri
     (shiftsByWorker[user_id] ??= []).push({ ...row, quantities: quantitiesByShiftUser.get(`${row.id}_${user_id}`) ?? [] });
   }
   return shiftsByWorker;
+}
+
+export function getRecentShiftsByFarmer(database: Database.Database, today: string, limit = 7): ShiftsByFarmer {
+  const rows = database
+    .prepare(
+      `SELECT farm_id,id,date,start_time,end_time,plantation_field_id,field_name,fruit_type,leader,status FROM (
+         SELECT pf.farm_id farm_id, s.id id, s.date date, s.start_time start_time, s.end_time end_time,
+                s.plantation_field_id plantation_field_id, pf.name field_name, pf.fruit_type fruit_type, u.name leader, s.status status,
+                ROW_NUMBER() OVER (PARTITION BY pf.farm_id ORDER BY s.date DESC, s.start_time DESC) rn
+         FROM shifts s
+         JOIN plantation_fields pf ON pf.id = s.plantation_field_id
+         JOIN users u ON u.id = s.leader_id
+         WHERE s.status IN ('PUBLISHED','COMPLETED') AND (s.date < ? OR s.status = 'COMPLETED')
+       ) ranked WHERE rn <= ?
+       ORDER BY farm_id, date DESC, start_time DESC`
+    )
+    .all(today, limit) as Array<FarmerShiftRow & { farm_id: number }>;
+
+  const goalRows = database.prepare("SELECT shift_id,unit,goal,actual FROM shift_goals").all() as Array<{ shift_id: number; unit: Unit; goal: number; actual: number | null }>;
+  const goalsByShift = new Map<number, Array<{ unit: Unit; goal: number; actual: number | null }>>();
+  for (const g of goalRows) {
+    (goalsByShift.get(g.shift_id) ?? goalsByShift.set(g.shift_id, []).get(g.shift_id)!).push({ unit: g.unit, goal: g.goal, actual: g.actual });
+  }
+
+  const pickerRows = database.prepare("SELECT sp.shift_id,u.name FROM shift_pickers sp JOIN users u ON u.id=sp.user_id ORDER BY u.name").all() as Array<{ shift_id: number; name: string }>;
+  const pickersByShift = new Map<number, string[]>();
+  for (const p of pickerRows) {
+    (pickersByShift.get(p.shift_id) ?? pickersByShift.set(p.shift_id, []).get(p.shift_id)!).push(p.name);
+  }
+
+  const hoursRows = database.prepare("SELECT shift_id,start_time,end_time FROM shift_hours").all() as Array<{ shift_id: number; start_time: string; end_time: string }>;
+  const actualHoursByShift = new Map<number, number>();
+  for (const h of hoursRows) {
+    actualHoursByShift.set(h.shift_id, (actualHoursByShift.get(h.shift_id) ?? 0) + hoursBetween(h.start_time, h.end_time));
+  }
+
+  const shiftsByFarmer: ShiftsByFarmer = {};
+  for (const { farm_id, ...row } of rows) {
+    (shiftsByFarmer[farm_id] ??= []).push({ ...row, pickers: pickersByShift.get(row.id) ?? [], units: goalsByShift.get(row.id) ?? [], actualHours: actualHoursByShift.get(row.id) ?? null });
+  }
+  return shiftsByFarmer;
 }

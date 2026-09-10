@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { AppShell } from "@/components/nav";
 import { ReportsTabs } from "@/components/reports-tabs";
 import { ShiftsTable } from "@/components/shifts-table";
@@ -41,6 +42,7 @@ export default async function Reports({ searchParams }: { searchParams: Promise<
   const todayMonth = Number(today.slice(5, 7));
 
   const query = await searchParams;
+  if (query.period === undefined) redirect("/admin/reports/employee-performance");
   const period: Period = (PERIODS as readonly string[]).includes(query.period ?? "") ? (query.period as Period) : "daily";
   const requestedMonth = Number(query.m);
   const year = Number.isInteger(Number(query.y)) && Number(query.y) >= 2000 && Number(query.y) <= 2100 ? Number(query.y) : todayYear;

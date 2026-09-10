@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { UnitLines } from "./unit-lines";
 import { Modal } from "./modal";
-import { UNITS, type Unit } from "@/lib/units";
+import { UNITS, UNIT_LABEL, type Unit } from "@/lib/units";
 
 export const LEADER_CONFLICT_MARKER = "שיבוץ כפול למוביל המשמרת";
 const LEADER_ERRORS = ["קוטף אינו זמין", "שיבוץ כפול", "קוטף אינו פעיל"];
@@ -43,7 +43,7 @@ export function ShiftForm({
   shift?: EditableShift;
   existingPickerIds: number[];
   existingVehicleIds: number[];
-  existingGoals: Array<{ value: number; unit: Unit }>;
+  existingGoals: Array<{ value: number; unit: Unit; actual?: number | null }>;
   onSuccess?: (redirectTo: string) => void;
 }) {
   const [leaderId, setLeaderId] = useState(shift ? String(shift.leader_id) : "");
@@ -55,6 +55,7 @@ export function ShiftForm({
   const [busy, setBusy] = useState(false);
   const [leaderConflict, setLeaderConflict] = useState<{ message: string; formData: FormData } | null>(null);
   const [confirmCompletedEdit, setConfirmCompletedEdit] = useState<FormData | null>(null);
+  const [actuals, setActuals] = useState<Record<string, string>>(() => Object.fromEntries(existingGoals.map(g => [g.unit, g.actual != null ? String(g.actual) : ""])));
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -163,6 +164,29 @@ export function ShiftForm({
         <span>יעד</span>
         <UnitLines valueName="goalQty" unitName="goalUnit" initial={existingGoals} addLabel="הוספת יעד נוסף" valueLabel="יעד" unitLabel="יחידת מידה ליעד" units={UNITS} />
       </div>
+      {shift?.status === "COMPLETED" && existingGoals.length > 0 && (
+        <div className="field">
+          <span>תוצאה סופית</span>
+          <div className="stack">
+            {existingGoals.map(g => (
+              <div className="line-row" key={g.unit}>
+                <input type="hidden" name="actualUnit" value={g.unit} />
+                <input
+                  className="input"
+                  name="actualQty"
+                  aria-label={`תוצאה סופית ל${UNIT_LABEL[g.unit]}`}
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={actuals[g.unit] ?? ""}
+                  onChange={e => setActuals(a => ({ ...a, [g.unit]: e.target.value }))}
+                />
+                <span>{UNIT_LABEL[g.unit]} (יעד: <span dir="ltr" className="ltr-field">{g.value}</span>)</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="field"><label htmlFor="shift-notes">הערות</label><textarea className="input" id="shift-notes" name="notes" maxLength={4000} defaultValue={shift?.notes} /></div>
       <div className="actions">
         <button className="btn" disabled={busy}>{busy ? "שומר…" : shift ? "שמירת שינויים" : "יצירת טיוטה"}</button>

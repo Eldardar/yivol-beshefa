@@ -7,7 +7,7 @@ import { AdminService, type ManagedEntity } from "@/lib/services/admin";
 import { PickerService } from "@/lib/services/picker";
 import { SchedulingService } from "@/lib/services/scheduling";
 import { ShiftService } from "@/lib/services/shifts";
-import { farmSchema, plantationFieldSchema, shiftReportSchema, shiftSchema, unitSchema, userUpdateSchema, vehicleSchema, workerHoursSchema } from "@/lib/schemas";
+import { farmSchema, plantationFieldSchema, shiftReportSchema, shiftResultSchema, shiftSchema, unitSchema, userUpdateSchema, vehicleSchema, workerHoursSchema } from "@/lib/schemas";
 import type { Unit } from "@/lib/units";
 import { requestBodyIssue, requestUrl } from "@/lib/http";
 
@@ -81,7 +81,9 @@ export async function POST(req:Request){
     }else if(action==="shiftCreate"||action==="shiftUpdate"){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
       const goalUnits=form.getAll("goalUnit");const goalQtys=form.getAll("goalQty");
-      const goals=goalUnits.map((unit,i)=>({unit,goal:goalQtys[i]}));
+      const actualUnits=form.getAll("actualUnit");const actualQtys=form.getAll("actualQty");
+      const actualByUnit=new Map(actualUnits.map((unit,i)=>[String(unit),actualQtys[i]]));
+      const goals=goalUnits.map((unit,i)=>({unit,goal:goalQtys[i],actual:actualByUnit.get(String(unit))??""}));
       const input=shiftSchema.parse({date:form.get("date"),startTime:form.get("startTime"),endTime:form.get("endTime"),plantationFieldId:form.get("plantationFieldId"),pickerIds:form.getAll("pickerIds"),leaderId:form.get("leaderId"),vehicleIds:form.getAll("vehicleIds"),goals,notes:form.get("notes")??""});
       const options={allowLeaderConflict:form.get("overrideLeaderConflict")==="1"};
       const scheduling=new SchedulingService(database);
@@ -89,7 +91,9 @@ export async function POST(req:Request){
     }else if(action==="shiftTransition"){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
       const target=z.enum(["DRAFT","PUBLISHED","COMPLETED","CANCELLED"]).parse(form.get("target"));
-      const options={allowLeaderConflict:form.get("overrideLeaderConflict")==="1"};
+      const resultUnits=form.getAll("resultUnit");const resultQtys=form.getAll("resultQty");
+      const results=target==="COMPLETED"?shiftResultSchema.parse(resultUnits.map((unit,i)=>({unit,result:resultQtys[i]}))):undefined;
+      const options={allowLeaderConflict:form.get("overrideLeaderConflict")==="1",results};
       warning=new ShiftService(database).transition(user.id,positiveId.parse(form.get("shiftId")),target,options).join(" · ");
     }else if(action==="quantities"){
       const shiftId=positiveId.parse(form.get("shiftId"));const entries:Array<{userId:number;quantity:number;unit:Unit}>=[];

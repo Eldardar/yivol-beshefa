@@ -9,7 +9,7 @@ const transitions:Record<string,Set<string>>={DRAFT:new Set(["PUBLISHED","CANCEL
 export class ShiftService{
  constructor(private readonly db:Database.Database){}
  private actor(actorId:number){return this.db.prepare("SELECT id,role,active FROM users WHERE id=?").get(actorId) as {id:number;role:string;active:number}|undefined;}
- transition(actorId:number,shiftId:number,target:"DRAFT"|"PUBLISHED"|"COMPLETED"|"CANCELLED",options?:{allowLeaderConflict?:boolean}):string[]{
+ transition(actorId:number,shiftId:number,target:"DRAFT"|"PUBLISHED"|"COMPLETED"|"CANCELLED",options?:{allowLeaderConflict?:boolean;results?:Array<{unit:Unit;result:number}>}):string[]{
   const actor=this.actor(actorId);if(!actor?.active||actor.role!=="ADMIN")throw new Error("אין הרשאה");
   let pushItems:Array<{userId:number;title:string;body:string}>=[];
   let whatsappItems:Array<{to:string;title:string;body:string}>=[];
@@ -22,9 +22,17 @@ export class ShiftService{
       (SELECT count(DISTINCT user_id) FROM quantities WHERE shift_id=?) reported,
       (SELECT count(DISTINCT q.user_id) FROM quantities q JOIN shift_pickers sp ON sp.shift_id=q.shift_id AND sp.user_id=q.user_id WHERE q.shift_id=?) matched`).get(shiftId,shiftId,shiftId) as {assigned:number;reported:number;matched:number};
     if(counts.assigned<1||counts.reported!==counts.assigned||counts.matched!==counts.assigned)throw new Error("לא ניתן להשלים משמרת לפני דיווח מלא לכל הקוטפים");
+    const goalUnits=(this.db.prepare("SELECT unit FROM shift_goals WHERE shift_id=?").all(shiftId) as Array<{unit:Unit}>).map(g=>g.unit);
+    const results=options?.results??[];
+    if(results.length!==goalUnits.length||!goalUnits.every(u=>results.some(r=>r.unit===u)))throw new Error("יש להזין תוצאה סופית עבור כל יחידות היעד");
+    for(const r of results)if(!Number.isFinite(r.result)||r.result<0||r.result>1_000_000)throw new Error("התוצאה אינה תקינה");
    }
    const warnings=(target==="PUBLISHED"||(shift.status==="CANCELLED"&&target==="DRAFT"))?new SchedulingService(this.db).validateExistingShift(shiftId,options?.allowLeaderConflict):[];
    this.db.prepare("UPDATE shifts SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").run(target,shiftId);
+   if(target==="COMPLETED"){
+    const updateActual=this.db.prepare("UPDATE shift_goals SET actual=? WHERE shift_id=? AND unit=?");
+    for(const r of options!.results!)updateActual.run(r.result,shiftId,r.unit);
+   }
    let title:string|undefined;
    if(target==="PUBLISHED")title="שיבוץ למשמרת";else if(target==="CANCELLED")title="משמרת בוטלה";else if(shift.status==="PUBLISHED"&&target==="DRAFT")title="פרסום המשמרת נמשך";
    if(title){

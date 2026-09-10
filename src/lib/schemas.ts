@@ -41,7 +41,13 @@ export const adminAvailabilityUpdateSchema = z.object({
   entries: z.array(availabilitySchema).min(1)
 }).strict();
 
-const goalLineSchema = z.object({ unit: unitSchema, goal: z.coerce.number().finite().nonnegative() }).strict();
+const goalLineSchema = z.object({
+  unit: unitSchema,
+  goal: z.coerce.number().finite().nonnegative(),
+  actual: z.union([z.literal(""), z.coerce.number().finite().nonnegative().max(1_000_000)]).optional()
+}).strict();
+const resultLineSchema = z.object({ unit: unitSchema, result: z.coerce.number().finite().nonnegative().max(1_000_000) }).strict();
+export const shiftResultSchema = z.array(resultLineSchema).min(1).refine((items) => new Set(items.map((x) => x.unit)).size === items.length, "כל יחידת מידה יכולה להופיע פעם אחת בתוצאה");
 const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "שעה אינה תקינה");
 
 export const shiftReportSchema = z.object({
