@@ -398,6 +398,7 @@ a.card:hover, a.card:focus-visible { border-color: var(--brand-forest-600); box-
 .input::placeholder { color: var(--neutral-500); }
 .input:focus-visible { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-surface); }
 textarea.input { min-height: 6rem; padding-block: var(--space-3); resize: vertical; }
+.input.textarea-autogrow { min-height: 48px; max-height: 16rem; resize: none; overflow-y: auto; transition: height var(--duration-fast) var(--ease-standard); }
 select.input { appearance: auto; }
 .input[type="search"] { border-radius: var(--radius-full); }
 

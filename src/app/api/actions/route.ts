@@ -88,7 +88,9 @@ export async function POST(req:Request){
       const result=action==="shiftCreate"?scheduling.createShift(user.id,input,options):scheduling.updateShift(user.id,positiveId.parse(form.get("shiftId")),input,options);warning=result.warnings.join(" · ");
     }else if(action==="shiftTransition"){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
-      const target=z.enum(["DRAFT","PUBLISHED","COMPLETED","CANCELLED"]).parse(form.get("target"));warning=new ShiftService(database).transition(user.id,positiveId.parse(form.get("shiftId")),target).join(" · ");
+      const target=z.enum(["DRAFT","PUBLISHED","COMPLETED","CANCELLED"]).parse(form.get("target"));
+      const options={allowLeaderConflict:form.get("overrideLeaderConflict")==="1"};
+      warning=new ShiftService(database).transition(user.id,positiveId.parse(form.get("shiftId")),target,options).join(" · ");
     }else if(action==="quantities"){
       const shiftId=positiveId.parse(form.get("shiftId"));const entries:Array<{userId:number;quantity:number;unit:Unit}>=[];
       const userIds=new Set<string>();for(const key of form.keys()){const match=/^qty_(\d+)$/.exec(key);if(match)userIds.add(match[1]!);}

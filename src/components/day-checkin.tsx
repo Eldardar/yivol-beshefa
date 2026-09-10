@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Modal } from "./modal";
 
 const MAX_LENGTH = 365;
@@ -11,6 +11,14 @@ export function DayCheckIn({ wish, csrf }: { wish: string; csrf: string }) {
   const [emoji, setEmoji] = useState(WISH_EMOJIS[0]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [text]);
 
   async function handleSend() {
     const message = text.trim();
@@ -38,8 +46,10 @@ export function DayCheckIn({ wish, csrf }: { wish: string; csrf: string }) {
     <>
       <div className="field">
         <textarea
-          className="input"
+          ref={textareaRef}
+          className="input textarea-autogrow"
           value={text}
+          rows={1}
           maxLength={MAX_LENGTH}
           onChange={e => setText(e.target.value)}
         />

@@ -2,9 +2,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { UnitLines } from "./unit-lines";
 import { Modal } from "./modal";
-import type { Unit } from "@/lib/units";
+import { UNITS, type Unit } from "@/lib/units";
 
-const LEADER_CONFLICT_MARKER = "שיבוץ כפול למוביל המשמרת";
+export const LEADER_CONFLICT_MARKER = "שיבוץ כפול למוביל המשמרת";
 const LEADER_ERRORS = ["קוטף אינו זמין", "שיבוץ כפול", "קוטף אינו פעיל"];
 const FIELD_ERRORS = ["חלקת הגידול אינה פעילה"];
 
@@ -147,7 +147,7 @@ export function ShiftForm({
       </div>
       <div className="field">
         <span>יעד</span>
-        <UnitLines valueName="goalQty" unitName="goalUnit" initial={existingGoals} addLabel="הוספת יעד נוסף" valueLabel="יעד" unitLabel="יחידת מידה ליעד" />
+        <UnitLines valueName="goalQty" unitName="goalUnit" initial={existingGoals} addLabel="הוספת יעד נוסף" valueLabel="יעד" unitLabel="יחידת מידה ליעד" units={UNITS} />
       </div>
       <div className="field"><label htmlFor="shift-notes">הערות</label><textarea className="input" id="shift-notes" name="notes" maxLength={4000} defaultValue={shift?.notes} /></div>
       <div className="actions">

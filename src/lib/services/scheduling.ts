@@ -43,14 +43,14 @@ export class SchedulingService{
   if(!field?.field_active||!field.farm_active)throw new Error("חלקת הגידול אינה פעילה");
   return warnings;
  }
- validateExistingShift(shiftId:number):string[]{
+ validateExistingShift(shiftId:number,allowLeaderConflict?:boolean):string[]{
   const row=this.db.prepare("SELECT date,start_time,end_time,plantation_field_id,leader_id,notes FROM shifts WHERE id=?").get(shiftId) as {date:string;start_time:string;end_time:string;plantation_field_id:number;leader_id:number;notes:string}|undefined;
   if(!row)throw new Error("המשמרת לא נמצאה");
   const pickerIds=(this.db.prepare("SELECT user_id FROM shift_pickers WHERE shift_id=?").all(shiftId) as Array<{user_id:number}>).map(x=>x.user_id);
   const vehicleIds=(this.db.prepare("SELECT vehicle_id FROM shift_vehicles WHERE shift_id=?").all(shiftId) as Array<{vehicle_id:number}>).map(x=>x.vehicle_id);
   const goals=this.db.prepare("SELECT unit,goal FROM shift_goals WHERE shift_id=?").all(shiftId) as Array<{unit:string;goal:number}>;
   const input=shiftSchema.parse({date:row.date,startTime:row.start_time,endTime:row.end_time,plantationFieldId:row.plantation_field_id,pickerIds,leaderId:row.leader_id,vehicleIds,goals,notes:row.notes});
-  return this.validateAssignments(input,shiftId);
+  return this.validateAssignments(input,shiftId,allowLeaderConflict);
  }
  createShift(actorId:number,raw:ShiftInput,options?:{allowLeaderConflict?:boolean}):Result{
   const input=shiftSchema.parse(raw);this.assertAdmin(actorId);

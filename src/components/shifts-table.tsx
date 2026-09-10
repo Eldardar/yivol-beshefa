@@ -8,7 +8,8 @@ import { EditShiftButton } from "./edit-shift-button";
 import { AssignPickersButton } from "./assign-pickers-button";
 import { AssignVehiclesButton } from "./assign-vehicles-button";
 import { ChevronDownIcon, TrashIcon, AlertTriangleIcon, UsersIcon } from "./icons";
-import type { Picker, FarmOption, PlantationFieldsByFarm } from "./shift-form";
+import { LEADER_CONFLICT_MARKER, type Picker, type FarmOption, type PlantationFieldsByFarm } from "./shift-form";
+import { Modal } from "./modal";
 import { formatMoney } from "@/lib/format";
 
 export type ShiftRow = { id: number; date: string; start_time: string; end_time: string; status: string; notes: string; farm_id: number; plantation_field_id: number; leader_id: number; leader: string; farm: string; fruit_type: string; picker_count: number; team_leader_details: string };
@@ -433,17 +434,59 @@ function ShiftDetails({ units, pickerNames, pickerHours, unitRates, vehicles, no
 }
 
 function Transition({ csrf, id, target, label, danger, icon }: { csrf: string; id: number; target: string; label: string; danger?: boolean; icon?: React.ReactNode }) {
+  const [busy, setBusy] = useState(false);
+  const [conflict, setConflict] = useState<{ message: string; formData: FormData } | null>(null);
+
+  async function submit(formData: FormData) {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/actions", { method: "POST", body: formData });
+      const url = new URL(res.url);
+      const message = url.searchParams.get("error");
+      if (message && message.includes(LEADER_CONFLICT_MARKER)) {
+        setConflict({ message, formData });
+        setBusy(false);
+        return;
+      }
+      window.location.href = res.url;
+    } catch {
+      setBusy(false);
+    }
+  }
+
+  function confirmConflict() {
+    if (!conflict) return;
+    conflict.formData.set("overrideLeaderConflict", "1");
+    const formData = conflict.formData;
+    setConflict(null);
+    void submit(formData);
+  }
+
   return (
-    <form action="/api/actions" method="post">
-      <input type="hidden" name="csrf" value={csrf} />
-      <input type="hidden" name="action" value="shiftTransition" />
-      <input type="hidden" name="shiftId" value={id} />
-      <input type="hidden" name="target" value={target} />
-      {icon ? (
-        <button className={`icon-btn${danger ? " danger" : ""}`} title={label} aria-label={label}>{icon}</button>
-      ) : (
-        <button className={`btn btn-sm${danger ? " danger" : " secondary"}`}>{label}</button>
+    <>
+      <form onSubmit={e => { e.preventDefault(); void submit(new FormData(e.currentTarget)); }}>
+        <input type="hidden" name="csrf" value={csrf} />
+        <input type="hidden" name="action" value="shiftTransition" />
+        <input type="hidden" name="shiftId" value={id} />
+        <input type="hidden" name="target" value={target} />
+        {icon ? (
+          <button className={`icon-btn${danger ? " danger" : ""}`} title={label} aria-label={label} disabled={busy}>{icon}</button>
+        ) : (
+          <button className={`btn btn-sm${danger ? " danger" : " secondary"}`} disabled={busy}>{label}</button>
+        )}
+      </form>
+      {conflict && (
+        <Modal title="שיבוץ כפול למוביל המשמרת" onClose={() => setConflict(null)}>
+          <div className="stack">
+            <p role="alert">{conflict.message}</p>
+            <p>לבצע את הפעולה בכל זאת?</p>
+            <div className="actions">
+              <button type="button" className="btn" disabled={busy} onClick={confirmConflict}>{busy ? "מבצע…" : "ביצוע בכל זאת"}</button>
+              <button type="button" className="btn secondary" disabled={busy} onClick={() => setConflict(null)}>ביטול</button>
+            </div>
+          </div>
+        </Modal>
       )}
-    </form>
+    </>
   );
 }

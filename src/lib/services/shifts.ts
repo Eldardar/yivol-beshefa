@@ -9,7 +9,7 @@ const transitions:Record<string,Set<string>>={DRAFT:new Set(["PUBLISHED","CANCEL
 export class ShiftService{
  constructor(private readonly db:Database.Database){}
  private actor(actorId:number){return this.db.prepare("SELECT id,role,active FROM users WHERE id=?").get(actorId) as {id:number;role:string;active:number}|undefined;}
- transition(actorId:number,shiftId:number,target:"DRAFT"|"PUBLISHED"|"COMPLETED"|"CANCELLED"):string[]{
+ transition(actorId:number,shiftId:number,target:"DRAFT"|"PUBLISHED"|"COMPLETED"|"CANCELLED",options?:{allowLeaderConflict?:boolean}):string[]{
   const actor=this.actor(actorId);if(!actor?.active||actor.role!=="ADMIN")throw new Error("אין הרשאה");
   let pushItems:Array<{userId:number;title:string;body:string}>=[];
   let whatsappItems:Array<{to:string;title:string;body:string}>=[];
@@ -23,7 +23,7 @@ export class ShiftService{
       (SELECT count(DISTINCT q.user_id) FROM quantities q JOIN shift_pickers sp ON sp.shift_id=q.shift_id AND sp.user_id=q.user_id WHERE q.shift_id=?) matched`).get(shiftId,shiftId,shiftId) as {assigned:number;reported:number;matched:number};
     if(counts.assigned<1||counts.reported!==counts.assigned||counts.matched!==counts.assigned)throw new Error("לא ניתן להשלים משמרת לפני דיווח מלא לכל הקוטפים");
    }
-   const warnings=(target==="PUBLISHED"||(shift.status==="CANCELLED"&&target==="DRAFT"))?new SchedulingService(this.db).validateExistingShift(shiftId):[];
+   const warnings=(target==="PUBLISHED"||(shift.status==="CANCELLED"&&target==="DRAFT"))?new SchedulingService(this.db).validateExistingShift(shiftId,options?.allowLeaderConflict):[];
    this.db.prepare("UPDATE shifts SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").run(target,shiftId);
    let title:string|undefined;
    if(target==="PUBLISHED")title="שיבוץ למשמרת";else if(target==="CANCELLED")title="משמרת בוטלה";else if(shift.status==="PUBLISHED"&&target==="DRAFT")title="פרסום המשמרת נמשך";
@@ -69,6 +69,8 @@ export class ShiftService{
   if(!actor?.active||!shift)throw new Error("אין הרשאה");if(shift.status!=="PUBLISHED")throw new Error("מצב המשמרת אינו מאפשר דיווח");
   const assigned=this.db.prepare("SELECT 1 FROM shift_pickers WHERE shift_id=? AND user_id=?").get(shiftId,actorId);
   if(!assigned)throw new Error("אינך משובץ למשמרת זו");
+  const already=this.db.prepare("SELECT 1 FROM audit_events WHERE actor_id=? AND action='SELF_REPORT' AND entity_type='SHIFT' AND entity_id=?").get(actorId,shiftId);
+  if(already)throw new Error("כבר דיווחת על משמרת זו");
   if(entries.length===0)throw new Error("יש להזין לפחות שורת דיווח אחת");
   const units=new Set<Unit>();
   for(const entry of entries){

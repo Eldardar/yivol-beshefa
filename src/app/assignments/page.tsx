@@ -6,7 +6,7 @@ import { MapPinIcon, TruckIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
-type AssignmentRow = { id: number; date: string; start_time: string; end_time: string; leader_id: number; farm: string; address: string; navigation_link: string | null; fruit_type: string; vehicles: string | null };
+type AssignmentRow = { id: number; date: string; start_time: string; end_time: string; leader_id: number; farm: string; address: string; navigation_link: string | null; fruit_type: string; vehicles: string | null; reported: number };
 
 export default async function Assignments() {
   const user = await requireUser();
@@ -15,17 +15,18 @@ export default async function Assignments() {
   const today = jerusalemDate();
   const rows = db()
     .prepare(
-      `SELECT s.id,s.date,s.start_time,s.end_time,s.leader_id,f.name farm,f.address,f.navigation_link,pf.fruit_type,GROUP_CONCAT(v.name,', ') vehicles
+      `SELECT s.id,s.date,s.start_time,s.end_time,s.leader_id,f.name farm,f.address,f.navigation_link,pf.fruit_type,GROUP_CONCAT(v.name,', ') vehicles,
+       EXISTS(SELECT 1 FROM audit_events WHERE actor_id=sp.user_id AND action='SELF_REPORT' AND entity_type='SHIFT' AND entity_id=s.id) reported
        FROM shift_pickers sp
        JOIN shifts s ON s.id=sp.shift_id
        JOIN plantation_fields pf ON pf.id=s.plantation_field_id
        JOIN farms f ON f.id=pf.farm_id
        LEFT JOIN shift_vehicles sv ON sv.shift_id=s.id
        LEFT JOIN vehicles v ON v.id=sv.vehicle_id
-       WHERE sp.user_id=? AND s.status='PUBLISHED' AND s.date>=?
+       WHERE sp.user_id=? AND s.status='PUBLISHED'
        GROUP BY s.id ORDER BY s.date,s.start_time`
     )
-    .all(user.id, jerusalemDate()) as AssignmentRow[];
+    .all(user.id) as AssignmentRow[];
 
   return (
     <AppShell user={user}>
@@ -44,11 +45,15 @@ export default async function Assignments() {
                   ? <Link className="btn" href={`/leader/${x.id}`}>דיווח כמויות</Link>
                   : <span className="btn" aria-disabled="true" title="הדיווח ייפתח ביום המשמרת">דיווח כמויות</span>
               )}
-              {x.date <= today && <Link className="btn secondary" href={`/report/${x.id}`}>דיווח תוצאות אישי</Link>}
+              {x.leader_id !== user.id && x.date <= today && (
+                x.reported
+                  ? <span className="btn secondary" aria-disabled="true" title="כבר דיווחת על משמרת זו">דיווח תוצאות אישי</span>
+                  : <Link className="btn secondary" href={`/report/${x.id}`}>דיווח תוצאות אישי</Link>
+              )}
             </div>
           </article>
         ))}
-        {rows.length === 0 && <p className="card muted">אין שיבוצים קרובים שפורסמו.</p>}
+        {rows.length === 0 && <p className="card muted">אין שיבוצים שפורסמו.</p>}
       </div>
     </AppShell>
   );

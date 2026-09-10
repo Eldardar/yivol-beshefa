@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { AppShell } from "@/components/nav";
 import { db, requireUser } from "@/lib/server";
 import { formatHebrewDate, jerusalemDate } from "@/lib/dates";
@@ -6,7 +5,6 @@ import { UNIT_LABEL, type Unit } from "@/lib/units";
 
 export const dynamic = "force-dynamic";
 
-const STATUS_LABEL: Record<string, string> = { DRAFT: "טיוטה", PUBLISHED: "פורסמה", COMPLETED: "הושלמה", CANCELLED: "בוטלה" };
 type HistoryRow = { id: number; date: string; status: string; farm: string; crop: string; start_time: string | null; end_time: string | null };
 
 export default async function History({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string }> }) {
@@ -45,12 +43,11 @@ export default async function History({ searchParams }: { searchParams: Promise<
 
       <div className="table-wrap card">
         <table className="table">
-          <thead><tr><th>תאריך</th><th></th><th>חקלאי</th><th>גידול</th><th>שעות</th><th>כמות</th></tr></thead>
+          <thead><tr><th>תאריך</th><th>חקלאי</th><th>גידול</th><th>שעות</th><th>כמות</th></tr></thead>
           <tbody>
             {rows.map(x => (
               <tr key={x.id}>
                 <td>{formatHebrewDate(x.date)}</td>
-                <td>{x.status === "PUBLISHED" ? <Link className="btn secondary btn-sm" href={`/report/${x.id}`}>דיווח תוצאות</Link> : <span className={`tag${x.status === "CANCELLED" ? " bad" : ""}`}>{STATUS_LABEL[x.status]}</span>}</td>
                 <td>{x.farm}</td>
                 <td>{x.crop}</td>
                 <td><span dir="ltr" className="ltr-field">{hoursText(x)}</span></td>
