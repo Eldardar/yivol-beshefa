@@ -44,7 +44,7 @@ export class ShiftService{
  }
  saveQuantities(actorId:number,shiftId:number,entries:Array<{userId:number;quantity:number;unit:Unit}>,report?:{teamLeaderDetails:string},hours?:Array<{userId:number;startTime:string;endTime:string}>):void{
   const actor=this.actor(actorId);const shift=this.db.prepare("SELECT leader_id,status FROM shifts WHERE id=?").get(shiftId) as {leader_id:number;status:string}|undefined;
-  if(!actor?.active||!shift)throw new Error("אין הרשאה");if(shift.status!=="PUBLISHED")throw new Error("מצב המשמרת אינו מאפשר דיווח");if(actor.role!=="ADMIN"&&shift.leader_id!==actorId)throw new Error("אין הרשאה");
+  if(!actor?.active||!shift)throw new Error("אין הרשאה");if(shift.status!=="PUBLISHED"&&!(shift.status==="COMPLETED"&&actor.role==="ADMIN"))throw new Error("מצב המשמרת אינו מאפשר דיווח");if(actor.role!=="ADMIN"&&shift.leader_id!==actorId)throw new Error("אין הרשאה");
   const assigned=(this.db.prepare("SELECT user_id FROM shift_pickers WHERE shift_id=? ORDER BY user_id").all(shiftId) as Array<{user_id:number}>).map(x=>x.user_id);
   if(entries.length===0)throw new Error("יש לדווח עבור כל הקוטפים");
   const seen=new Map<number,Set<Unit>>();

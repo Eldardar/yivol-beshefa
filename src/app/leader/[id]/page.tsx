@@ -11,7 +11,8 @@ export default async function Leader({ params }: { params: Promise<{ id: string 
   const user = await requireUser();
   const id = Number((await params).id);
   const shift = db().prepare("SELECT id,date,start_time,end_time,status,leader_id,team_leader_details FROM shifts WHERE id=?").get(id) as { id: number; date: string; start_time: string; end_time: string; status: string; leader_id: number; team_leader_details: string } | undefined;
-  if (!shift || shift.status !== "PUBLISHED" || (user.role !== "ADMIN" && shift.leader_id !== user.id)) notFound();
+  const statusAllowed = shift?.status === "PUBLISHED" || (user.role === "ADMIN" && shift?.status === "COMPLETED");
+  if (!shift || !statusAllowed || (user.role !== "ADMIN" && shift.leader_id !== user.id)) notFound();
   if (user.role !== "ADMIN" && shift.date > jerusalemDate()) notFound();
 
   const csrf = await csrfValue();
