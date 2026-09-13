@@ -13,6 +13,7 @@ export function AuthShell({ children, sideExtra }: { children: React.ReactNode; 
             </div>
           </div>
           {children}
+          {sideExtra && <div className="auth-mobile-quote">{sideExtra}</div>}
         </div>
       </div>
       <div className="auth-side" aria-hidden="true">

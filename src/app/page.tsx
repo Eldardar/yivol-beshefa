@@ -32,6 +32,7 @@ export default async function Home() {
           <article className="kpi-card">
             <span className="kpi-label">קוטפים פעילים</span>
             <div className="metric">{stats.activePickers}/{stats.totalPickers}</div>
+            <span className="kpi-sublabel">{stats.totalPickers - stats.activePickers} נשברו</span>
           </article>
           <article className="kpi-card">
             <span className="kpi-label">משמרות קרובות</span>

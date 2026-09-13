@@ -7,6 +7,7 @@ import { AddShiftButton } from "./add-shift-button";
 import { EditShiftButton } from "./edit-shift-button";
 import { AssignPickersButton } from "./assign-pickers-button";
 import { AssignVehiclesButton } from "./assign-vehicles-button";
+import { AssignmentPieChart } from "./assignment-pie-chart";
 import { ChevronDownIcon, TrashIcon, AlertTriangleIcon, UsersIcon } from "./icons";
 import { LEADER_CONFLICT_MARKER, type Picker, type FarmOption, type PlantationFieldsByFarm } from "./shift-form";
 import { Modal } from "./modal";
@@ -176,7 +177,7 @@ export function ShiftsTable({
               )}
               {isOpen && (
                 <div className="record-card-details">
-                  <ShiftDetails units={units} pickerNames={pickerNamesByShift[row.id] ?? []} pickerHours={pickerHoursByShift[row.id] ?? []} unitRates={unitRatesByField[row.plantation_field_id] ?? {}} vehicles={vehiclesByShift[row.id] ?? []} notes={row.notes} plannedStart={row.start_time} plannedEnd={row.end_time} teamLeaderDetails={row.team_leader_details} completedEditButton={!readOnly && row.status === "COMPLETED" ? <CompletedEditButton row={row} csrf={csrf} pickers={pickers} farms={farms} plantationFieldsByFarm={plantationFieldsByFarm} pickerIdsByShift={pickerIdsByShift} vehicleIdsByShift={vehicleIdsByShift} unitsByShift={unitsByShift} /> : undefined} />
+                  <ShiftDetails units={units} pickerNames={pickerNamesByShift[row.id] ?? []} totalPickers={pickers.length} pickerHours={pickerHoursByShift[row.id] ?? []} unitRates={unitRatesByField[row.plantation_field_id] ?? {}} vehicles={vehiclesByShift[row.id] ?? []} notes={row.notes} plannedStart={row.start_time} plannedEnd={row.end_time} teamLeaderDetails={row.team_leader_details} completedEditButton={!readOnly && row.status === "COMPLETED" ? <CompletedEditButton row={row} csrf={csrf} pickers={pickers} farms={farms} plantationFieldsByFarm={plantationFieldsByFarm} pickerIdsByShift={pickerIdsByShift} vehicleIdsByShift={vehicleIdsByShift} unitsByShift={unitsByShift} /> : undefined} />
                 </div>
               )}
             </article>
@@ -231,7 +232,7 @@ export function ShiftsTable({
                   {isOpen && (
                     <tr className="worker-expand-row">
                       <td colSpan={9}>
-                        <ShiftDetails units={units} pickerNames={pickerNamesByShift[row.id] ?? []} pickerHours={pickerHoursByShift[row.id] ?? []} unitRates={unitRatesByField[row.plantation_field_id] ?? {}} vehicles={vehiclesByShift[row.id] ?? []} notes={row.notes} plannedStart={row.start_time} plannedEnd={row.end_time} teamLeaderDetails={row.team_leader_details} completedEditButton={!readOnly && row.status === "COMPLETED" ? <CompletedEditButton row={row} csrf={csrf} pickers={pickers} farms={farms} plantationFieldsByFarm={plantationFieldsByFarm} pickerIdsByShift={pickerIdsByShift} vehicleIdsByShift={vehicleIdsByShift} unitsByShift={unitsByShift} /> : undefined} />
+                        <ShiftDetails units={units} pickerNames={pickerNamesByShift[row.id] ?? []} totalPickers={pickers.length} pickerHours={pickerHoursByShift[row.id] ?? []} unitRates={unitRatesByField[row.plantation_field_id] ?? {}} vehicles={vehiclesByShift[row.id] ?? []} notes={row.notes} plannedStart={row.start_time} plannedEnd={row.end_time} teamLeaderDetails={row.team_leader_details} completedEditButton={!readOnly && row.status === "COMPLETED" ? <CompletedEditButton row={row} csrf={csrf} pickers={pickers} farms={farms} plantationFieldsByFarm={plantationFieldsByFarm} pickerIdsByShift={pickerIdsByShift} vehicleIdsByShift={vehicleIdsByShift} unitsByShift={unitsByShift} /> : undefined} />
                       </td>
                     </tr>
                   )}
@@ -333,7 +334,7 @@ function CompletedEditButton({
   );
 }
 
-function ShiftDetails({ units, pickerNames, pickerHours, unitRates, vehicles, notes, plannedStart, plannedEnd, teamLeaderDetails, completedEditButton }: { units: UnitInfo[]; pickerNames: string[]; pickerHours: Array<{ name: string; startTime: string | null; endTime: string | null; quantities: Array<{ unit: Unit; quantity: number }> }>; unitRates: Partial<Record<Unit, number>>; vehicles: Array<{ number: string; name: string }>; notes: string; plannedStart: string; plannedEnd: string; teamLeaderDetails: string; completedEditButton?: React.ReactNode }) {
+function ShiftDetails({ units, pickerNames, totalPickers, pickerHours, unitRates, vehicles, notes, plannedStart, plannedEnd, teamLeaderDetails, completedEditButton }: { units: UnitInfo[]; pickerNames: string[]; totalPickers: number; pickerHours: Array<{ name: string; startTime: string | null; endTime: string | null; quantities: Array<{ unit: Unit; quantity: number }> }>; unitRates: Partial<Record<Unit, number>>; vehicles: Array<{ number: string; name: string }>; notes: string; plannedStart: string; plannedEnd: string; teamLeaderDetails: string; completedEditButton?: React.ReactNode }) {
   return (
     <div className="sub-tables">
       <div className="stack">
@@ -344,9 +345,12 @@ function ShiftDetails({ units, pickerNames, pickerHours, unitRates, vehicles, no
       </div>
       <div className="stack">
         <h3>קוטפים משובצים</h3>
-        {pickerNames.length === 0 ? <p className="muted">לא שובצו קוטפים</p> : (
-          <ol className="numbered-list">{pickerNames.map((name, i) => <li key={`${name}-${i}`}>{name}</li>)}</ol>
-        )}
+        <div className="worker-assignment">
+          {pickerNames.length === 0 ? <p className="muted">לא שובצו קוטפים</p> : (
+            <ol className="numbered-list">{pickerNames.map((name, i) => <li key={`${name}-${i}`}>{name}</li>)}</ol>
+          )}
+          {totalPickers > 0 && <AssignmentPieChart assigned={pickerNames.length} total={totalPickers} />}
+        </div>
       </div>
       <div className="stack">
         <h3>רכבים</h3>

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 
 export type GalleryImage = { src: string; alt: string };
 
-const AUTO_ADVANCE_MS = 5000;
+const AUTO_ADVANCE_MS = 3000;
 
 export function HeroGallery({ images }: { images: GalleryImage[] }) {
   const [index, setIndex] = useState(0);

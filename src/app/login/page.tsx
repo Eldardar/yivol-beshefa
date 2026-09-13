@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/server";
 import { AuthShell } from "@/components/auth-shell";
+import { QuoteGallery } from "@/components/quote-gallery";
 
 export default async function Login({ searchParams }: { searchParams: Promise<{ error?: string; changed?: string; reset?: string }> }) {
   const user = await currentUser();
@@ -11,10 +12,12 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
   return (
     <AuthShell
       sideExtra={
-        <blockquote className="auth-side-quote" dir="ltr">
-          <p>&ldquo;Ooga Booga&rdquo;</p>
-          <cite>~ Andrey</cite>
-        </blockquote>
+        <QuoteGallery
+          quotes={[
+            { text: "Ooga Booga", cite: "Andrey" },
+            { text: "היידה תפוחים התחלנו!", cite: "D. Rozen", dir: "rtl" },
+          ]}
+        />
       }
     >
       <div className="stack">

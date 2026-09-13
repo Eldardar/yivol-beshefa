@@ -1,9 +1,9 @@
 "use client";
 
 const TABS = [
-  { key: "month", label: "החודש" },
+  { key: "all", label: "כל הזמנים" },
   { key: "year", label: "השנה" },
-  { key: "all", label: "כל הזמנים" }
+  { key: "month", label: "החודש" }
 ] as const;
 
 export type RangeKey = (typeof TABS)[number]["key"];

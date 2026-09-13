@@ -47,7 +47,7 @@ export function EmployeePerformanceReport({
   shiftCountsByRange: Record<RangeKey, Record<number, number>>;
 }) {
   const [selected, setSelected] = useState<WorkerOption | null>(null);
-  const [range, setRange] = useState<RangeKey>("month");
+  const [range, setRange] = useState<RangeKey>("all");
   const shiftCounts = shiftCountsByRange[range];
   const shifts = selected ? shiftsByWorker[selected.id] ?? [] : [];
   const totalEarnings = shifts.reduce((sum, row) => sum + (shiftEarnings(row, unitRatesByField) ?? 0), 0);

@@ -30,7 +30,7 @@ export function FarmerPerformanceReport({
   shiftCountsByRange: Record<RangeKey, Record<number, number>>;
 }) {
   const [selected, setSelected] = useState<FarmerOption | null>(null);
-  const [range, setRange] = useState<RangeKey>("month");
+  const [range, setRange] = useState<RangeKey>("all");
   const shiftCounts = shiftCountsByRange[range];
   const shifts = selected ? shiftsByFarmer[selected.id] ?? [] : [];
   const rankedFarmers = [...farmers].sort((a, b) => (shiftCounts[b.id] ?? 0) - (shiftCounts[a.id] ?? 0) || a.name.localeCompare(b.name, "he"));
