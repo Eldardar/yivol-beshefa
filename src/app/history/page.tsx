@@ -65,9 +65,24 @@ export default async function History({ searchParams }: { searchParams: Promise<
     arr.push({ quantity: q.quantity, unit: q.unit });
     quantitiesByShift.set(q.shift_id, arr);
   }
-  const quantityText = (id: number) => {
+  const goalRows = db().prepare("SELECT shift_id,unit,goal FROM worker_goals WHERE user_id=?").all(user.id) as Array<{ shift_id: number; unit: Unit; goal: number }>;
+  const goalsByShift = new Map<number, Array<{ unit: Unit; goal: number }>>();
+  for (const g of goalRows) {
+    const arr = goalsByShift.get(g.shift_id) ?? [];
+    arr.push({ unit: g.unit, goal: g.goal });
+    goalsByShift.set(g.shift_id, arr);
+  }
+  const quantityParts = (id: number) => {
     const lines = quantitiesByShift.get(id) ?? [];
-    return lines.length ? lines.map(l => `${l.quantity} ${UNIT_LABEL[l.unit]}`).join(" · ") : "—";
+    const goals = goalsByShift.get(id) ?? [];
+    const goalUnits = new Set(goals.map(g => g.unit));
+    const byUnit = new Map(lines.map(l => [l.unit, l.quantity]));
+    const parts: Array<{ key: string; node: React.ReactNode }> = goals.map(g => ({
+      key: `g-${g.unit}`,
+      node: <><span dir="ltr" className="ltr-field">{byUnit.get(g.unit) ?? "—"}/{g.goal}</span> {UNIT_LABEL[g.unit]}</>
+    }));
+    for (const l of lines) if (!goalUnits.has(l.unit)) parts.push({ key: `q-${l.unit}`, node: <>{l.quantity} {UNIT_LABEL[l.unit]}</> });
+    return parts;
   };
   const hoursText = (x: HistoryRow) => (x.start_time && x.end_time ? `${x.start_time}–${x.end_time}` : "—");
 
@@ -82,15 +97,18 @@ export default async function History({ searchParams }: { searchParams: Promise<
         <table className="table">
           <thead><tr><th>תאריך</th><th>חקלאי</th><th>גידול</th><th>שעות</th><th>כמות</th></tr></thead>
           <tbody>
-            {rows.map(x => (
-              <tr key={x.id}>
-                <td>{formatHebrewDate(x.date)}</td>
-                <td>{x.farm}</td>
-                <td>{x.crop}</td>
-                <td><span dir="ltr" className="ltr-field">{hoursText(x)}</span></td>
-                <td>{quantityText(x.id)}</td>
-              </tr>
-            ))}
+            {rows.map(x => {
+              const parts = quantityParts(x.id);
+              return (
+                <tr key={x.id}>
+                  <td>{formatHebrewDate(x.date)}</td>
+                  <td>{x.farm}</td>
+                  <td>{x.crop}</td>
+                  <td><span dir="ltr" className="ltr-field">{hoursText(x)}</span></td>
+                  <td>{parts.length ? parts.map((p, i) => <span key={p.key}>{i > 0 ? " · " : ""}{p.node}</span>) : "—"}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         {rows.length === 0 && <p className="muted">אין היסטוריה להצגה עדיין.</p>}

@@ -8,6 +8,7 @@ import { FieldFinancialsButton } from "./field-financials-button";
 import { ActiveSwitch } from "./active-switch";
 import { ShowArchivedToggle } from "./show-archived-toggle";
 import { ChevronDownIcon } from "./icons";
+import { DeleteRecordButton } from "./delete-record-button";
 
 export type FarmRow = { id: number; name: string; contact_person: string; phone: string; address: string; navigation_link: string | null; notes: string; active: number };
 export type PlantationFieldRow = { id: number; farm_id: number; name: string; fruit_type: string; fruit_subtype: string; size: number | null; location: string; details: string; active: number };
@@ -62,6 +63,11 @@ export function FarmersTable({ farms, plantationFieldsByFarm, csrf }: { farms: F
                 <div className="record-card-details">
                   <div className="sub-tables">
                     <PlantationFieldsList fields={fields} farmId={row.id} farmName={row.name} csrf={csrf} showArchived={showArchived} />
+                    {!row.active && (
+                      <div className="actions">
+                        <DeleteRecordButton csrf={csrf} entity="FARM" id={row.id} name={row.name} />
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -104,6 +110,11 @@ export function FarmersTable({ farms, plantationFieldsByFarm, csrf }: { farms: F
                       <td colSpan={7}>
                         <div className="sub-tables">
                           <PlantationFieldsList fields={fields} farmId={row.id} farmName={row.name} csrf={csrf} showArchived={showArchived} />
+                          {!row.active && (
+                            <div className="actions">
+                              <DeleteRecordButton csrf={csrf} entity="FARM" id={row.id} name={row.name} />
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>

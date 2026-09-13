@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { AppShell } from "@/components/nav";
-import { db, requireUser } from "@/lib/server";
-import { formatHebrewDate, jerusalemDate } from "@/lib/dates";
+import { db, requireUser, csrfValue } from "@/lib/server";
+import { formatHebrewDate, jerusalemDate, jerusalemInstant } from "@/lib/dates";
 import { MapPinIcon, TruckIcon } from "@/components/icons";
+import { WorkerGoalButton } from "@/components/worker-goal-button";
+import type { Unit } from "@/lib/units";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +15,7 @@ export default async function Assignments() {
   if (user.role !== "PICKER") return null;
 
   const today = jerusalemDate();
+  const csrf = await csrfValue();
   const rows = db()
     .prepare(
       `SELECT s.id,s.date,s.start_time,s.end_time,s.leader_id,f.name farm,f.address,f.navigation_link,pf.fruit_type,GROUP_CONCAT(v.name,', ') vehicles,
@@ -27,6 +30,15 @@ export default async function Assignments() {
        GROUP BY s.id ORDER BY s.date,s.start_time`
     )
     .all(user.id) as AssignmentRow[];
+
+  const goalRows = db().prepare("SELECT shift_id,unit,goal FROM worker_goals WHERE user_id=?").all(user.id) as Array<{ shift_id: number; unit: Unit; goal: number }>;
+  const goalsByShift = new Map<number, Array<{ value: number; unit: Unit }>>();
+  for (const g of goalRows) {
+    const arr = goalsByShift.get(g.shift_id) ?? [];
+    arr.push({ value: g.goal, unit: g.unit });
+    goalsByShift.set(g.shift_id, arr);
+  }
+  const now = new Date();
 
   return (
     <AppShell user={user}>
@@ -49,6 +61,9 @@ export default async function Assignments() {
                 x.reported
                   ? <span className="btn secondary" aria-disabled="true" title="כבר דיווחת על משמרת זו">דיווח תוצאות אישי</span>
                   : <Link className="btn secondary" href={`/report/${x.id}`}>דיווח תוצאות אישי</Link>
+              )}
+              {jerusalemInstant(x.date, x.start_time) > now && (
+                <WorkerGoalButton csrf={csrf} shiftId={x.id} existingGoal={goalsByShift.get(x.id) ?? []} />
               )}
             </div>
           </article>

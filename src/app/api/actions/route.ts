@@ -7,7 +7,7 @@ import { AdminService, type ManagedEntity } from "@/lib/services/admin";
 import { PickerService } from "@/lib/services/picker";
 import { SchedulingService } from "@/lib/services/scheduling";
 import { ShiftService } from "@/lib/services/shifts";
-import { farmSchema, plantationFieldSchema, shiftReportSchema, shiftResultSchema, shiftSchema, unitSchema, userUpdateSchema, vehicleSchema, workerHoursSchema } from "@/lib/schemas";
+import { farmSchema, plantationFieldSchema, shiftReportSchema, shiftResultSchema, shiftSchema, unitSchema, userUpdateSchema, vehicleSchema, workerGoalSchema, workerHoursSchema } from "@/lib/schemas";
 import type { Unit } from "@/lib/units";
 import { requestBodyIssue, requestUrl } from "@/lib/http";
 
@@ -17,12 +17,13 @@ const activeSchema=z.enum(["0","1"]);
 const entitySchema=z.enum(["USER","FARM","PLANTATION_FIELD","VEHICLE"]);
 
 function destination(action:string,form:FormData):string {
-  if(action==="setActive"){const entity=form.get("entity");if(entity==="USER")return "/admin/users?saved=1";if(entity==="VEHICLE")return "/admin/transport?saved=1";return "/admin/resources?saved=1";}
+  if(action==="setActive"||action==="delete"){const entity=form.get("entity");if(entity==="USER")return "/admin/users?saved=1";if(entity==="VEHICLE")return "/admin/transport?saved=1";return "/admin/resources?saved=1";}
   if(action==="userUpdate")return "/admin/users?saved=1";
   if(action.startsWith("vehicle"))return "/admin/transport?saved=1";
   if(action.startsWith("farm")||action.startsWith("plantationField"))return "/admin/resources?saved=1";
   if(action.startsWith("shift")||action==="quantities")return "/admin/shifts?saved=1";
   if(action==="selfReport")return "/history?saved=1";
+  if(action==="workerGoalSet")return "/assignments?saved=1";
   if(action==="readNotification"||action==="readAllNotifications")return "/notifications";
   if(action==="broadcastNotification")return "/admin/notifications?saved=1";
   return "/";
@@ -79,6 +80,9 @@ export async function POST(req:Request){
     }else if(action==="setActive"){
       const entity=entitySchema.parse(form.get("entity")) as ManagedEntity;const entityId=positiveId.parse(form.get("entityId"));const active=activeSchema.parse(form.get("active"))==="1";
       new AdminService(database).setActive(user.id,entity,entityId,active);
+    }else if(action==="delete"){
+      const entity=entitySchema.parse(form.get("entity")) as ManagedEntity;const entityId=positiveId.parse(form.get("entityId"));
+      new AdminService(database).deleteEntity(user.id,entity,entityId);
     }else if(action==="shiftCreate"||action==="shiftUpdate"){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
       const goalUnits=form.getAll("goalUnit");const goalQtys=form.getAll("goalQty");
@@ -110,6 +114,11 @@ export async function POST(req:Request){
       const entries=qtys.map((qty,i)=>({quantity:z.coerce.number().finite().nonnegative().max(1_000_000).parse(qty),unit:unitSchema.parse(units[i])}));
       const hours=form.get("hoursStart")&&form.get("hoursEnd")?workerHoursSchema.parse({userId:user.id,startTime:form.get("hoursStart"),endTime:form.get("hoursEnd")}):undefined;
       new ShiftService(database).reportOwnQuantities(user.id,shiftId,entries,hours);
+    }else if(action==="workerGoalSet"){
+      const shiftId=positiveId.parse(form.get("shiftId"));
+      const units=form.getAll("goalUnit");const qtys=form.getAll("goalQty");
+      const entries=workerGoalSchema.parse(units.map((unit,i)=>({unit,goal:qtys[i]})));
+      new ShiftService(database).setOwnGoal(user.id,shiftId,entries);
     }else if(action==="broadcastNotification"){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
       sent=await new AdminService(database).broadcastNotification(user.id,{title:form.get("title"),body:form.get("body")});

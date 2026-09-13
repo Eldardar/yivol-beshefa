@@ -36,6 +36,33 @@ export class AdminService {
     }).immediate();
   }
 
+  deleteEntity(actorId:number, entity:ManagedEntity, entityId:number):void {
+    const actor=this.db.prepare("SELECT role,active FROM users WHERE id=?").get(actorId) as {role:string;active:number}|undefined;
+    if(!actor?.active || actor.role!=="ADMIN") throw new Error("אין הרשאה");
+    if(!Number.isSafeInteger(entityId)||entityId<1) throw new Error("מזהה אינו תקין");
+    if(entity==="USER" && actorId===entityId) throw new Error("לא ניתן למחוק את עצמך");
+    const table=tables[entity];
+    this.db.transaction(()=>{
+      const row=this.db.prepare(`SELECT active FROM ${table} WHERE id=?`).get(entityId) as {active:number}|undefined;
+      if(!row) throw new Error("הרשומה לא נמצאה");
+      if(row.active) throw new Error("ניתן למחוק רק רשומות בארכיון");
+      if(entity==="USER"){
+        for(const t of ["sessions","availability","notifications","password_reset_tokens","push_subscriptions","journal_entries","shift_report_reminders"]){
+          this.db.prepare(`DELETE FROM ${t} WHERE user_id=?`).run(entityId);
+        }
+      }
+      let result;
+      try{
+        result=this.db.prepare(`DELETE FROM ${table} WHERE id=?`).run(entityId);
+      }catch(error){
+        if((error as {code?:string}).code==="SQLITE_CONSTRAINT_FOREIGNKEY") throw new Error("לא ניתן למחוק — קיימת היסטוריה המשויכת לרשומה זו. ניתן להשאיר בארכיון");
+        throw error;
+      }
+      if(result.changes!==1) throw new Error("הרשומה לא נמצאה");
+      this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(actorId,"DELETE",entity,entityId);
+    }).immediate();
+  }
+
   async resetPickerPassword(actorId:number, targetId:number):Promise<string> {
     const actor=this.db.prepare("SELECT role,active FROM users WHERE id=?").get(actorId) as {role:string;active:number}|undefined;
     if(!actor?.active || actor.role!=="ADMIN") throw new Error("אין הרשאה");

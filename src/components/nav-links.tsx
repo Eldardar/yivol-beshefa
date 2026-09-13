@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { ComponentType } from "react";
-import { HomeIcon, CalendarIcon, CalendarDaysIcon, ClipboardListIcon, HistoryIcon, UsersIcon, SproutIcon, TruckIcon, BarChartIcon, ChevronDownIcon, BookOpenIcon, BellIcon } from "./icons";
+import { HomeIcon, CalendarIcon, CalendarDaysIcon, ClipboardListIcon, HistoryIcon, UsersIcon, SproutIcon, TruckIcon, BarChartIcon, ChevronDownIcon, BookOpenIcon } from "./icons";
 
 export type NavChild = { href: string; label: string; icon: ComponentType<{ size?: number; className?: string }> };
 export type NavItem = { href: string; label: string; icon: ComponentType<{ size?: number; className?: string }>; children?: NavChild[] };
@@ -41,7 +41,6 @@ const ADMIN_NAV: NavItem[] = [
       { href: "/admin/reports/transport", label: "דוח תחבורה", icon: TruckIcon },
     ],
   },
-  { href: "/admin/notifications", label: "התראות", icon: BellIcon },
 ];
 
 function itemsFor(role: Role): NavItem[] {

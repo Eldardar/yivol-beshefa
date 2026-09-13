@@ -2,6 +2,7 @@ import type Database from "better-sqlite3";
 import { SchedulingService } from "@/lib/services/scheduling";
 import { pushToUsers } from "@/lib/push";
 import { sendWhatsAppMessages } from "@/lib/whatsapp";
+import { jerusalemInstant } from "@/lib/dates";
 import type { Unit } from "@/lib/units";
 
 const transitions:Record<string,Set<string>>={DRAFT:new Set(["PUBLISHED","CANCELLED"]),PUBLISHED:new Set(["COMPLETED","CANCELLED","DRAFT"]),COMPLETED:new Set(),CANCELLED:new Set(["DRAFT"])};
@@ -91,6 +92,27 @@ export class ShiftService{
    if(hours)this.db.prepare("INSERT INTO shift_hours(shift_id,user_id,start_time,end_time,updated_by,updated_at) VALUES(?,?,?,?,?,CURRENT_TIMESTAMP) ON CONFLICT(shift_id,user_id) DO UPDATE SET start_time=excluded.start_time,end_time=excluded.end_time,updated_by=excluded.updated_by,updated_at=CURRENT_TIMESTAMP").run(shiftId,actorId,hours.startTime,hours.endTime,actorId);
    this.db.prepare("DELETE FROM shift_report_reminders WHERE shift_id=? AND user_id=?").run(shiftId,actorId);
    this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)").run(actorId,"SELF_REPORT","SHIFT",shiftId,JSON.stringify({count:entries.length}));
+  })();
+ }
+ ownGoal(actorId:number,shiftId:number):Array<{unit:Unit;goal:number}>{
+  return this.db.prepare("SELECT unit,goal FROM worker_goals WHERE shift_id=? AND user_id=?").all(shiftId,actorId) as Array<{unit:Unit;goal:number}>;
+ }
+ setOwnGoal(actorId:number,shiftId:number,entries:Array<{unit:Unit;goal:number}>,now=new Date()):void{
+  const actor=this.actor(actorId);const shift=this.db.prepare("SELECT date,start_time,status FROM shifts WHERE id=?").get(shiftId) as {date:string;start_time:string;status:string}|undefined;
+  if(!actor?.active||!shift)throw new Error("אין הרשאה");if(shift.status!=="PUBLISHED")throw new Error("מצב המשמרת אינו מאפשר קביעת יעד");
+  const assigned=this.db.prepare("SELECT 1 FROM shift_pickers WHERE shift_id=? AND user_id=?").get(shiftId,actorId);
+  if(!assigned)throw new Error("אינך משובץ למשמרת זו");
+  if(jerusalemInstant(shift.date,shift.start_time)<=now)throw new Error("ניתן לקבוע יעד אישי רק לפני תחילת המשמרת");
+  if(entries.length===0)throw new Error("יש להזין לפחות שורת יעד אחת");
+  const units=new Set<Unit>();
+  for(const entry of entries){
+   if(!Number.isFinite(entry.goal)||entry.goal<=0||entry.goal>1_000_000)throw new Error("היעד אינו תקין");
+   if(units.has(entry.unit))throw new Error("יחידת מידה כפולה");units.add(entry.unit);
+  }
+  this.db.transaction(()=>{
+   this.db.prepare("DELETE FROM worker_goals WHERE shift_id=? AND user_id=?").run(shiftId,actorId);
+   const insert=this.db.prepare("INSERT INTO worker_goals(shift_id,user_id,unit,goal) VALUES(?,?,?,?)");
+   for(const entry of entries)insert.run(shiftId,actorId,entry.unit,entry.goal);
   })();
  }
  totals(actorId:number,shiftId:number):Array<{unit:Unit;produced:number;goal:number}>{

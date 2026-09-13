@@ -48,6 +48,8 @@ const goalLineSchema = z.object({
   actual: z.union([z.literal(""), z.coerce.number().finite().nonnegative().max(1_000_000)]).optional()
 }).strict();
 const resultLineSchema = z.object({ unit: unitSchema, result: z.coerce.number().finite().nonnegative().max(1_000_000) }).strict();
+const workerGoalLineSchema = z.object({ unit: unitSchema, goal: z.coerce.number().finite().positive().max(1_000_000) }).strict();
+export const workerGoalSchema = z.array(workerGoalLineSchema).min(1).refine((items) => new Set(items.map((x) => x.unit)).size === items.length, "כל יחידת מידה יכולה להופיע פעם אחת ביעד האישי");
 export const shiftResultSchema = z.array(resultLineSchema).min(1).refine((items) => new Set(items.map((x) => x.unit)).size === items.length, "כל יחידת מידה יכולה להופיע פעם אחת בתוצאה");
 const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "שעה אינה תקינה");
 

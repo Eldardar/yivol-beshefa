@@ -9,6 +9,7 @@ import { EditWorkerButton } from "./edit-worker-button";
 import { ActiveSwitch } from "./active-switch";
 import { ShowArchivedToggle } from "./show-archived-toggle";
 import { ChevronDownIcon } from "./icons";
+import { DeleteRecordButton } from "./delete-record-button";
 
 export type WorkerRow = { id: number; name: string; email: string; phone: string; national_id: string | null; notes: string; role: "ADMIN" | "PICKER"; active: number };
 export type WorkerShiftRow = { id: number; date: string; start_time: string; end_time: string; status: string; farm: string; crop: string; lines: Array<{ quantity: number; unit: Unit }> };
@@ -73,7 +74,7 @@ export function WorkersTable({ users, shiftsByUser, csrf, currentUserId }: { use
               </div>
               {isOpen && (
                 <div className="record-card-details">
-                  <WorkerDetails nationalId={row.national_id} past={shifts?.past ?? []} future={shifts?.future ?? []} />
+                  <WorkerDetails csrf={csrf} id={row.id} name={row.name} active={Boolean(row.active)} nationalId={row.national_id} past={shifts?.past ?? []} future={shifts?.future ?? []} />
                 </div>
               )}
             </article>
@@ -118,7 +119,7 @@ export function WorkersTable({ users, shiftsByUser, csrf, currentUserId }: { use
                   {isOpen && (
                     <tr className="worker-expand-row">
                       <td colSpan={8}>
-                        <WorkerDetails nationalId={row.national_id} past={shifts?.past ?? []} future={shifts?.future ?? []} />
+                        <WorkerDetails csrf={csrf} id={row.id} name={row.name} active={Boolean(row.active)} nationalId={row.national_id} past={shifts?.past ?? []} future={shifts?.future ?? []} />
                       </td>
                     </tr>
                   )}
@@ -132,7 +133,7 @@ export function WorkersTable({ users, shiftsByUser, csrf, currentUserId }: { use
   );
 }
 
-function WorkerDetails({ nationalId, past, future }: { nationalId: string | null; past: WorkerShiftRow[]; future: WorkerShiftRow[] }) {
+function WorkerDetails({ csrf, id, name, active, nationalId, past, future }: { csrf: string; id: number; name: string; active: boolean; nationalId: string | null; past: WorkerShiftRow[]; future: WorkerShiftRow[] }) {
   return (
     <div className="sub-tables">
       <div className="stack">
@@ -141,6 +142,11 @@ function WorkerDetails({ nationalId, past, future }: { nationalId: string | null
       </div>
       <ShiftsList title="משמרות עתידיות" rows={future} empty="אין שיבוצים עתידיים" />
       <ShiftsList title="משמרות קודמות" rows={past} empty="אין משמרות קודמות" />
+      {!active && (
+        <div className="actions">
+          <DeleteRecordButton csrf={csrf} entity="USER" id={id} name={name} />
+        </div>
+      )}
     </div>
   );
 }

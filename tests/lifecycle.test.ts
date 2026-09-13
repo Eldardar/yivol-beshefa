@@ -99,4 +99,28 @@ describe("דיווח תוצאות עצמי של קוטף", () => {
     expect(db.prepare("SELECT start_time,end_time FROM shift_hours WHERE shift_id=? AND user_id=?").get(x.shift,x.p2)).toEqual({start_time:"06:00",end_time:"11:00"});
     expect(db.prepare("SELECT count(*) count FROM shift_hours WHERE shift_id=?").get(x.shift)).toEqual({count:1});
   });
+  it("חוסם קביעת יעד אישי במשמרת שאינה פורסמה",()=>{const x=setup();expect(()=>new ShiftService(db).setOwnGoal(x.p2,x.shift,[{unit:"KG",goal:5}],new Date("2026-08-01T00:00:00Z"))).toThrow("מצב המשמרת");});
+  it("חוסם קביעת יעד אישי לקוטף שאינו משובץ למשמרת",()=>{
+    const x=setup();db.prepare("UPDATE shifts SET status='PUBLISHED' WHERE id=?").run(x.shift);
+    const outsider=Number(db.prepare("INSERT INTO users(name,email,phone,role,password_hash) VALUES(?,?,?,?,?)").run("זר","outsider2@example.com","0500000005","PICKER","x").lastInsertRowid);
+    expect(()=>new ShiftService(db).setOwnGoal(outsider,x.shift,[{unit:"KG",goal:5}],new Date("2026-08-01T00:00:00Z"))).toThrow("אינך משובץ");
+  });
+  it("מאפשר לקוטף לקבוע יעד אישי לפני תחילת המשמרת ולעדכן אותו",()=>{
+    const x=setup();const service=new ShiftService(db);db.prepare("UPDATE shifts SET status='PUBLISHED' WHERE id=?").run(x.shift);
+    const before=new Date("2026-08-01T00:00:00Z");
+    service.setOwnGoal(x.p2,x.shift,[{unit:"KG",goal:5}],before);
+    expect(db.prepare("SELECT unit,goal FROM worker_goals WHERE shift_id=? AND user_id=?").get(x.shift,x.p2)).toEqual({unit:"KG",goal:5});
+    service.setOwnGoal(x.p2,x.shift,[{unit:"KG",goal:8},{unit:"CRATE_LARGE",goal:2}],before);
+    expect(db.prepare("SELECT count(*) count FROM worker_goals WHERE shift_id=? AND user_id=?").get(x.shift,x.p2)).toEqual({count:2});
+  });
+  it("חוסם קביעת יעד אישי אחרי תחילת המשמרת",()=>{
+    const x=setup();const service=new ShiftService(db);db.prepare("UPDATE shifts SET status='PUBLISHED' WHERE id=?").run(x.shift);
+    expect(()=>service.setOwnGoal(x.p2,x.shift,[{unit:"KG",goal:5}],new Date("2026-08-10T04:30:00Z"))).toThrow("לפני תחילת המשמרת");
+  });
+  it("חוסם יעד לא חיובי או יחידת מידה כפולה ביעד אישי",()=>{
+    const x=setup();const service=new ShiftService(db);db.prepare("UPDATE shifts SET status='PUBLISHED' WHERE id=?").run(x.shift);
+    const before=new Date("2026-08-01T00:00:00Z");
+    expect(()=>service.setOwnGoal(x.p2,x.shift,[{unit:"KG",goal:0}],before)).toThrow("היעד אינו תקין");
+    expect(()=>service.setOwnGoal(x.p2,x.shift,[{unit:"KG",goal:1},{unit:"KG",goal:2}],before)).toThrow("יחידת מידה כפולה");
+  });
 });

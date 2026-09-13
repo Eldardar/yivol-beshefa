@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/nav";
 import { csrfValue, db, requireAdmin } from "@/lib/server";
+import { formatHebrewDateTime } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -10,13 +11,18 @@ export default async function AdminNotifications({ searchParams }: { searchParam
   const database = db();
 
   const { workerCount } = database.prepare("SELECT COUNT(*) workerCount FROM users WHERE role='PICKER' AND active=1").get() as { workerCount: number };
+  const rows = database
+    .prepare("SELECT id,title,body,read_at,created_at FROM notifications WHERE user_id=? ORDER BY created_at DESC")
+    .all(user.id) as Array<{ id: number; title: string; body: string; read_at: string | null; created_at: string }>;
+  const hasUnread = rows.some(x => !x.read_at);
 
   return (
     <AppShell user={user}>
-      <h1>שליחת התראות</h1>
+      <h1>התראות</h1>
       {saved && sent && <p className="alert" role="status">ההודעה נשלחה ל-{sent} עובדים</p>}
       {error && <p className="alert" role="alert">{error}</p>}
       <section className="card">
+        <h2>שליחת הודעה לכל העובדים</h2>
         <p className="muted">ההודעה תישלח כהתראה בתוך האפליקציה, וכהתראת דחיפה למכשירים שהפעילו זאת, לכל {workerCount} העובדים הפעילים.</p>
         <form className="stack" method="post" action="/api/actions">
           <input type="hidden" name="csrf" value={csrf} />
@@ -26,6 +32,38 @@ export default async function AdminNotifications({ searchParams }: { searchParam
           <button className="btn" disabled={workerCount === 0}>שליחה לכל העובדים</button>
         </form>
       </section>
+
+      <div className="page-header">
+        <h2>ההתראות שלי</h2>
+        {hasUnread && (
+          <form action="/api/actions" method="post">
+            <input type="hidden" name="action" value="readAllNotifications" />
+            <input type="hidden" name="csrf" value={csrf} />
+            <button className="btn secondary btn-sm">סימון הכל כנקרא</button>
+          </form>
+        )}
+      </div>
+      <div className="stack">
+        {rows.map(x => (
+          <article className="card" key={x.id}>
+            <div className="page-header">
+              <h2>{x.title}</h2>
+              {!x.read_at && <span className="tag info">חדש</span>}
+            </div>
+            <p>{x.body}</p>
+            <small className="muted">{formatHebrewDateTime(x.created_at)}</small>
+            {!x.read_at && (
+              <form action="/api/actions" method="post">
+                <input type="hidden" name="action" value="readNotification" />
+                <input type="hidden" name="csrf" value={csrf} />
+                <input type="hidden" name="notificationId" value={x.id} />
+                <button className="btn secondary btn-sm">סימון כנקראה</button>
+              </form>
+            )}
+          </article>
+        ))}
+        {!rows.length && <p className="card muted">אין התראות.</p>}
+      </div>
     </AppShell>
   );
 }

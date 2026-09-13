@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { AppShell } from "@/components/nav";
 import { csrfValue, db, requireUser } from "@/lib/server";
 import { formatHebrewDateTime } from "@/lib/dates";
@@ -8,6 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function Notifications() {
   const user = await requireUser();
+  if (user.role === "ADMIN") redirect("/admin/notifications");
   const csrf = await csrfValue();
   const publicKey = vapidPublicKey();
   const rows = db()
