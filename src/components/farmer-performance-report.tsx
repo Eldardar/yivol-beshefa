@@ -21,19 +21,22 @@ export type ShiftsByFarmer = Record<number, FarmerShiftRow[]>;
 
 export function FarmerPerformanceReport({
   farmers,
-  shiftsByFarmer
+  shiftsByFarmer,
+  shiftCounts
 }: {
   farmers: FarmerOption[];
   shiftsByFarmer: ShiftsByFarmer;
+  shiftCounts: Record<number, number>;
 }) {
   const [selected, setSelected] = useState<FarmerOption | null>(null);
   const shifts = selected ? shiftsByFarmer[selected.id] ?? [] : [];
+  const rankedFarmers = [...farmers].sort((a, b) => (shiftCounts[b.id] ?? 0) - (shiftCounts[a.id] ?? 0) || a.name.localeCompare(b.name, "he"));
 
   return (
     <div className="stack">
       <FarmerPicker farmers={farmers} selected={selected} onSelect={setSelected} />
 
-      {!selected && (
+      {!selected && rankedFarmers.length === 0 && (
         <section className="card empty-state" style={{ justifyItems: "center", textAlign: "center" }}>
           <Image
             src="/reports-placeholder.jpg"
@@ -42,8 +45,27 @@ export function FarmerPerformanceReport({
             height={3088}
             style={{ maxWidth: "100%", width: 240, height: "auto", borderRadius: "var(--radius-md)" }}
           />
-          <p>בחר/י חקלאי כדי לראות את 7 המשמרות האחרונות שלו.</p>
+          <p>בחר/י חקלאי כדי לראות את המשמרות שלו.</p>
         </section>
+      )}
+
+      {!selected && rankedFarmers.length > 0 && (
+        <div className="table-wrap card">
+          <table className="table">
+            <thead>
+              <tr><th>#</th><th>חקלאי</th><th>מספר משמרות</th></tr>
+            </thead>
+            <tbody>
+              {rankedFarmers.map((farmer, i) => (
+                <tr key={farmer.id} className="table-row-clickable" onClick={() => setSelected(farmer)}>
+                  <td>{i + 1}</td>
+                  <td>{farmer.name}</td>
+                  <td>{shiftCounts[farmer.id] ?? 0}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {selected && shifts.length === 0 && (

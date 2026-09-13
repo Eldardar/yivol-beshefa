@@ -106,25 +106,22 @@ export function loadShiftsPageData(database: Database.Database, opts: { dateFrom
   return { pickers, farms, plantationFieldsByFarm, shifts, unitsByShift, ratedUnitsByField, unitRatesByField, pickerNamesByShift, pickerIdsByShift, pickerHoursByShift, vehiclesByShift, vehicleIdsByShift };
 }
 
-export function getRecentShiftsByWorker(database: Database.Database, today: string, limit = 7): ShiftsByWorker {
+export function getShiftsByWorker(database: Database.Database, today: string): ShiftsByWorker {
   const rows = database
     .prepare(
-      `SELECT user_id,id,date,start_time,end_time,actual_start,actual_end,plantation_field_id,farm,fruit_type,leader,status FROM (
-         SELECT sp.user_id user_id, s.id id, s.date date, s.start_time start_time, s.end_time end_time,
-                sh.start_time actual_start, sh.end_time actual_end,
-                s.plantation_field_id plantation_field_id, f.name farm, pf.fruit_type fruit_type, u.name leader, s.status status,
-                ROW_NUMBER() OVER (PARTITION BY sp.user_id ORDER BY s.date DESC, s.start_time DESC) rn
-         FROM shift_pickers sp
-         JOIN shifts s ON s.id = sp.shift_id
-         JOIN plantation_fields pf ON pf.id = s.plantation_field_id
-         JOIN farms f ON f.id = pf.farm_id
-         JOIN users u ON u.id = s.leader_id
-         LEFT JOIN shift_hours sh ON sh.shift_id = s.id AND sh.user_id = sp.user_id
-         WHERE s.status IN ('PUBLISHED','COMPLETED') AND (s.date < ? OR s.status = 'COMPLETED')
-       ) ranked WHERE rn <= ?
-       ORDER BY user_id, date DESC, start_time DESC`
+      `SELECT sp.user_id user_id, s.id id, s.date date, s.start_time start_time, s.end_time end_time,
+              sh.start_time actual_start, sh.end_time actual_end,
+              s.plantation_field_id plantation_field_id, f.name farm, pf.fruit_type fruit_type, u.name leader, s.status status
+       FROM shift_pickers sp
+       JOIN shifts s ON s.id = sp.shift_id
+       JOIN plantation_fields pf ON pf.id = s.plantation_field_id
+       JOIN farms f ON f.id = pf.farm_id
+       JOIN users u ON u.id = s.leader_id
+       LEFT JOIN shift_hours sh ON sh.shift_id = s.id AND sh.user_id = sp.user_id
+       WHERE s.status IN ('PUBLISHED','COMPLETED') AND (s.date < ? OR s.status = 'COMPLETED')
+       ORDER BY sp.user_id, s.date DESC, s.start_time DESC`
     )
-    .all(today, limit) as Array<EmployeeShiftRow & { user_id: number }>;
+    .all(today) as Array<EmployeeShiftRow & { user_id: number }>;
 
   const quantityRows = database.prepare("SELECT shift_id,user_id,unit,quantity FROM quantities").all() as Array<{ shift_id: number; user_id: number; unit: Unit; quantity: number }>;
   const quantitiesByShiftUser = new Map<string, Array<{ unit: Unit; quantity: number }>>();
@@ -140,21 +137,52 @@ export function getRecentShiftsByWorker(database: Database.Database, today: stri
   return shiftsByWorker;
 }
 
-export function getRecentShiftsByFarmer(database: Database.Database, today: string, limit = 7): ShiftsByFarmer {
+export function getShiftCountsByWorker(database: Database.Database, today: string, range?: { start: string; end: string }): Record<number, number> {
+  const rangeClause = range ? "AND s.date >= ? AND s.date < ?" : "";
+  const params = range ? [today, range.start, range.end] : [today];
   const rows = database
     .prepare(
-      `SELECT farm_id,id,date,start_time,end_time,plantation_field_id,field_name,fruit_type,leader,status FROM (
-         SELECT pf.farm_id farm_id, s.id id, s.date date, s.start_time start_time, s.end_time end_time,
-                s.plantation_field_id plantation_field_id, pf.name field_name, pf.fruit_type fruit_type, u.name leader, s.status status,
-                ROW_NUMBER() OVER (PARTITION BY pf.farm_id ORDER BY s.date DESC, s.start_time DESC) rn
-         FROM shifts s
-         JOIN plantation_fields pf ON pf.id = s.plantation_field_id
-         JOIN users u ON u.id = s.leader_id
-         WHERE s.status IN ('PUBLISHED','COMPLETED') AND (s.date < ? OR s.status = 'COMPLETED')
-       ) ranked WHERE rn <= ?
-       ORDER BY farm_id, date DESC, start_time DESC`
+      `SELECT sp.user_id user_id, COUNT(*) count
+       FROM shift_pickers sp
+       JOIN shifts s ON s.id = sp.shift_id
+       WHERE s.status IN ('PUBLISHED','COMPLETED') AND (s.date < ? OR s.status = 'COMPLETED') ${rangeClause}
+       GROUP BY sp.user_id`
     )
-    .all(today, limit) as Array<FarmerShiftRow & { farm_id: number }>;
+    .all(...params) as Array<{ user_id: number; count: number }>;
+  const counts: Record<number, number> = {};
+  for (const r of rows) counts[r.user_id] = r.count;
+  return counts;
+}
+
+export function getShiftCountsByFarmer(database: Database.Database, today: string, range?: { start: string; end: string }): Record<number, number> {
+  const rangeClause = range ? "AND s.date >= ? AND s.date < ?" : "";
+  const params = range ? [today, range.start, range.end] : [today];
+  const rows = database
+    .prepare(
+      `SELECT pf.farm_id farm_id, COUNT(*) count
+       FROM shifts s
+       JOIN plantation_fields pf ON pf.id = s.plantation_field_id
+       WHERE s.status IN ('PUBLISHED','COMPLETED') AND (s.date < ? OR s.status = 'COMPLETED') ${rangeClause}
+       GROUP BY pf.farm_id`
+    )
+    .all(...params) as Array<{ farm_id: number; count: number }>;
+  const counts: Record<number, number> = {};
+  for (const r of rows) counts[r.farm_id] = r.count;
+  return counts;
+}
+
+export function getShiftsByFarmer(database: Database.Database, today: string): ShiftsByFarmer {
+  const rows = database
+    .prepare(
+      `SELECT pf.farm_id farm_id, s.id id, s.date date, s.start_time start_time, s.end_time end_time,
+              s.plantation_field_id plantation_field_id, pf.name field_name, pf.fruit_type fruit_type, u.name leader, s.status status
+       FROM shifts s
+       JOIN plantation_fields pf ON pf.id = s.plantation_field_id
+       JOIN users u ON u.id = s.leader_id
+       WHERE s.status IN ('PUBLISHED','COMPLETED') AND (s.date < ? OR s.status = 'COMPLETED')
+       ORDER BY pf.farm_id, s.date DESC, s.start_time DESC`
+    )
+    .all(today) as Array<FarmerShiftRow & { farm_id: number }>;
 
   const goalRows = database.prepare("SELECT shift_id,unit,goal,actual FROM shift_goals").all() as Array<{ shift_id: number; unit: Unit; goal: number; actual: number | null }>;
   const goalsByShift = new Map<number, Array<{ unit: Unit; goal: number; actual: number | null }>>();
@@ -169,9 +197,16 @@ export function getRecentShiftsByFarmer(database: Database.Database, today: stri
   }
 
   const hoursRows = database.prepare("SELECT shift_id,start_time,end_time FROM shift_hours").all() as Array<{ shift_id: number; start_time: string; end_time: string }>;
-  const actualHoursByShift = new Map<number, number>();
+  const hoursTotalsByShift = new Map<number, { sum: number; count: number }>();
   for (const h of hoursRows) {
-    actualHoursByShift.set(h.shift_id, (actualHoursByShift.get(h.shift_id) ?? 0) + hoursBetween(h.start_time, h.end_time));
+    const totals = hoursTotalsByShift.get(h.shift_id) ?? { sum: 0, count: 0 };
+    totals.sum += hoursBetween(h.start_time, h.end_time);
+    totals.count += 1;
+    hoursTotalsByShift.set(h.shift_id, totals);
+  }
+  const actualHoursByShift = new Map<number, number>();
+  for (const [shiftId, { sum, count }] of hoursTotalsByShift) {
+    actualHoursByShift.set(shiftId, sum / count);
   }
 
   const shiftsByFarmer: ShiftsByFarmer = {};

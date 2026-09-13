@@ -35,6 +35,8 @@ export function currentJerusalemWeek(now=new Date()):{start:string;end:string}{
 }
 export function monthRange(year:number,month:number):{start:string;end:string}{return {start:new Date(Date.UTC(year,month-1,1)).toISOString().slice(0,10),end:new Date(Date.UTC(year,month,1)).toISOString().slice(0,10)};}
 export function currentJerusalemMonth(now=new Date()):{start:string;end:string}{const today=jerusalemDate(now);return monthRange(Number(today.slice(0,4)),Number(today.slice(5,7)));}
+export function yearRange(year:number):{start:string;end:string}{return {start:`${year}-01-01`,end:`${year+1}-01-01`};}
+export function currentJerusalemYear(now=new Date()):{start:string;end:string}{const today=jerusalemDate(now);return yearRange(Number(today.slice(0,4)));}
 export const AVAILABILITY_WINDOW_DAYS=60;
 export function availabilityWindow(now=new Date()):{start:string;end:string}{
  const today=jerusalemDate(now);

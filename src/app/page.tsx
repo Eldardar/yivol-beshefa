@@ -5,6 +5,7 @@ import { csrfValue, db, requireUser } from "@/lib/server";
 import { formatHebrewDate, jerusalemDate, jerusalemHour, timeOfDayGreeting, timeOfDayWish } from "@/lib/dates";
 import { PickerService } from "@/lib/services/picker";
 import { DayCheckIn } from "@/components/day-checkin";
+import { HeroGallery } from "@/components/hero-gallery";
 
 export const dynamic = "force-dynamic";
 
@@ -80,7 +81,7 @@ export default async function Home() {
       </section>
       <OnboardingChecklist steps={onboardingSteps} />
       <p>{next ? `השיבוץ הבא: ${formatHebrewDate(next.date)} · ${next.start_time}–${next.end_time} · ${next.farm}` : "אין שיבוצים קרובים"}</p>
-      <img src="/worker-hero.png" alt="" className="home-hero-image" />
+      <HeroGallery images={[{ src: "/worker-hero.png", alt: "" }, { src: "/worker-hero-2.png", alt: "" }]} />
     </AppShell>
   );
 }

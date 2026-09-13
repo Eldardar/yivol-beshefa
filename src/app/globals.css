@@ -242,7 +242,40 @@ img, svg { display: block; max-width: 100%; }
   background: radial-gradient(circle, rgba(255, 255, 255, 0.08), transparent 70%);
 }
 @media (max-width: 599px) { .hero { padding: var(--space-5); border-radius: var(--radius-lg); } }
-.home-hero-image { width: 100%; height: auto; border-radius: var(--radius-xl); display: block; }
+.hero-gallery { display: grid; gap: var(--space-2); }
+.hero-gallery-viewport { position: relative; border-radius: var(--radius-xl); overflow: hidden; }
+.hero-gallery-track { display: flex; direction: ltr; transition: transform 0.5s ease; }
+.hero-gallery-image { flex: 0 0 100%; width: 100%; height: auto; display: block; }
+.hero-gallery-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.45);
+  color: var(--white);
+  font-size: 1.25rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.hero-gallery-nav:hover { background: rgba(0, 0, 0, 0.6); }
+.hero-gallery-nav-prev { inset-inline-start: var(--space-3); }
+.hero-gallery-nav-next { inset-inline-end: var(--space-3); }
+.hero-gallery-dots { display: flex; justify-content: center; gap: var(--space-2); }
+.hero-gallery-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  background: var(--color-border);
+  cursor: pointer;
+}
+.hero-gallery-dot.active { background: var(--brand-forest-700); }
 /* ==========================================================================
    Cards
    ========================================================================== */
@@ -457,6 +490,7 @@ select.input { appearance: auto; }
 .table tbody tr { transition: background var(--duration-fast) var(--ease-standard); }
 .table tbody tr:hover { background: var(--color-surface-sunk); }
 .table tbody tr:last-child td { border-bottom: 0; }
+.table-row-clickable { cursor: pointer; }
 
 .table-toolbar { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
 .search-input { max-width: 320px; }

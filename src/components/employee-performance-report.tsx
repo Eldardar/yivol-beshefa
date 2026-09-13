@@ -37,21 +37,24 @@ function shiftEarnings(row: EmployeeShiftRow, unitRatesByField: UnitRatesByField
 export function EmployeePerformanceReport({
   workers,
   shiftsByWorker,
-  unitRatesByField
+  unitRatesByField,
+  shiftCounts
 }: {
   workers: WorkerOption[];
   shiftsByWorker: ShiftsByWorker;
   unitRatesByField: UnitRatesByField;
+  shiftCounts: Record<number, number>;
 }) {
   const [selected, setSelected] = useState<WorkerOption | null>(null);
   const shifts = selected ? shiftsByWorker[selected.id] ?? [] : [];
   const totalEarnings = shifts.reduce((sum, row) => sum + (shiftEarnings(row, unitRatesByField) ?? 0), 0);
+  const rankedWorkers = [...workers].sort((a, b) => (shiftCounts[b.id] ?? 0) - (shiftCounts[a.id] ?? 0) || a.name.localeCompare(b.name, "he"));
 
   return (
     <div className="stack">
       <WorkerPicker workers={workers} selected={selected} onSelect={setSelected} />
 
-      {!selected && (
+      {!selected && rankedWorkers.length === 0 && (
         <section className="card empty-state" style={{ justifyItems: "center", textAlign: "center" }}>
           <Image
             src="/reports-placeholder.jpg"
@@ -60,8 +63,27 @@ export function EmployeePerformanceReport({
             height={3088}
             style={{ maxWidth: "100%", width: 240, height: "auto", borderRadius: "var(--radius-md)" }}
           />
-          <p>בחר/י עובד/ת כדי לראות את 7 המשמרות האחרונות שלה/ו.</p>
+          <p>בחר/י עובד/ת כדי לראות את המשמרות שלה/ו.</p>
         </section>
+      )}
+
+      {!selected && rankedWorkers.length > 0 && (
+        <div className="table-wrap card">
+          <table className="table">
+            <thead>
+              <tr><th>#</th><th>עובד/ת</th><th>מספר משמרות</th></tr>
+            </thead>
+            <tbody>
+              {rankedWorkers.map((worker, i) => (
+                <tr key={worker.id} className="table-row-clickable" onClick={() => setSelected(worker)}>
+                  <td>{i + 1}</td>
+                  <td>{worker.name}</td>
+                  <td>{shiftCounts[worker.id] ?? 0}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {selected && shifts.length === 0 && (
