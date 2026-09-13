@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Modal } from "./modal";
 import { SearchIcon, XIcon } from "./icons";
 
-export type WorkerOption = { id: number; name: string; phone: string };
+export type WorkerOption = { id: number; name: string; phone: string; active: number };
 
 export function initials(name: string) {
   const parts = name.trim().split(/\s+/);
@@ -89,7 +89,7 @@ export function WorkerPicker({
       {listOpen && (
         <Modal title="כל העובדים" onClose={() => setListOpen(false)}>
           <div className="worker-list" role="listbox">
-            {workers.length === 0 && <p className="muted">אין עובדים פעילים</p>}
+            {workers.length === 0 && <p className="muted">אין עובדים</p>}
             {workers.map(worker => (
               <button
                 type="button"

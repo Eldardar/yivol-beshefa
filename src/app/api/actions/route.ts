@@ -24,6 +24,7 @@ function destination(action:string,form:FormData):string {
   if(action.startsWith("shift")||action==="quantities")return "/admin/shifts?saved=1";
   if(action==="selfReport")return "/history?saved=1";
   if(action==="readNotification"||action==="readAllNotifications")return "/notifications";
+  if(action==="broadcastNotification")return "/admin/notifications?saved=1";
   return "/";
 }
 
@@ -34,7 +35,7 @@ export async function POST(req:Request){
   if(user.mustChangePassword)return NextResponse.redirect(requestUrl("/change-password",req),303);
   const bodyIssue=requestBodyIssue(req,65_536,["application/x-www-form-urlencoded","multipart/form-data"]);if(bodyIssue)return NextResponse.json({error:bodyIssue.message},{status:bodyIssue.status});
   const form=await req.formData();const action=String(form.get("action")??"");const csrf=String(form.get("csrf")??"");
-  let warning="";try{
+  let warning="";let sent=-1;try{
     auth.assertCsrf(token,csrf);
     if(action==="farmCreate"){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
@@ -109,12 +110,15 @@ export async function POST(req:Request){
       const entries=qtys.map((qty,i)=>({quantity:z.coerce.number().finite().nonnegative().max(1_000_000).parse(qty),unit:unitSchema.parse(units[i])}));
       const hours=form.get("hoursStart")&&form.get("hoursEnd")?workerHoursSchema.parse({userId:user.id,startTime:form.get("hoursStart"),endTime:form.get("hoursEnd")}):undefined;
       new ShiftService(database).reportOwnQuantities(user.id,shiftId,entries,hours);
+    }else if(action==="broadcastNotification"){
+      if(user.role!=="ADMIN")throw new Error("אין הרשאה");
+      sent=await new AdminService(database).broadcastNotification(user.id,{title:form.get("title"),body:form.get("body")});
     }else if(action==="readNotification"){
       new PickerService(database).markRead(user.id,positiveId.parse(form.get("notificationId")));
     }else if(action==="readAllNotifications"){
       new PickerService(database).markAllRead(user.id);
     }else throw new Error("פעולה אינה מוכרת");
-    const redirect=requestUrl(destination(action,form),req);if(warning)redirect.searchParams.set("warning",warning);return NextResponse.redirect(redirect,303);
+    const redirect=requestUrl(destination(action,form),req);if(warning)redirect.searchParams.set("warning",warning);if(sent>=0)redirect.searchParams.set("sent",String(sent));return NextResponse.redirect(redirect,303);
   }catch(error){
     const message=error instanceof z.ZodError?(error.issues[0]?.message??"קלט אינו תקין"):error instanceof Error?error.message:"הפעולה נכשלה";
     return NextResponse.redirect(requestUrl(`${destination(action,form).split("?")[0]}?error=${encodeURIComponent(message)}`,req),303);

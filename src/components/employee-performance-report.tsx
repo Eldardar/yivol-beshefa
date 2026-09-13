@@ -76,7 +76,7 @@ export function EmployeePerformanceReport({
         <div className="table-wrap card">
           <table className="table">
             <thead>
-              <tr><th>#</th><th>עובד/ת</th><th>מספר משמרות</th></tr>
+              <tr><th>#</th><th>עובד/ת</th><th>מספר משמרות</th><th></th></tr>
             </thead>
             <tbody>
               {rankedWorkers.map((worker, i) => (
@@ -84,6 +84,7 @@ export function EmployeePerformanceReport({
                   <td>{i + 1}</td>
                   <td>{worker.name}</td>
                   <td>{shiftCounts[worker.id] ?? 0}</td>
+                  <td>{worker.active ? "" : "(לא פעיל)"}</td>
                 </tr>
               ))}
             </tbody>

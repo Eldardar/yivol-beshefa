@@ -25,7 +25,7 @@ export default async function HarvestReport({ searchParams }: { searchParams: Pr
       <HarvestReportTabs active={view} />
       {view === "farmer" && (
         <FarmerPerformanceReport
-          farmers={database.prepare("SELECT id,name,phone FROM farms WHERE active=1 ORDER BY name").all() as FarmerOption[]}
+          farmers={database.prepare("SELECT id,name,phone,active FROM farms ORDER BY name").all() as FarmerOption[]}
           shiftsByFarmer={getShiftsByFarmer(database, today)}
           shiftCountsByRange={{
             month: getShiftCountsByFarmer(database, today, currentJerusalemMonth()),

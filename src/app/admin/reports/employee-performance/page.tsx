@@ -16,7 +16,7 @@ export default async function EmployeePerformance() {
   const database = db();
   const today = jerusalemDate();
 
-  const workers = database.prepare("SELECT id,name,phone FROM users WHERE role='PICKER' AND active=1 ORDER BY name").all() as WorkerOption[];
+  const workers = database.prepare("SELECT id,name,phone,active FROM users WHERE role='PICKER' ORDER BY name").all() as WorkerOption[];
   const shiftsByWorker = getShiftsByWorker(database, today);
   const shiftCountsByRange: Record<RangeKey, Record<number, number>> = {
     month: getShiftCountsByWorker(database, today, currentJerusalemMonth()),

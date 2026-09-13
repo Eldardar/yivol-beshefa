@@ -58,7 +58,7 @@ export function FarmerPerformanceReport({
         <div className="table-wrap card">
           <table className="table">
             <thead>
-              <tr><th>#</th><th>חקלאי</th><th>מספר משמרות</th></tr>
+              <tr><th>#</th><th>חקלאי</th><th>מספר משמרות</th><th></th></tr>
             </thead>
             <tbody>
               {rankedFarmers.map((farmer, i) => (
@@ -66,6 +66,7 @@ export function FarmerPerformanceReport({
                   <td>{i + 1}</td>
                   <td>{farmer.name}</td>
                   <td>{shiftCounts[farmer.id] ?? 0}</td>
+                  <td>{farmer.active ? "" : "(לא פעיל)"}</td>
                 </tr>
               ))}
             </tbody>

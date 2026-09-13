@@ -4,7 +4,7 @@ import { Modal } from "./modal";
 import { SearchIcon, XIcon } from "./icons";
 import { initials } from "./worker-picker";
 
-export type FarmerOption = { id: number; name: string; phone: string };
+export type FarmerOption = { id: number; name: string; phone: string; active: number };
 
 export function FarmerPicker({
   farmers,
@@ -85,7 +85,7 @@ export function FarmerPicker({
       {listOpen && (
         <Modal title="כל החקלאים" onClose={() => setListOpen(false)}>
           <div className="worker-list" role="listbox">
-            {farmers.length === 0 && <p className="muted">אין חקלאים פעילים</p>}
+            {farmers.length === 0 && <p className="muted">אין חקלאים</p>}
             {farmers.map(farmer => (
               <button
                 type="button"

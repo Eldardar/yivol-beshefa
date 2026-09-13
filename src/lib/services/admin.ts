@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 import { generatePassword, hashPassword } from "@/lib/security";
-import { adminAvailabilityUpdateSchema, fieldUnitRatesSchema } from "@/lib/schemas";
+import { adminAvailabilityUpdateSchema, broadcastNotificationSchema, fieldUnitRatesSchema } from "@/lib/schemas";
 import { pushToUsers } from "@/lib/push";
 
 export type ManagedEntity = "USER" | "FARM" | "PLANTATION_FIELD" | "VEHICLE";
@@ -76,6 +76,21 @@ export class AdminService {
       this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)").run(actorId,"UPDATE","AVAILABILITY",input.userId,JSON.stringify({dates:input.entries.map(e=>e.date)}));
     }).immediate();
     await pushToUsers(this.db,[{userId:input.userId,title,body}]);
+  }
+
+  async broadcastNotification(actorId:number, raw:unknown):Promise<number> {
+    const input=broadcastNotificationSchema.parse(raw);
+    const actor=this.db.prepare("SELECT role,active FROM users WHERE id=?").get(actorId) as {role:string;active:number}|undefined;
+    if(!actor?.active || actor.role!=="ADMIN") throw new Error("אין הרשאה");
+    const workers=this.db.prepare("SELECT id FROM users WHERE role='PICKER' AND active=1").all() as Array<{id:number}>;
+    if(workers.length===0) throw new Error("אין עובדים פעילים לשליחה");
+    this.db.transaction(()=>{
+      const notify=this.db.prepare("INSERT INTO notifications(user_id,title,body) VALUES(?,?,?)");
+      for(const w of workers) notify.run(w.id,input.title,input.body);
+      this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)").run(actorId,"BROADCAST","NOTIFICATION",actorId,JSON.stringify({title:input.title,recipients:workers.length}));
+    }).immediate();
+    await pushToUsers(this.db,workers.map(w=>({userId:w.id,title:input.title,body:input.body})));
+    return workers.length;
   }
 
   listFieldUnitRates(fieldId:number):Array<{unit:string;rateNis:number}> {
