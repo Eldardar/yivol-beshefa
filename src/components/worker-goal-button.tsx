@@ -1,11 +1,12 @@
 "use client";
 import { useState } from "react";
 import { Modal } from "./modal";
-import { UnitLines } from "./unit-lines";
+import { UnitLines, REPORT_UNITS } from "./unit-lines";
 import type { Unit } from "@/lib/units";
 
-export function WorkerGoalButton({ csrf, shiftId, existingGoal }: { csrf: string; shiftId: number; existingGoal: Array<{ value: number; unit: Unit }> }) {
+export function WorkerGoalButton({ csrf, shiftId, existingGoal, allowedUnits }: { csrf: string; shiftId: number; existingGoal: Array<{ value: number; unit: Unit }>; allowedUnits?: Unit[] }) {
   const [open, setOpen] = useState(false);
+  const units = allowedUnits && allowedUnits.length > 0 ? allowedUnits : REPORT_UNITS;
   return (
     <>
       <button type="button" className="btn secondary" onClick={() => setOpen(true)}>{existingGoal.length ? "עריכת יעד אישי" : "קביעת יעד אישי"}</button>
@@ -17,7 +18,7 @@ export function WorkerGoalButton({ csrf, shiftId, existingGoal }: { csrf: string
             <input type="hidden" name="shiftId" value={shiftId} />
             <div className="field">
               <span>יעד אישי</span>
-              <UnitLines valueName="goalQty" unitName="goalUnit" initial={existingGoal} addLabel="הוספת יעד נוסף" valueLabel="יעד" unitLabel="יחידת מידה ליעד" />
+              <UnitLines valueName="goalQty" unitName="goalUnit" initial={existingGoal} addLabel="הוספת יעד נוסף" valueLabel="יעד" unitLabel="יחידת מידה ליעד" units={units} />
             </div>
             <div className="actions">
               <button className="btn">שמירה</button>

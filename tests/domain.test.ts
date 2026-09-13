@@ -49,4 +49,11 @@ describe("כללי שיבוץ", () => {
     const result=service.createShift(x.admin,{date:"2099-08-10",startTime:"06:00",endTime:"12:00",plantationFieldId:x.field,pickerIds:[x.p1,x.p2],leaderId:x.p1,vehicleIds:[],goals:[{unit:"KG",goal:1}],notes:""},{allowLeaderConflict:true});
     expect(result.warnings.some(w=>w.includes("מוביל המשמרת"))).toBe(true);
   });
+  it("שומר ומעדכן את יחידות המידה הזמינות ליעד אישי", () => {
+    const x=setup(); const service=new SchedulingService(db);
+    const {shiftId}=service.createShift(x.admin,{date:"2099-08-10",startTime:"06:00",endTime:"12:00",plantationFieldId:x.field,pickerIds:[x.p1],leaderId:x.p1,vehicleIds:[],goals:[{unit:"KG",goal:1}],personalGoalUnits:["CRATE_LARGE","BUCKET"],notes:""});
+    expect((db.prepare("SELECT unit FROM shift_goal_units WHERE shift_id=? ORDER BY unit").all(shiftId) as Array<{unit:string}>).map(r=>r.unit)).toEqual(["BUCKET","CRATE_LARGE"]);
+    service.updateShift(x.admin,shiftId,{date:"2099-08-10",startTime:"06:00",endTime:"12:00",plantationFieldId:x.field,pickerIds:[x.p1],leaderId:x.p1,vehicleIds:[],goals:[{unit:"KG",goal:1}],personalGoalUnits:["DOLAV"],notes:""});
+    expect((db.prepare("SELECT unit FROM shift_goal_units WHERE shift_id=?").all(shiftId) as Array<{unit:string}>).map(r=>r.unit)).toEqual(["DOLAV"]);
+  });
 });

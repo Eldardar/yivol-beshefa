@@ -89,7 +89,8 @@ export async function POST(req:Request){
       const actualUnits=form.getAll("actualUnit");const actualQtys=form.getAll("actualQty");
       const actualByUnit=new Map(actualUnits.map((unit,i)=>[String(unit),actualQtys[i]]));
       const goals=goalUnits.map((unit,i)=>({unit,goal:goalQtys[i],actual:actualByUnit.get(String(unit))??""}));
-      const input=shiftSchema.parse({date:form.get("date"),startTime:form.get("startTime"),endTime:form.get("endTime"),plantationFieldId:form.get("plantationFieldId"),pickerIds:form.getAll("pickerIds"),leaderId:form.get("leaderId"),vehicleIds:form.getAll("vehicleIds"),goals,notes:form.get("notes")??""});
+      const personalGoalUnits=form.getAll("personalGoalUnits");
+      const input=shiftSchema.parse({date:form.get("date"),startTime:form.get("startTime"),endTime:form.get("endTime"),plantationFieldId:form.get("plantationFieldId"),pickerIds:form.getAll("pickerIds"),leaderId:form.get("leaderId"),vehicleIds:form.getAll("vehicleIds"),goals,personalGoalUnits,notes:form.get("notes")??""});
       const options={allowLeaderConflict:form.get("overrideLeaderConflict")==="1"};
       const scheduling=new SchedulingService(database);
       const result=action==="shiftCreate"?scheduling.createShift(user.id,input,options):scheduling.updateShift(user.id,positiveId.parse(form.get("shiftId")),input,options);warning=result.warnings.join(" · ");

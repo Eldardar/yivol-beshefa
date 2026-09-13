@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS shift_goal_units (
+ shift_id INTEGER NOT NULL REFERENCES shifts(id),
+ unit TEXT NOT NULL CHECK(unit IN ('KG','DOLAV','CRATE_SMALL','CRATE_LARGE','BUCKET','OTHER')),
+ PRIMARY KEY(shift_id,unit)
+);

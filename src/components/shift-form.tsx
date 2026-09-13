@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { UnitLines } from "./unit-lines";
+import { UnitLines, REPORT_UNITS } from "./unit-lines";
 import { Modal } from "./modal";
 import { UNITS, UNIT_LABEL, type Unit } from "@/lib/units";
 
@@ -34,6 +34,7 @@ export function ShiftForm({
   existingPickerIds,
   existingVehicleIds,
   existingGoals,
+  existingPersonalGoalUnits,
   onSuccess
 }: {
   csrf: string;
@@ -44,6 +45,7 @@ export function ShiftForm({
   existingPickerIds: number[];
   existingVehicleIds: number[];
   existingGoals: Array<{ value: number; unit: Unit; actual?: number | null }>;
+  existingPersonalGoalUnits: Unit[];
   onSuccess?: (redirectTo: string) => void;
 }) {
   const [leaderId, setLeaderId] = useState(shift ? String(shift.leader_id) : "");
@@ -56,6 +58,7 @@ export function ShiftForm({
   const [leaderConflict, setLeaderConflict] = useState<{ message: string; formData: FormData } | null>(null);
   const [confirmCompletedEdit, setConfirmCompletedEdit] = useState<FormData | null>(null);
   const [actuals, setActuals] = useState<Record<string, string>>(() => Object.fromEntries(existingGoals.map(g => [g.unit, g.actual != null ? String(g.actual) : ""])));
+  const [personalGoalUnits, setPersonalGoalUnits] = useState<Unit[]>(existingPersonalGoalUnits);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -163,6 +166,27 @@ export function ShiftForm({
       <div className="field">
         <span>יעד</span>
         <UnitLines valueName="goalQty" unitName="goalUnit" initial={existingGoals} addLabel="הוספת יעד נוסף" valueLabel="יעד" unitLabel="יחידת מידה ליעד" units={UNITS} />
+      </div>
+      <div className="field">
+        <span>יחידות מידה ליעד אישי של קוטפים</span>
+        <p className="muted">הקוטפים המשובצים למשמרת יוכלו לקבוע יעד אישי רק ביחידות המידה שנבחרו כאן. אם לא תיבחר אף יחידה, כל יחידות המידה יהיו זמינות.</p>
+        <div className="stack">
+          {REPORT_UNITS.map(u => (
+            <label className="switch-row" key={u}>
+              <span className="switch">
+                <input
+                  type="checkbox"
+                  name="personalGoalUnits"
+                  value={u}
+                  checked={personalGoalUnits.includes(u)}
+                  onChange={e => setPersonalGoalUnits(list => e.target.checked ? [...list, u] : list.filter(x => x !== u))}
+                />
+                <span className="switch-track" aria-hidden="true" />
+              </span>
+              <span>{UNIT_LABEL[u]}</span>
+            </label>
+          ))}
+        </div>
       </div>
       {shift?.status === "COMPLETED" && existingGoals.length > 0 && (
         <div className="field">

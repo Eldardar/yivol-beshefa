@@ -21,6 +21,7 @@ export function AddShiftButton({ csrf, pickers, farms, plantationFieldsByFarm }:
             existingPickerIds={[]}
             existingVehicleIds={[]}
             existingGoals={[]}
+            existingPersonalGoalUnits={[]}
             onSuccess={redirectTo => { setOpen(false); router.push(redirectTo); }}
           />
         </Modal>

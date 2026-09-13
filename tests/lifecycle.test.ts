@@ -123,4 +123,12 @@ describe("דיווח תוצאות עצמי של קוטף", () => {
     expect(()=>service.setOwnGoal(x.p2,x.shift,[{unit:"KG",goal:0}],before)).toThrow("היעד אינו תקין");
     expect(()=>service.setOwnGoal(x.p2,x.shift,[{unit:"KG",goal:1},{unit:"KG",goal:2}],before)).toThrow("יחידת מידה כפולה");
   });
+  it("מגביל את יחידות המידה ליעד אישי לפי מה שהמנהל הגדיר למשמרת",()=>{
+    const x=setup();const service=new ShiftService(db);db.prepare("UPDATE shifts SET status='PUBLISHED' WHERE id=?").run(x.shift);
+    db.prepare("INSERT INTO shift_goal_units(shift_id,unit) VALUES(?,?)").run(x.shift,"CRATE_LARGE");
+    const before=new Date("2026-08-01T00:00:00Z");
+    expect(()=>service.setOwnGoal(x.p2,x.shift,[{unit:"KG",goal:1}],before)).toThrow("יחידת מידה אינה זמינה");
+    service.setOwnGoal(x.p2,x.shift,[{unit:"CRATE_LARGE",goal:3}],before);
+    expect(db.prepare("SELECT unit,goal FROM worker_goals WHERE shift_id=? AND user_id=?").get(x.shift,x.p2)).toEqual({unit:"CRATE_LARGE",goal:3});
+  });
 });

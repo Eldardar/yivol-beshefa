@@ -14,7 +14,8 @@ export function EditShiftButton({
   shift,
   existingPickerIds,
   existingVehicleIds,
-  existingGoals
+  existingGoals,
+  existingPersonalGoalUnits
 }: {
   csrf: string;
   pickers: Picker[];
@@ -24,6 +25,7 @@ export function EditShiftButton({
   existingPickerIds: number[];
   existingVehicleIds: number[];
   existingGoals: Array<{ value: number; unit: Unit; actual?: number | null }>;
+  existingPersonalGoalUnits: Unit[];
 }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
@@ -41,6 +43,7 @@ export function EditShiftButton({
             existingPickerIds={existingPickerIds}
             existingVehicleIds={existingVehicleIds}
             existingGoals={existingGoals}
+            existingPersonalGoalUnits={existingPersonalGoalUnits}
             onSuccess={redirectTo => { setOpen(false); router.push(redirectTo); }}
           />
         </Modal>

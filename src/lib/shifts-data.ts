@@ -11,6 +11,7 @@ import type {
   VehicleIdsByShift,
   RatedUnitsByField,
   UnitRatesByField,
+  PersonalGoalUnitsByShift,
 } from "@/components/shifts-table";
 import type { Unit } from "@/lib/units";
 import type { EmployeeShiftRow, ShiftsByWorker } from "@/components/employee-performance-report";
@@ -29,6 +30,7 @@ export type ShiftsPageData = {
   pickerHoursByShift: PickerHoursByShift;
   vehiclesByShift: VehiclesByShift;
   vehicleIdsByShift: VehicleIdsByShift;
+  personalGoalUnitsByShift: PersonalGoalUnitsByShift;
 };
 
 function toMinutes(time: string): number {
@@ -61,6 +63,10 @@ export function loadShiftsPageData(database: Database.Database, opts: { dateFrom
   const goalRows = database.prepare("SELECT shift_id,unit,goal,actual FROM shift_goals").all() as Array<{ shift_id: number; unit: Unit; goal: number; actual: number | null }>;
   const unitsByShift: UnitsByShift = {};
   for (const g of goalRows) (unitsByShift[g.shift_id] ??= []).push({ unit: g.unit, goal: g.goal, produced: g.actual });
+
+  const goalUnitRows = database.prepare("SELECT shift_id,unit FROM shift_goal_units").all() as Array<{ shift_id: number; unit: Unit }>;
+  const personalGoalUnitsByShift: PersonalGoalUnitsByShift = {};
+  for (const g of goalUnitRows) (personalGoalUnitsByShift[g.shift_id] ??= []).push(g.unit);
 
   const pickerRows = database
     .prepare(
@@ -103,7 +109,7 @@ export function loadShiftsPageData(database: Database.Database, opts: { dateFrom
     (vehicleIdsByShift[v.shift_id] ??= []).push(v.vehicle_id);
   }
 
-  return { pickers, farms, plantationFieldsByFarm, shifts, unitsByShift, ratedUnitsByField, unitRatesByField, pickerNamesByShift, pickerIdsByShift, pickerHoursByShift, vehiclesByShift, vehicleIdsByShift };
+  return { pickers, farms, plantationFieldsByFarm, shifts, unitsByShift, ratedUnitsByField, unitRatesByField, pickerNamesByShift, pickerIdsByShift, pickerHoursByShift, vehiclesByShift, vehicleIdsByShift, personalGoalUnitsByShift };
 }
 
 export function getShiftsByWorker(database: Database.Database, today: string): ShiftsByWorker {

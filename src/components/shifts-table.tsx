@@ -23,6 +23,7 @@ export type VehiclesByShift = Record<number, Array<{ number: string; name: strin
 export type VehicleIdsByShift = Record<number, number[]>;
 export type RatedUnitsByField = Record<number, Unit[]>;
 export type UnitRatesByField = Record<number, Partial<Record<Unit, number>>>;
+export type PersonalGoalUnitsByShift = Record<number, Unit[]>;
 
 function toMinutes(time: string): number {
   const [h, m] = time.split(":");
@@ -94,6 +95,7 @@ export function ShiftsTable({
   pickerHoursByShift,
   vehiclesByShift,
   vehicleIdsByShift,
+  personalGoalUnitsByShift,
   csrf,
   readOnly = false
 }: {
@@ -109,6 +111,7 @@ export function ShiftsTable({
   pickerHoursByShift: PickerHoursByShift;
   vehiclesByShift: VehiclesByShift;
   vehicleIdsByShift: VehicleIdsByShift;
+  personalGoalUnitsByShift: PersonalGoalUnitsByShift;
   csrf: string;
   readOnly?: boolean;
 }) {
@@ -172,12 +175,12 @@ export function ShiftsTable({
                 </div>
               ) : (
                 <div className="record-card-actions">
-                  <RowActions row={row} csrf={csrf} pickers={pickers} farms={farms} plantationFieldsByFarm={plantationFieldsByFarm} pickerIdsByShift={pickerIdsByShift} vehicleIdsByShift={vehicleIdsByShift} unitsByShift={unitsByShift} />
+                  <RowActions row={row} csrf={csrf} pickers={pickers} farms={farms} plantationFieldsByFarm={plantationFieldsByFarm} pickerIdsByShift={pickerIdsByShift} vehicleIdsByShift={vehicleIdsByShift} unitsByShift={unitsByShift} personalGoalUnitsByShift={personalGoalUnitsByShift} />
                 </div>
               )}
               {isOpen && (
                 <div className="record-card-details">
-                  <ShiftDetails units={units} pickerNames={pickerNamesByShift[row.id] ?? []} totalPickers={pickers.length} pickerHours={pickerHoursByShift[row.id] ?? []} unitRates={unitRatesByField[row.plantation_field_id] ?? {}} vehicles={vehiclesByShift[row.id] ?? []} notes={row.notes} plannedStart={row.start_time} plannedEnd={row.end_time} teamLeaderDetails={row.team_leader_details} completedEditButton={!readOnly && row.status === "COMPLETED" ? <CompletedEditButton row={row} csrf={csrf} pickers={pickers} farms={farms} plantationFieldsByFarm={plantationFieldsByFarm} pickerIdsByShift={pickerIdsByShift} vehicleIdsByShift={vehicleIdsByShift} unitsByShift={unitsByShift} /> : undefined} />
+                  <ShiftDetails units={units} pickerNames={pickerNamesByShift[row.id] ?? []} totalPickers={pickers.length} pickerHours={pickerHoursByShift[row.id] ?? []} unitRates={unitRatesByField[row.plantation_field_id] ?? {}} vehicles={vehiclesByShift[row.id] ?? []} notes={row.notes} plannedStart={row.start_time} plannedEnd={row.end_time} teamLeaderDetails={row.team_leader_details} completedEditButton={!readOnly && row.status === "COMPLETED" ? <CompletedEditButton row={row} csrf={csrf} pickers={pickers} farms={farms} plantationFieldsByFarm={plantationFieldsByFarm} pickerIdsByShift={pickerIdsByShift} vehicleIdsByShift={vehicleIdsByShift} unitsByShift={unitsByShift} personalGoalUnitsByShift={personalGoalUnitsByShift} /> : undefined} />
                 </div>
               )}
             </article>
@@ -224,7 +227,7 @@ export function ShiftsTable({
                         formatMoney(totalEarnings(pickerHoursByShift[row.id] ?? [], unitRatesByField[row.plantation_field_id] ?? {}))
                       ) : (
                         <div className="actions-cell">
-                          <RowActions row={row} csrf={csrf} pickers={pickers} farms={farms} plantationFieldsByFarm={plantationFieldsByFarm} pickerIdsByShift={pickerIdsByShift} vehicleIdsByShift={vehicleIdsByShift} unitsByShift={unitsByShift} />
+                          <RowActions row={row} csrf={csrf} pickers={pickers} farms={farms} plantationFieldsByFarm={plantationFieldsByFarm} pickerIdsByShift={pickerIdsByShift} vehicleIdsByShift={vehicleIdsByShift} unitsByShift={unitsByShift} personalGoalUnitsByShift={personalGoalUnitsByShift} />
                         </div>
                       )}
                     </td>
@@ -232,7 +235,7 @@ export function ShiftsTable({
                   {isOpen && (
                     <tr className="worker-expand-row">
                       <td colSpan={9}>
-                        <ShiftDetails units={units} pickerNames={pickerNamesByShift[row.id] ?? []} totalPickers={pickers.length} pickerHours={pickerHoursByShift[row.id] ?? []} unitRates={unitRatesByField[row.plantation_field_id] ?? {}} vehicles={vehiclesByShift[row.id] ?? []} notes={row.notes} plannedStart={row.start_time} plannedEnd={row.end_time} teamLeaderDetails={row.team_leader_details} completedEditButton={!readOnly && row.status === "COMPLETED" ? <CompletedEditButton row={row} csrf={csrf} pickers={pickers} farms={farms} plantationFieldsByFarm={plantationFieldsByFarm} pickerIdsByShift={pickerIdsByShift} vehicleIdsByShift={vehicleIdsByShift} unitsByShift={unitsByShift} /> : undefined} />
+                        <ShiftDetails units={units} pickerNames={pickerNamesByShift[row.id] ?? []} totalPickers={pickers.length} pickerHours={pickerHoursByShift[row.id] ?? []} unitRates={unitRatesByField[row.plantation_field_id] ?? {}} vehicles={vehiclesByShift[row.id] ?? []} notes={row.notes} plannedStart={row.start_time} plannedEnd={row.end_time} teamLeaderDetails={row.team_leader_details} completedEditButton={!readOnly && row.status === "COMPLETED" ? <CompletedEditButton row={row} csrf={csrf} pickers={pickers} farms={farms} plantationFieldsByFarm={plantationFieldsByFarm} pickerIdsByShift={pickerIdsByShift} vehicleIdsByShift={vehicleIdsByShift} unitsByShift={unitsByShift} personalGoalUnitsByShift={personalGoalUnitsByShift} /> : undefined} />
                       </td>
                     </tr>
                   )}
@@ -254,7 +257,8 @@ function RowActions({
   plantationFieldsByFarm,
   pickerIdsByShift,
   vehicleIdsByShift,
-  unitsByShift
+  unitsByShift,
+  personalGoalUnitsByShift
 }: {
   row: ShiftRow;
   csrf: string;
@@ -264,6 +268,7 @@ function RowActions({
   pickerIdsByShift: PickerIdsByShift;
   vehicleIdsByShift: VehicleIdsByShift;
   unitsByShift: UnitsByShift;
+  personalGoalUnitsByShift: PersonalGoalUnitsByShift;
 }) {
   const editable = ["DRAFT", "PUBLISHED"].includes(row.status);
   return (
@@ -280,6 +285,7 @@ function RowActions({
           existingPickerIds={pickerIdsByShift[row.id] ?? []}
           existingVehicleIds={vehicleIdsByShift[row.id] ?? []}
           existingGoals={(unitsByShift[row.id] ?? []).map(u => ({ value: u.goal, unit: u.unit, actual: u.produced }))}
+          existingPersonalGoalUnits={personalGoalUnitsByShift[row.id] ?? []}
         />
       )}
       {row.status === "PUBLISHED" && <Link className="btn btn-sm secondary" href={`/leader/${row.id}`}>דוח</Link>}
@@ -304,7 +310,8 @@ function CompletedEditButton({
   plantationFieldsByFarm,
   pickerIdsByShift,
   vehicleIdsByShift,
-  unitsByShift
+  unitsByShift,
+  personalGoalUnitsByShift
 }: {
   row: ShiftRow;
   csrf: string;
@@ -314,6 +321,7 @@ function CompletedEditButton({
   pickerIdsByShift: PickerIdsByShift;
   vehicleIdsByShift: VehicleIdsByShift;
   unitsByShift: UnitsByShift;
+  personalGoalUnitsByShift: PersonalGoalUnitsByShift;
 }) {
   return (
     <>
@@ -326,6 +334,7 @@ function CompletedEditButton({
         existingPickerIds={pickerIdsByShift[row.id] ?? []}
         existingVehicleIds={vehicleIdsByShift[row.id] ?? []}
         existingGoals={(unitsByShift[row.id] ?? []).map(u => ({ value: u.goal, unit: u.unit, actual: u.produced }))}
+        existingPersonalGoalUnits={personalGoalUnitsByShift[row.id] ?? []}
       />
       <Link className="icon-btn" title="עריכת דיווח קוטפים" aria-label="עריכת דיווח קוטפים" href={`/leader/${row.id}`}>
         <UsersIcon size={18} />

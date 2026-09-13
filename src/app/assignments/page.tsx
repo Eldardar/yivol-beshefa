@@ -38,6 +38,13 @@ export default async function Assignments() {
     arr.push({ value: g.goal, unit: g.unit });
     goalsByShift.set(g.shift_id, arr);
   }
+  const allowedUnitRows = db().prepare("SELECT shift_id,unit FROM shift_goal_units").all() as Array<{ shift_id: number; unit: Unit }>;
+  const allowedUnitsByShift = new Map<number, Unit[]>();
+  for (const r of allowedUnitRows) {
+    const arr = allowedUnitsByShift.get(r.shift_id) ?? [];
+    arr.push(r.unit);
+    allowedUnitsByShift.set(r.shift_id, arr);
+  }
   const now = new Date();
 
   return (
@@ -63,7 +70,7 @@ export default async function Assignments() {
                   : <Link className="btn secondary" href={`/report/${x.id}`}>דיווח תוצאות אישי</Link>
               )}
               {jerusalemInstant(x.date, x.start_time) > now && (
-                <WorkerGoalButton csrf={csrf} shiftId={x.id} existingGoal={goalsByShift.get(x.id) ?? []} />
+                <WorkerGoalButton csrf={csrf} shiftId={x.id} existingGoal={goalsByShift.get(x.id) ?? []} allowedUnits={allowedUnitsByShift.get(x.id)} />
               )}
             </div>
           </article>

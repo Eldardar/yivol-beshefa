@@ -72,6 +72,7 @@ export const shiftSchema = z.object({
   leaderId: id,
   vehicleIds: z.array(id).transform((items) => [...new Set(items)]),
   goals: z.array(goalLineSchema).min(1).refine((items) => new Set(items.map((x) => x.unit)).size === items.length, "כל יחידת מידה יכולה להופיע פעם אחת ביעד"),
+  personalGoalUnits: z.array(unitSchema).transform((items) => [...new Set(items)]).default([]),
   notes: z.string().trim().max(4000)
 }).strict();
 
