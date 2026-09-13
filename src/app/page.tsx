@@ -17,7 +17,8 @@ export default async function Home() {
 
   if (user.role === "ADMIN") {
     const stats = {
-      pickers: (database.prepare("SELECT count(*) n FROM users WHERE role='PICKER' AND active=1").get() as { n: number }).n,
+      activePickers: (database.prepare("SELECT count(*) n FROM users WHERE role='PICKER' AND active=1").get() as { n: number }).n,
+      totalPickers: (database.prepare("SELECT count(*) n FROM users WHERE role='PICKER'").get() as { n: number }).n,
       shifts: (database.prepare("SELECT count(*) n FROM shifts WHERE status='PUBLISHED' AND date>=?").get(today) as { n: number }).n,
       farms: (database.prepare("SELECT count(*) n FROM farms WHERE active=1").get() as { n: number }).n,
     };
@@ -30,7 +31,7 @@ export default async function Home() {
         <div className="kpi-grid">
           <article className="kpi-card">
             <span className="kpi-label">קוטפים פעילים</span>
-            <div className="metric">{stats.pickers}</div>
+            <div className="metric">{stats.activePickers}/{stats.totalPickers}</div>
           </article>
           <article className="kpi-card">
             <span className="kpi-label">משמרות קרובות</span>

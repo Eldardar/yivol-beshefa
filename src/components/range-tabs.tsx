@@ -1,4 +1,4 @@
-import Link from "next/link";
+"use client";
 
 const TABS = [
   { key: "month", label: "החודש" },
@@ -9,19 +9,20 @@ const TABS = [
 export type RangeKey = (typeof TABS)[number]["key"];
 export const RANGE_KEYS: RangeKey[] = TABS.map(tab => tab.key);
 
-export function RangeTabs({ active, basePath }: { active: RangeKey; basePath: string }) {
+export function RangeTabs({ active, onChange }: { active: RangeKey; onChange: (range: RangeKey) => void }) {
   return (
     <div className="tabs" role="tablist">
       {TABS.map(tab => (
-        <Link
+        <button
           key={tab.key}
-          href={`${basePath}${basePath.includes("?") ? "&" : "?"}range=${tab.key}`}
+          type="button"
           role="tab"
           aria-selected={tab.key === active}
           className={`tab${tab.key === active ? " is-active" : ""}`}
+          onClick={() => onChange(tab.key)}
         >
           {tab.label}
-        </Link>
+        </button>
       ))}
     </div>
   );

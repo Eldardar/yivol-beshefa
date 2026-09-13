@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { WorkerPicker, type WorkerOption } from "./worker-picker";
+import { RangeTabs, type RangeKey } from "./range-tabs";
 import { formatHebrewDate } from "@/lib/dates";
 import { UNIT_LABEL, type Unit } from "@/lib/units";
 import { formatMoney } from "@/lib/format";
@@ -38,14 +39,16 @@ export function EmployeePerformanceReport({
   workers,
   shiftsByWorker,
   unitRatesByField,
-  shiftCounts
+  shiftCountsByRange
 }: {
   workers: WorkerOption[];
   shiftsByWorker: ShiftsByWorker;
   unitRatesByField: UnitRatesByField;
-  shiftCounts: Record<number, number>;
+  shiftCountsByRange: Record<RangeKey, Record<number, number>>;
 }) {
   const [selected, setSelected] = useState<WorkerOption | null>(null);
+  const [range, setRange] = useState<RangeKey>("month");
+  const shiftCounts = shiftCountsByRange[range];
   const shifts = selected ? shiftsByWorker[selected.id] ?? [] : [];
   const totalEarnings = shifts.reduce((sum, row) => sum + (shiftEarnings(row, unitRatesByField) ?? 0), 0);
   const rankedWorkers = [...workers].sort((a, b) => (shiftCounts[b.id] ?? 0) - (shiftCounts[a.id] ?? 0) || a.name.localeCompare(b.name, "he"));
@@ -53,6 +56,8 @@ export function EmployeePerformanceReport({
   return (
     <div className="stack">
       <WorkerPicker workers={workers} selected={selected} onSelect={setSelected} />
+
+      {!selected && <RangeTabs active={range} onChange={setRange} />}
 
       {!selected && rankedWorkers.length === 0 && (
         <section className="card empty-state" style={{ justifyItems: "center", textAlign: "center" }}>

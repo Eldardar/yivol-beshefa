@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { FarmerPicker, type FarmerOption } from "./farmer-picker";
+import { RangeTabs, type RangeKey } from "./range-tabs";
 import { formatHebrewDate } from "@/lib/dates";
 import { UNIT_LABEL, type Unit } from "@/lib/units";
 
@@ -22,19 +23,23 @@ export type ShiftsByFarmer = Record<number, FarmerShiftRow[]>;
 export function FarmerPerformanceReport({
   farmers,
   shiftsByFarmer,
-  shiftCounts
+  shiftCountsByRange
 }: {
   farmers: FarmerOption[];
   shiftsByFarmer: ShiftsByFarmer;
-  shiftCounts: Record<number, number>;
+  shiftCountsByRange: Record<RangeKey, Record<number, number>>;
 }) {
   const [selected, setSelected] = useState<FarmerOption | null>(null);
+  const [range, setRange] = useState<RangeKey>("month");
+  const shiftCounts = shiftCountsByRange[range];
   const shifts = selected ? shiftsByFarmer[selected.id] ?? [] : [];
   const rankedFarmers = [...farmers].sort((a, b) => (shiftCounts[b.id] ?? 0) - (shiftCounts[a.id] ?? 0) || a.name.localeCompare(b.name, "he"));
 
   return (
     <div className="stack">
       <FarmerPicker farmers={farmers} selected={selected} onSelect={setSelected} />
+
+      {!selected && <RangeTabs active={range} onChange={setRange} />}
 
       {!selected && rankedFarmers.length === 0 && (
         <section className="card empty-state" style={{ justifyItems: "center", textAlign: "center" }}>

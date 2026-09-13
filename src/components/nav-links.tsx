@@ -38,6 +38,7 @@ const ADMIN_NAV: NavItem[] = [
     children: [
       { href: "/admin/reports/employee-performance", label: "דוח עובדים", icon: UsersIcon },
       { href: "/admin/reports/harvest", label: "דוח נתוני קטיף", icon: SproutIcon },
+      { href: "/admin/reports/transport", label: "דוח תחבורה", icon: TruckIcon },
     ],
   },
 ];

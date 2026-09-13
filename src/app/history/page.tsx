@@ -1,7 +1,8 @@
 import { AppShell } from "@/components/nav";
 import { db, requireUser } from "@/lib/server";
-import { formatHebrewDate, jerusalemDate } from "@/lib/dates";
+import { formatHebrewDate, jerusalemDate, currentJerusalemMonth } from "@/lib/dates";
 import { UNIT_LABEL, type Unit } from "@/lib/units";
+import { WorkerEarningsChart, type EarningsPoint } from "@/components/worker-earnings-chart";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,41 @@ export default async function History({ searchParams }: { searchParams: Promise<
     )
     .all(user.id, jerusalemDate()) as HistoryRow[];
 
+  const today = jerusalemDate();
+  const currentDay = Number(today.slice(8, 10));
+  const { start: monthStart } = currentJerusalemMonth();
+  const dailyEarningsRows = db()
+    .prepare(
+      `SELECT s.date date, SUM(q.quantity * r.rate_nis) amount FROM shift_pickers sp
+       JOIN shifts s ON s.id=sp.shift_id
+       JOIN quantities q ON q.shift_id=s.id AND q.user_id=sp.user_id
+       JOIN field_unit_rates r ON r.field_id=s.plantation_field_id AND r.unit=q.unit
+       WHERE sp.user_id=? AND s.status IN ('PUBLISHED','COMPLETED') AND s.date>=? AND s.date<=?
+       GROUP BY s.date`
+    )
+    .all(user.id, monthStart, today) as Array<{ date: string; amount: number }>;
+  const earningsByDay = new Map(dailyEarningsRows.map(r => [Number(r.date.slice(8, 10)), r.amount]));
+  let cumulativeEarnings = 0;
+  const earningsPoints: EarningsPoint[] = Array.from({ length: currentDay }, (_, i) => {
+    const day = i + 1;
+    const hasShift = earningsByDay.has(day);
+    cumulativeEarnings += earningsByDay.get(day) ?? 0;
+    return { day, total: cumulativeEarnings, hasShift };
+  });
+
+  const pastMonthTotals = db()
+    .prepare(
+      `SELECT SUM(q.quantity * r.rate_nis) amount FROM shift_pickers sp
+       JOIN shifts s ON s.id=sp.shift_id
+       JOIN quantities q ON q.shift_id=s.id AND q.user_id=sp.user_id
+       JOIN field_unit_rates r ON r.field_id=s.plantation_field_id AND r.unit=q.unit
+       WHERE sp.user_id=? AND s.status IN ('PUBLISHED','COMPLETED') AND s.date<?
+       GROUP BY substr(s.date,1,7)`
+    )
+    .all(user.id, monthStart) as Array<{ amount: number }>;
+  const bestPastMonth = pastMonthTotals.reduce((max, r) => Math.max(max, r.amount), 0);
+  const earningsScaleMax = Math.max(bestPastMonth, cumulativeEarnings, 1) * 1.15;
+
   const quantityRows = db().prepare("SELECT shift_id,quantity,unit FROM quantities WHERE user_id=?").all(user.id) as Array<{ shift_id: number; quantity: number; unit: Unit }>;
   const quantitiesByShift = new Map<number, Array<{ quantity: number; unit: Unit }>>();
   for (const q of quantityRows) {
@@ -38,6 +74,7 @@ export default async function History({ searchParams }: { searchParams: Promise<
   return (
     <AppShell user={user}>
       <h1>היסטוריה וכמויות</h1>
+      <WorkerEarningsChart points={earningsPoints} scaleMax={earningsScaleMax} />
       {saved && <p className="alert" role="status">הדיווח נשמר</p>}
       {error && <p className="alert" role="alert">{error}</p>}
 
