@@ -82,7 +82,13 @@ export default async function Home() {
         <DayCheckIn wish={wish} csrf={csrf} />
       </section>
       <OnboardingChecklist steps={onboardingSteps} />
-      <p>{next ? `השיבוץ הבא: ${formatHebrewDate(next.date)} · ${next.start_time}–${next.end_time} · ${next.farm}` : "אין שיבוצים קרובים"}</p>
+      {next ? (
+        <Link href="/assignments" className="card">
+          <p>{`השיבוץ הבא: ${formatHebrewDate(next.date)} · ${next.start_time}–${next.end_time} · ${next.farm}`}</p>
+        </Link>
+      ) : (
+        <p>אין שיבוצים קרובים</p>
+      )}
       <HeroGallery images={[{ src: "/worker-hero.png", alt: "" }, { src: "/worker-hero-2.png", alt: "" }]} />
     </AppShell>
   );

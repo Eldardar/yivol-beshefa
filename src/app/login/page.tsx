@@ -15,7 +15,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
         <QuoteGallery
           quotes={[
             { text: "Ooga Booga", cite: "Andrey" },
-            { text: "היידה תפוחים התחלנו!", cite: "D. Rozen", dir: "rtl" },
+            { text: "היידה תפוחים התחלנו!", cite: "D. Rosen", dir: "rtl" },
           ]}
         />
       }

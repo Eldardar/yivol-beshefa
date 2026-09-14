@@ -281,7 +281,7 @@ function RowActions({
           pickers={pickers}
           farms={farms}
           plantationFieldsByFarm={plantationFieldsByFarm}
-          shift={{ id: row.id, date: row.date, start_time: row.start_time, end_time: row.end_time, farm_id: row.farm_id, plantation_field_id: row.plantation_field_id, leader_id: row.leader_id, notes: row.notes }}
+          shift={{ id: row.id, date: row.date, start_time: row.start_time, end_time: row.end_time, farm_id: row.farm_id, plantation_field_id: row.plantation_field_id, leader_id: row.leader_id, leader_name: row.leader, notes: row.notes }}
           existingPickerIds={pickerIdsByShift[row.id] ?? []}
           existingVehicleIds={vehicleIdsByShift[row.id] ?? []}
           existingGoals={(unitsByShift[row.id] ?? []).map(u => ({ value: u.goal, unit: u.unit, actual: u.produced }))}
@@ -330,7 +330,7 @@ function CompletedEditButton({
         pickers={pickers}
         farms={farms}
         plantationFieldsByFarm={plantationFieldsByFarm}
-        shift={{ id: row.id, date: row.date, start_time: row.start_time, end_time: row.end_time, farm_id: row.farm_id, plantation_field_id: row.plantation_field_id, leader_id: row.leader_id, notes: row.notes, status: row.status }}
+        shift={{ id: row.id, date: row.date, start_time: row.start_time, end_time: row.end_time, farm_id: row.farm_id, plantation_field_id: row.plantation_field_id, leader_id: row.leader_id, leader_name: row.leader, notes: row.notes, status: row.status }}
         existingPickerIds={pickerIdsByShift[row.id] ?? []}
         existingVehicleIds={vehicleIdsByShift[row.id] ?? []}
         existingGoals={(unitsByShift[row.id] ?? []).map(u => ({ value: u.goal, unit: u.unit, actual: u.produced }))}

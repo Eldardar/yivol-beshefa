@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeftIcon, ArrowRightIcon } from "./icons";
+import { jerusalemDate } from "@/lib/dates";
 
 const HEBREW_MONTHS = ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"];
 // The app went live in 2026, so the year picker has no reason to offer earlier years.
@@ -43,6 +44,10 @@ export function CalendarMonthNav({ year, month, basePath = "/calendar" }: { year
   const next = shiftMonth(year, month, 1);
   const listSize = Math.max(YEAR_LIST_SIZE, year - MIN_YEAR + 1);
   const years = Array.from({ length: listSize }, (_, i) => MIN_YEAR + i);
+  const today = jerusalemDate();
+  const todayYear = Number(today.slice(0, 4));
+  const todayMonth = Number(today.slice(5, 7));
+  const isCurrentMonth = year === todayYear && month === todayMonth;
 
   return (
     <div className="calendar-nav" ref={rootRef}>
@@ -108,6 +113,11 @@ export function CalendarMonthNav({ year, month, basePath = "/calendar" }: { year
       <Link href={monthHref(basePath, next.year, next.month)} className="calendar-nav-arrow" aria-label="חודש הבא">
         <ArrowLeftIcon size={18} />
       </Link>
+      {!isCurrentMonth && (
+        <Link href={monthHref(basePath, todayYear, todayMonth)} className="calendar-nav-today">
+          היום
+        </Link>
+      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { db, requireUser, csrfValue } from "@/lib/server";
 import { formatHebrewDate, jerusalemDate, jerusalemInstant } from "@/lib/dates";
 import { MapPinIcon, TruckIcon } from "@/components/icons";
 import { WorkerGoalButton } from "@/components/worker-goal-button";
+import { ShiftCoworkers } from "@/components/shift-coworkers";
 import type { Unit } from "@/lib/units";
 
 export const dynamic = "force-dynamic";
@@ -45,6 +46,22 @@ export default async function Assignments() {
     arr.push(r.unit);
     allowedUnitsByShift.set(r.shift_id, arr);
   }
+
+  const coworkerRows = rows.length
+    ? (db()
+        .prepare(
+          `SELECT sp.shift_id,u.name FROM shift_pickers sp JOIN users u ON u.id=sp.user_id
+           WHERE sp.shift_id IN (${rows.map(() => "?").join(",")}) AND sp.user_id!=? ORDER BY u.name`
+        )
+        .all(...rows.map(x => x.id), user.id) as Array<{ shift_id: number; name: string }>)
+    : [];
+  const coworkersByShift = new Map<number, string[]>();
+  for (const r of coworkerRows) {
+    const arr = coworkersByShift.get(r.shift_id) ?? [];
+    arr.push(r.name);
+    coworkersByShift.set(r.shift_id, arr);
+  }
+
   const now = new Date();
 
   return (
@@ -73,6 +90,7 @@ export default async function Assignments() {
                 <WorkerGoalButton csrf={csrf} shiftId={x.id} existingGoal={goalsByShift.get(x.id) ?? []} allowedUnits={allowedUnitsByShift.get(x.id)} />
               )}
             </div>
+            <ShiftCoworkers names={coworkersByShift.get(x.id) ?? []} />
           </article>
         ))}
         {rows.length === 0 && <p className="card muted">אין שיבוצים שפורסמו.</p>}

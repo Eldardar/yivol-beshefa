@@ -75,11 +75,12 @@ export class ShiftService{
    this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)").run(actorId,"REPORT_UPDATE","SHIFT",shiftId,JSON.stringify({count:entries.length}));
   })();
  }
- reportOwnQuantities(actorId:number,shiftId:number,entries:Array<{quantity:number;unit:Unit}>,hours?:{startTime:string;endTime:string}):void{
-  const actor=this.actor(actorId);const shift=this.db.prepare("SELECT status FROM shifts WHERE id=?").get(shiftId) as {status:string}|undefined;
+ reportOwnQuantities(actorId:number,shiftId:number,entries:Array<{quantity:number;unit:Unit}>,hours?:{startTime:string;endTime:string},now=new Date()):void{
+  const actor=this.actor(actorId);const shift=this.db.prepare("SELECT date,start_time,status FROM shifts WHERE id=?").get(shiftId) as {date:string;start_time:string;status:string}|undefined;
   if(!actor?.active||!shift)throw new Error("אין הרשאה");if(shift.status!=="PUBLISHED")throw new Error("מצב המשמרת אינו מאפשר דיווח");
   const assigned=this.db.prepare("SELECT 1 FROM shift_pickers WHERE shift_id=? AND user_id=?").get(shiftId,actorId);
   if(!assigned)throw new Error("אינך משובץ למשמרת זו");
+  if(jerusalemInstant(shift.date,shift.start_time)>now)throw new Error("ניתן לדווח על תוצאות רק החל משעת תחילת המשמרת");
   const already=this.db.prepare("SELECT 1 FROM audit_events WHERE actor_id=? AND action='SELF_REPORT' AND entity_type='SHIFT' AND entity_id=?").get(actorId,shiftId);
   if(already)throw new Error("כבר דיווחת על משמרת זו");
   if(entries.length===0)throw new Error("יש להזין לפחות שורת דיווח אחת");

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/nav";
 import { csrfValue, db, requireUser } from "@/lib/server";
-import { formatHebrewDate } from "@/lib/dates";
+import { formatHebrewDate, jerusalemInstant } from "@/lib/dates";
 import type { Unit } from "@/lib/units";
 import { UnitLines } from "@/components/unit-lines";
 
@@ -37,6 +37,18 @@ export default async function ReportOwnResults({ params }: { params: Promise<{ i
           <p>כבר דיווחת על משמרת זו. לא ניתן לעדכן דיווח שנשלח.</p>
           {hours && <p className="muted">שעות בפועל: <span dir="ltr" className="ltr-field">{hours.start_time}–{hours.end_time}</span></p>}
           {quantities.map((q, i) => <p key={i} className="muted">{q.quantity} {q.unit}</p>)}
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (jerusalemInstant(shift.date, shift.start_time) > new Date()) {
+    return (
+      <AppShell user={user}>
+        <h1>דיווח תוצאות · {formatHebrewDate(shift.date)}</h1>
+        <div className="card stack">
+          <p className="muted">{shift.farm} · {shift.crop} · <span className="muted">שעות מתוכננות:</span> <span dir="ltr" className="ltr-field">{shift.start_time}–{shift.end_time}</span></p>
+          <p>ניתן לדווח על תוצאות רק החל משעת תחילת המשמרת.</p>
         </div>
       </AppShell>
     );

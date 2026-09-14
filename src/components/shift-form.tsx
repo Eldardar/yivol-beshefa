@@ -21,6 +21,7 @@ export type EditableShift = {
   farm_id: number;
   plantation_field_id: number;
   leader_id: number;
+  leader_name?: string;
   notes: string;
   status?: string;
 };
@@ -72,6 +73,13 @@ export function ShiftForm({
   }, [leaderId, existingPickerIds]);
 
   const fields = farmId ? (plantationFieldsByFarm[Number(farmId)] ?? []) : [];
+
+  const leaderOptions = useMemo(() => {
+    if (shift && !pickers.some(p => p.id === shift.leader_id)) {
+      return [{ id: shift.leader_id, name: `${shift.leader_name ?? "קוטף שאינו פעיל"} (לא פעיל)` }, ...pickers];
+    }
+    return pickers;
+  }, [pickers, shift]);
 
   async function submitForm(formData: FormData) {
     setBusy(true);
@@ -159,7 +167,7 @@ export function ShiftForm({
           <label htmlFor="shift-leader">מוביל משמרת</label>
           <select className="input" id="shift-leader" name="leaderId" required value={leaderId} onChange={e => setLeaderId(e.target.value)}>
             <option value="" disabled>בחירת מוביל</option>
-            {pickers.map(p => <option value={p.id} key={p.id}>{p.name}</option>)}
+            {leaderOptions.map(p => <option value={p.id} key={p.id}>{p.name}</option>)}
           </select>
         </div>
       </div>
