@@ -921,6 +921,10 @@ button.bottom-nav-link { border: 0; background: transparent; }
 .count-pill--maybe { background: var(--color-warning-surface); color: #7a5417; }
 .count-pill--unavailable { background: var(--color-danger-surface); color: #7a3222; }
 .count-pill--none { background: var(--neutral-200); color: var(--neutral-700); }
+.calendar-day-trigger { display: grid; gap: var(--space-2); width: 100%; text-align: inherit; background: none; border: none; padding: 0; cursor: pointer; }
+.calendar-day-trigger:hover { filter: brightness(0.97); }
+.status-worker-list { display: grid; gap: var(--space-1); }
+.status-worker-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-1) 0; }
 
 /* Worker search combobox */
 .worker-picker-row { align-items: flex-start; }

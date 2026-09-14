@@ -4,7 +4,8 @@ import {
   type AvailabilityMonth,
   type WorkerOption,
   type AvailabilityByWorker,
-  type AvailabilityOverviewDay
+  type AvailabilityOverviewDay,
+  type NamedWorker
 } from "@/components/worker-availability-view";
 import { csrfValue, db, requireAdmin } from "@/lib/server";
 import { adminWorkerAvailabilityWindow, jerusalemDate, monthRange, shiftMonthKey } from "@/lib/dates";
@@ -30,27 +31,33 @@ export default async function ShiftsAvailability({ searchParams }: { searchParam
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const overviewLabel = new Intl.DateTimeFormat("he-IL", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${overviewRange.start}T12:00:00Z`));
 
-  const countRows = database
+  const overviewRows = database
     .prepare(
-      `SELECT a.date,a.status,COUNT(*) cnt FROM availability a JOIN users u ON u.id=a.user_id
-       WHERE u.role='PICKER' AND u.active=1 AND a.date>=? AND a.date<? GROUP BY a.date,a.status`
+      `SELECT a.date,a.user_id,a.status FROM availability a JOIN users u ON u.id=a.user_id
+       WHERE u.role='PICKER' AND u.active=1 AND a.date>=? AND a.date<?`
     )
-    .all(overviewRange.start, overviewRange.end) as Array<{ date: string; status: "AVAILABLE" | "MAYBE" | "UNAVAILABLE"; cnt: number }>;
-  const countsByDate = new Map<string, { available: number; maybe: number; unavailable: number }>();
-  for (const row of countRows) {
-    const entry = countsByDate.get(row.date) ?? { available: 0, maybe: 0, unavailable: 0 };
-    if (row.status === "AVAILABLE") entry.available = row.cnt;
-    else if (row.status === "MAYBE") entry.maybe = row.cnt;
-    else entry.unavailable = row.cnt;
-    countsByDate.set(row.date, entry);
+    .all(overviewRange.start, overviewRange.end) as Array<{ date: string; user_id: number; status: "AVAILABLE" | "MAYBE" | "UNAVAILABLE" }>;
+  const statusByDateUser = new Map<string, Map<number, "AVAILABLE" | "MAYBE" | "UNAVAILABLE">>();
+  for (const row of overviewRows) {
+    const byUser = statusByDateUser.get(row.date) ?? new Map();
+    byUser.set(row.user_id, row.status);
+    statusByDateUser.set(row.date, byUser);
   }
 
   const overviewDays: AvailabilityOverviewDay[] = Array.from({ length: daysInMonth }, (_, i) => {
     const date = `${overviewRange.start.slice(0, 8)}${String(i + 1).padStart(2, "0")}`;
     const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
-    const counts = countsByDate.get(date) ?? { available: 0, maybe: 0, unavailable: 0 };
-    const noResponse = workers.length - counts.available - counts.maybe - counts.unavailable;
-    return { date, day: i + 1, weekday, isToday: date === today, counts: { ...counts, noResponse } };
+    const byUser = statusByDateUser.get(date);
+    const workersByStatus = { available: [] as NamedWorker[], maybe: [] as NamedWorker[], unavailable: [] as NamedWorker[], noResponse: [] as NamedWorker[] };
+    for (const w of workers) {
+      const entry: NamedWorker = { id: w.id, name: w.name };
+      const status = byUser?.get(w.id);
+      if (status === "AVAILABLE") workersByStatus.available.push(entry);
+      else if (status === "MAYBE") workersByStatus.maybe.push(entry);
+      else if (status === "UNAVAILABLE") workersByStatus.unavailable.push(entry);
+      else workersByStatus.noResponse.push(entry);
+    }
+    return { date, day: i + 1, weekday, isToday: date === today, workersByStatus };
   }).filter(d => d.weekday !== 6);
 
   // Per-worker editing: 1 month back through 2 months ahead, admins fill in on a worker's behalf.

@@ -1,8 +1,10 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { WorkerPicker, type WorkerOption } from "./worker-picker";
+import { WorkerPicker, initials, type WorkerOption } from "./worker-picker";
 import { CalendarMonthNav } from "./calendar-month-nav";
+import { Modal } from "./modal";
+import { formatHebrewDate } from "@/lib/dates";
 
 export type { WorkerOption } from "./worker-picker";
 
@@ -10,12 +12,13 @@ type Status = "AVAILABLE" | "MAYBE" | "UNAVAILABLE";
 export type AvailabilityDay = { date: string; day: number; weekday: number; isToday: boolean; isPast: boolean };
 export type AvailabilityMonth = { key: string; label: string; days: AvailabilityDay[] };
 export type AvailabilityByWorker = Record<number, Record<string, Status>>;
+export type NamedWorker = { id: number; name: string };
 export type AvailabilityOverviewDay = {
   date: string;
   day: number;
   weekday: number;
   isToday: boolean;
-  counts: { available: number; maybe: number; unavailable: number; noResponse: number };
+  workersByStatus: { available: NamedWorker[]; maybe: NamedWorker[]; unavailable: NamedWorker[]; noResponse: NamedWorker[] };
 };
 export type AvailabilityOverview = { year: number; month: number; label: string; days: AvailabilityOverviewDay[] };
 
@@ -25,9 +28,16 @@ const OPTIONS: { status: Status; label: string; className: string }[] = [
   { status: "MAYBE", label: "אולי יש לי תוכניות אחרות", className: "status-option--maybe" },
   { status: "UNAVAILABLE", label: "מנוחה", className: "status-option--unavailable" }
 ];
+const OVERVIEW_SECTIONS: { key: keyof AvailabilityOverviewDay["workersByStatus"]; label: string; pillClass: string }[] = [
+  { key: "available", label: "רוצה לעבוד", pillClass: "count-pill--available" },
+  { key: "maybe", label: "אולי", pillClass: "count-pill--maybe" },
+  { key: "unavailable", label: "מנוחה", pillClass: "count-pill--unavailable" },
+  { key: "noResponse", label: "לא ענו", pillClass: "count-pill--none" }
+];
 
 export function AvailabilityOverviewCalendar({ year, month, label, days }: { year: number; month: number; label: string; days: AvailabilityOverviewDay[] }) {
   const leadingPad = days.length ? days[0]!.weekday : 0;
+  const [selected, setSelected] = useState<AvailabilityOverviewDay | null>(null);
 
   return (
     <section className="calendar-month">
@@ -37,16 +47,43 @@ export function AvailabilityOverviewCalendar({ year, month, label, days }: { yea
         {Array.from({ length: leadingPad }, (_, i) => <div className="calendar-pad" key={`pad-${i}`} aria-hidden="true" />)}
         {days.map(d => (
           <div className={`calendar-day${d.isToday ? " calendar-day--today" : ""}`} key={d.date} role="gridcell">
-            <span className="calendar-day-number">{d.day}</span>
-            <div className="calendar-day-counts">
-              <span className="count-pill count-pill--available">רוצה לעבוד: {d.counts.available}</span>
-              <span className="count-pill count-pill--maybe">אולי: {d.counts.maybe}</span>
-              <span className="count-pill count-pill--unavailable">מנוחה: {d.counts.unavailable}</span>
-              <span className="count-pill count-pill--none">לא ענו: {d.counts.noResponse}</span>
-            </div>
+            <button type="button" className="calendar-day-trigger" onClick={() => setSelected(d)} aria-haspopup="dialog">
+              <span className="calendar-day-number">{d.day}</span>
+              <div className="calendar-day-counts">
+                {OVERVIEW_SECTIONS.map(section => (
+                  <span className={`count-pill ${section.pillClass}`} key={section.key}>{section.label}: {d.workersByStatus[section.key].length}</span>
+                ))}
+              </div>
+            </button>
           </div>
         ))}
       </div>
+      {selected && (
+        <Modal title={`זמינות ל${formatHebrewDate(selected.date)}`} onClose={() => setSelected(null)}>
+          <div className="stack">
+            {OVERVIEW_SECTIONS.map(section => {
+              const list = selected.workersByStatus[section.key];
+              return (
+                <section key={section.key}>
+                  <h3>{section.label} ({list.length})</h3>
+                  {list.length === 0 ? (
+                    <p className="muted">אין עובדים</p>
+                  ) : (
+                    <div className="status-worker-list">
+                      {list.map(w => (
+                        <div className="status-worker-row" key={w.id}>
+                          <span className="avatar" aria-hidden="true">{initials(w.name)}</span>
+                          <span>{w.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              );
+            })}
+          </div>
+        </Modal>
+      )}
     </section>
   );
 }
