@@ -192,6 +192,24 @@ export function getShiftCountsByFarmer(database: Database.Database, today: strin
   return counts;
 }
 
+export function getPickedAmountsByFruitType(database: Database.Database, today: string, range?: { start: string; end: string }): Record<string, Array<{ unit: Unit; quantity: number }>> {
+  const rangeClause = range ? "AND s.date >= ? AND s.date < ?" : "";
+  const params = range ? [today, range.start, range.end] : [today];
+  const rows = database
+    .prepare(
+      `SELECT pf.fruit_type fruit_type, q.unit unit, SUM(q.quantity) total
+       FROM quantities q
+       JOIN shifts s ON s.id = q.shift_id
+       JOIN plantation_fields pf ON pf.id = s.plantation_field_id
+       WHERE s.status IN ('PUBLISHED','COMPLETED') AND (s.date < ? OR s.status = 'COMPLETED') ${rangeClause}
+       GROUP BY pf.fruit_type, q.unit`
+    )
+    .all(...params) as Array<{ fruit_type: string; unit: Unit; total: number }>;
+  const amounts: Record<string, Array<{ unit: Unit; quantity: number }>> = {};
+  for (const r of rows) (amounts[r.fruit_type] ??= []).push({ unit: r.unit, quantity: r.total });
+  return amounts;
+}
+
 export function getShiftsByFarmer(database: Database.Database, today: string): ShiftsByFarmer {
   const rows = database
     .prepare(

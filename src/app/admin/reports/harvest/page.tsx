@@ -3,8 +3,9 @@ import { HarvestReportTabs, type HarvestReportTabKey } from "@/components/harves
 import type { RangeKey } from "@/components/range-tabs";
 import { FarmerPerformanceReport } from "@/components/farmer-performance-report";
 import type { FarmerOption } from "@/components/farmer-picker";
+import { CropHarvestReport } from "@/components/crop-harvest-report";
 import { db, requireAdmin } from "@/lib/server";
-import { getShiftsByFarmer, getShiftCountsByFarmer } from "@/lib/shifts-data";
+import { getShiftsByFarmer, getShiftCountsByFarmer, getPickedAmountsByFruitType } from "@/lib/shifts-data";
 import { jerusalemDate, currentJerusalemMonth, currentJerusalemYear } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +35,21 @@ export default async function HarvestReport({ searchParams }: { searchParams: Pr
           } satisfies Record<RangeKey, Record<number, number>>}
         />
       )}
-      {view !== "farmer" && (
+      {view === "crop" && (
+        <CropHarvestReport
+          fruitTypes={
+            (database.prepare("SELECT DISTINCT fruit_type FROM plantation_fields ORDER BY fruit_type").all() as Array<{ fruit_type: string }>).map(
+              r => r.fruit_type
+            )
+          }
+          pickedAmountsByRange={{
+            month: getPickedAmountsByFruitType(database, today, currentJerusalemMonth()),
+            year: getPickedAmountsByFruitType(database, today, currentJerusalemYear()),
+            all: getPickedAmountsByFruitType(database, today)
+          } satisfies Record<RangeKey, ReturnType<typeof getPickedAmountsByFruitType>>}
+        />
+      )}
+      {view === "season" && (
         <section className="card empty-state">
           <p>הדוח בבנייה ויתווסף בקרוב.</p>
         </section>
