@@ -160,6 +160,21 @@ export function getShiftCountsByWorker(database: Database.Database, today: strin
   return counts;
 }
 
+export function getTotalHoursByWorker(database: Database.Database, today: string): Record<number, number> {
+  const rows = database
+    .prepare(
+      `SELECT sp.user_id user_id, sh.start_time start_time, sh.end_time end_time
+       FROM shift_pickers sp
+       JOIN shifts s ON s.id = sp.shift_id
+       JOIN shift_hours sh ON sh.shift_id = s.id AND sh.user_id = sp.user_id
+       WHERE s.status IN ('PUBLISHED','COMPLETED') AND (s.date < ? OR s.status = 'COMPLETED')`
+    )
+    .all(today) as Array<{ user_id: number; start_time: string; end_time: string }>;
+  const hours: Record<number, number> = {};
+  for (const r of rows) hours[r.user_id] = (hours[r.user_id] ?? 0) + hoursBetween(r.start_time, r.end_time);
+  return hours;
+}
+
 export function getShiftCountsByFarmer(database: Database.Database, today: string, range?: { start: string; end: string }): Record<number, number> {
   const rangeClause = range ? "AND s.date >= ? AND s.date < ?" : "";
   const params = range ? [today, range.start, range.end] : [today];

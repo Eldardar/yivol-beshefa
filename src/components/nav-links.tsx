@@ -11,15 +11,8 @@ export type Role = "ADMIN" | "PICKER";
 
 const PICKER_NAV: NavItem[] = [
   { href: "/", label: "בית", icon: HomeIcon },
-  {
-    href: "/availability",
-    label: "זמינות",
-    icon: CalendarIcon,
-    children: [
-      { href: "/availability", label: "עבודה", icon: CalendarIcon },
-      { href: "/housing", label: "מגורים", icon: HouseIcon },
-    ],
-  },
+  { href: "/availability", label: "זמינות", icon: CalendarIcon },
+  { href: "/housing", label: "מגורים", icon: HouseIcon },
   { href: "/assignments", label: "שיבוצים", icon: ClipboardListIcon },
   { href: "/history", label: "היסטוריה", icon: HistoryIcon },
   { href: "/journal", label: "יומן אישי", icon: BookOpenIcon },

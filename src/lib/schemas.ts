@@ -29,6 +29,8 @@ export const changePasswordSelfSchema=z.object({currentPassword:z.string().min(1
 export const personalDetailsSchema=z.object({dateOfBirth:z.union([isoDate,z.literal("")]).default(""),favoriteFruit:z.string().trim().max(100).default("")}).strict();
 export const journalEntrySchema=z.object({message:text(365)}).strict();
 export const broadcastNotificationSchema=z.object({title:text(100),body:text(1000)}).strict();
+const dateTimeLocal=z.string().regex(/^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d$/,"מועד השליחה אינו תקין");
+export const notificationTargetSchema=z.object({title:text(100),body:text(1000),userIds:z.array(id).min(1).transform(items=>[...new Set(items)]),sendAt:z.union([z.literal(""),dateTimeLocal]).default("")}).strict();
 
 export const availabilitySchema = z.object({
   date: isoDate,

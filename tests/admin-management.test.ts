@@ -81,3 +81,41 @@ describe("תעריפי יחידות לחלקה",()=>{
   });
   it("דוחה חלקה שלא קיימת",()=>{const x=setup();const service=new AdminService(db);expect(()=>service.setFieldUnitRates(x.admin,999,{rates:[]})).toThrow("החלקה לא נמצאה");expect(()=>service.listFieldUnitRates(999)).toThrow("החלקה לא נמצאה");});
 });
+
+describe("הודעה מותאמת אישית ותזמון",()=>{
+  it("שולח הודעה מיידית לנמענים שנבחרו בלבד",async()=>{
+    const x=setup();
+    const result=await new AdminService(db).sendOrScheduleNotification(x.admin,{title:"כותרת",body:"תוכן",userIds:[x.p1],sendAt:""});
+    expect(result).toEqual({sent:1});
+    expect(db.prepare("SELECT user_id,title,body FROM notifications").all()).toEqual([{user_id:x.p1,title:"כותרת",body:"תוכן"}]);
+  });
+  it("מתעלם מנמענים לא פעילים ודוחה כשלא נותר אף אחד",async()=>{
+    const x=setup();
+    new AdminService(db).setActive(x.admin,"USER",x.p2,false);
+    const result=await new AdminService(db).sendOrScheduleNotification(x.admin,{title:"כותרת",body:"תוכן",userIds:[x.p1,x.p2],sendAt:""});
+    expect(result).toEqual({sent:1});
+    await expect(new AdminService(db).sendOrScheduleNotification(x.admin,{title:"כותרת",body:"תוכן",userIds:[x.p2],sendAt:""})).rejects.toThrow("נמענים פעילים");
+  });
+  it("מתזמן הודעה עתידית ושומר נמענים, ודוחה מועד בעבר",async()=>{
+    const x=setup();
+    const result=await new AdminService(db).sendOrScheduleNotification(x.admin,{title:"כותרת",body:"תוכן",userIds:[x.p1,x.p2],sendAt:"2099-01-01T10:00"});
+    expect(result).toEqual({scheduled:true});
+    expect(db.prepare("SELECT count(*) count FROM notifications").get()).toEqual({count:0});
+    const scheduled=new AdminService(db).listScheduledNotifications();
+    expect(scheduled).toEqual([{id:scheduled[0]!.id,title:"כותרת",body:"תוכן",sendAt:"2099-01-01T10:00",recipientCount:2}]);
+    await expect(new AdminService(db).sendOrScheduleNotification(x.admin,{title:"כותרת",body:"תוכן",userIds:[x.p1],sendAt:"2020-01-01T10:00"})).rejects.toThrow("בעתיד");
+  });
+  it("מבטל הודעה מתוזמנת ורושם אירוע ביקורת, ומונע ביטול כפול",async()=>{
+    const x=setup();
+    await new AdminService(db).sendOrScheduleNotification(x.admin,{title:"כותרת",body:"תוכן",userIds:[x.p1],sendAt:"2099-01-01T10:00"});
+    const [scheduled]=new AdminService(db).listScheduledNotifications();
+    new AdminService(db).cancelScheduledNotification(x.admin,scheduled!.id);
+    expect(new AdminService(db).listScheduledNotifications()).toEqual([]);
+    expect(db.prepare("SELECT action FROM audit_events WHERE entity_type='SCHEDULED_NOTIFICATION' AND entity_id=?").get(scheduled!.id)).toEqual({action:"CANCEL"});
+    expect(()=>new AdminService(db).cancelScheduledNotification(x.admin,scheduled!.id)).toThrow("לא נמצאה");
+  });
+  it("דוחה משתמש שאינו מנהל",async()=>{
+    const x=setup();
+    await expect(new AdminService(db).sendOrScheduleNotification(x.p1,{title:"כותרת",body:"תוכן",userIds:[x.p2],sendAt:""})).rejects.toThrow("אין הרשאה");
+  });
+});

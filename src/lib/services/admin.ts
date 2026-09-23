@@ -1,7 +1,8 @@
 import type Database from "better-sqlite3";
 import { generatePassword, hashPassword } from "@/lib/security";
-import { adminAvailabilityUpdateSchema, broadcastNotificationSchema, fieldUnitRatesSchema } from "@/lib/schemas";
+import { adminAvailabilityUpdateSchema, broadcastNotificationSchema, fieldUnitRatesSchema, notificationTargetSchema } from "@/lib/schemas";
 import { pushToUsers } from "@/lib/push";
+import { jerusalemInstant } from "@/lib/dates";
 
 export type ManagedEntity = "USER" | "FARM" | "PLANTATION_FIELD" | "VEHICLE";
 const tables: Record<ManagedEntity,string> = { USER:"users", FARM:"farms", PLANTATION_FIELD:"plantation_fields", VEHICLE:"vehicles" };
@@ -47,7 +48,7 @@ export class AdminService {
       if(!row) throw new Error("הרשומה לא נמצאה");
       if(row.active) throw new Error("ניתן למחוק רק רשומות בארכיון");
       if(entity==="USER"){
-        for(const t of ["sessions","availability","notifications","password_reset_tokens","push_subscriptions","journal_entries","shift_report_reminders"]){
+        for(const t of ["sessions","availability","notifications","password_reset_tokens","push_subscriptions","journal_entries","shift_report_reminders","scheduled_notification_recipients"]){
           this.db.prepare(`DELETE FROM ${t} WHERE user_id=?`).run(entityId);
         }
       }
@@ -118,6 +119,58 @@ export class AdminService {
     }).immediate();
     await pushToUsers(this.db,workers.map(w=>({userId:w.id,title:input.title,body:input.body})));
     return workers.length;
+  }
+
+  async sendOrScheduleNotification(actorId:number, raw:unknown):Promise<{sent:number}|{scheduled:true}> {
+    const input=notificationTargetSchema.parse(raw);
+    const actor=this.db.prepare("SELECT role,active FROM users WHERE id=?").get(actorId) as {role:string;active:number}|undefined;
+    if(!actor?.active || actor.role!=="ADMIN") throw new Error("אין הרשאה");
+    const placeholders=input.userIds.map(()=>"?").join(",");
+    const recipients=this.db.prepare(`SELECT id FROM users WHERE active=1 AND id IN (${placeholders})`).all(...input.userIds) as Array<{id:number}>;
+    if(recipients.length===0) throw new Error("לא נבחרו נמענים פעילים");
+
+    if(!input.sendAt){
+      this.db.transaction(()=>{
+        const notify=this.db.prepare("INSERT INTO notifications(user_id,title,body) VALUES(?,?,?)");
+        for(const r of recipients) notify.run(r.id,input.title,input.body);
+        this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)").run(actorId,"BROADCAST","NOTIFICATION",actorId,JSON.stringify({title:input.title,recipients:recipients.length}));
+      }).immediate();
+      await pushToUsers(this.db,recipients.map(r=>({userId:r.id,title:input.title,body:input.body})));
+      return {sent:recipients.length};
+    }
+
+    const sendDate=input.sendAt.slice(0,10),sendTime=input.sendAt.slice(11,16);
+    if(jerusalemInstant(sendDate,sendTime).getTime()<=Date.now()) throw new Error("מועד השליחה חייב להיות בעתיד");
+    this.db.transaction(()=>{
+      const result=this.db.prepare("INSERT INTO scheduled_notifications(title,body,send_at,created_by) VALUES(?,?,?,?)").run(input.title,input.body,input.sendAt,actorId);
+      const scheduledId=Number(result.lastInsertRowid);
+      const addRecipient=this.db.prepare("INSERT INTO scheduled_notification_recipients(scheduled_notification_id,user_id) VALUES(?,?)");
+      for(const r of recipients) addRecipient.run(scheduledId,r.id);
+      this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)").run(actorId,"SCHEDULE","NOTIFICATION",scheduledId,JSON.stringify({title:input.title,recipients:recipients.length,sendAt:input.sendAt}));
+    }).immediate();
+    return {scheduled:true};
+  }
+
+  listScheduledNotifications():Array<{id:number;title:string;body:string;sendAt:string;recipientCount:number}> {
+    return this.db.prepare(`
+      SELECT sn.id,sn.title,sn.body,sn.send_at sendAt,COUNT(r.user_id) recipientCount
+      FROM scheduled_notifications sn
+      LEFT JOIN scheduled_notification_recipients r ON r.scheduled_notification_id=sn.id
+      WHERE sn.sent_at IS NULL AND sn.cancelled_at IS NULL
+      GROUP BY sn.id
+      ORDER BY sn.send_at
+    `).all() as Array<{id:number;title:string;body:string;sendAt:string;recipientCount:number}>;
+  }
+
+  cancelScheduledNotification(actorId:number, id:number):void {
+    const actor=this.db.prepare("SELECT role,active FROM users WHERE id=?").get(actorId) as {role:string;active:number}|undefined;
+    if(!actor?.active || actor.role!=="ADMIN") throw new Error("אין הרשאה");
+    if(!Number.isSafeInteger(id)||id<1) throw new Error("מזהה אינו תקין");
+    this.db.transaction(()=>{
+      const result=this.db.prepare("UPDATE scheduled_notifications SET cancelled_at=CURRENT_TIMESTAMP WHERE id=? AND sent_at IS NULL AND cancelled_at IS NULL").run(id);
+      if(result.changes!==1) throw new Error("ההודעה המתוזמנת לא נמצאה או שכבר נשלחה/בוטלה");
+      this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(actorId,"CANCEL","SCHEDULED_NOTIFICATION",id);
+    }).immediate();
   }
 
   listFieldUnitRates(fieldId:number):Array<{unit:string;rateNis:number}> {

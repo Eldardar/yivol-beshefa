@@ -20,7 +20,64 @@ function shiftMonth(year: number, month: number, delta: number): { year: number;
   return { year: y, month: total - y * 12 + 1 };
 }
 
-export function CalendarMonthNav({ year, month, basePath = "/calendar" }: { year: number; month: number; basePath?: string }) {
+function renderNavItem({
+  itemKey,
+  y,
+  m,
+  className,
+  ariaLabel,
+  role,
+  ariaSelected,
+  children,
+  basePath,
+  onChange,
+  onNavigate
+}: {
+  itemKey?: string | number;
+  y: number;
+  m: number;
+  className: string;
+  ariaLabel?: string;
+  role?: string;
+  ariaSelected?: boolean;
+  children: React.ReactNode;
+  basePath: string;
+  onChange?: (year: number, month: number) => void;
+  onNavigate: () => void;
+}) {
+  if (onChange) {
+    return (
+      <button
+        key={itemKey}
+        type="button"
+        className={className}
+        aria-label={ariaLabel}
+        role={role}
+        aria-selected={ariaSelected}
+        onClick={() => { onChange(y, m); onNavigate(); }}
+      >
+        {children}
+      </button>
+    );
+  }
+  return (
+    <Link key={itemKey} href={monthHref(basePath, y, m)} className={className} aria-label={ariaLabel} role={role} aria-selected={ariaSelected} onClick={onNavigate}>
+      {children}
+    </Link>
+  );
+}
+
+export function CalendarMonthNav({
+  year,
+  month,
+  basePath = "/calendar",
+  onChange
+}: {
+  year: number;
+  month: number;
+  basePath?: string;
+  onChange?: (year: number, month: number) => void;
+}) {
   const [open, setOpen] = useState<"month" | "year" | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -49,11 +106,15 @@ export function CalendarMonthNav({ year, month, basePath = "/calendar" }: { year
   const todayMonth = Number(today.slice(5, 7));
   const isCurrentMonth = year === todayYear && month === todayMonth;
 
+  const navItem = (props: Omit<Parameters<typeof renderNavItem>[0], "basePath" | "onChange" | "onNavigate">) =>
+    renderNavItem({ ...props, basePath, onChange, onNavigate: () => setOpen(null) });
+
+  const navOption = (itemKey: string | number, itemY: number, itemM: number, isSelected: boolean, label: React.ReactNode) =>
+    navItem({ itemKey, y: itemY, m: itemM, className: `calendar-nav-option${isSelected ? " is-selected" : ""}`, role: "option", ariaSelected: isSelected, children: label });
+
   return (
     <div className="calendar-nav" ref={rootRef}>
-      <Link href={monthHref(basePath, prev.year, prev.month)} className="calendar-nav-arrow" aria-label="חודש קודם">
-        <ArrowRightIcon size={18} />
-      </Link>
+      {navItem({ y: prev.year, m: prev.month, className: "calendar-nav-arrow", ariaLabel: "חודש קודם", children: <ArrowRightIcon size={18} /> })}
       <div className="calendar-nav-pickers">
         <div className="calendar-nav-picker">
           <button
@@ -67,18 +128,7 @@ export function CalendarMonthNav({ year, month, basePath = "/calendar" }: { year
           </button>
           {open === "month" && (
             <div className="calendar-nav-panel calendar-nav-panel--months" role="listbox" aria-label="בחירת חודש">
-              {HEBREW_MONTHS.map((name, i) => (
-                <Link
-                  key={name}
-                  href={monthHref(basePath, year, i + 1)}
-                  className={`calendar-nav-option${i + 1 === month ? " is-selected" : ""}`}
-                  role="option"
-                  aria-selected={i + 1 === month}
-                  onClick={() => setOpen(null)}
-                >
-                  {name}
-                </Link>
-              ))}
+              {HEBREW_MONTHS.map((name, i) => navOption(name, year, i + 1, i + 1 === month, name))}
             </div>
           )}
         </div>
@@ -94,30 +144,14 @@ export function CalendarMonthNav({ year, month, basePath = "/calendar" }: { year
           </button>
           {open === "year" && (
             <div className="calendar-nav-panel calendar-nav-panel--years" role="listbox" aria-label="בחירת שנה">
-              {years.map(y => (
-                <Link
-                  key={y}
-                  href={monthHref(basePath, y, month)}
-                  className={`calendar-nav-option${y === year ? " is-selected" : ""}`}
-                  role="option"
-                  aria-selected={y === year}
-                  onClick={() => setOpen(null)}
-                >
-                  {y}
-                </Link>
-              ))}
+              {years.map(y => navOption(y, y, month, y === year, y))}
             </div>
           )}
         </div>
       </div>
-      <Link href={monthHref(basePath, next.year, next.month)} className="calendar-nav-arrow" aria-label="חודש הבא">
-        <ArrowLeftIcon size={18} />
-      </Link>
-      {!isCurrentMonth && (
-        <Link href={monthHref(basePath, todayYear, todayMonth)} className="calendar-nav-today">
-          היום
-        </Link>
-      )}
+      {navItem({ y: next.year, m: next.month, className: "calendar-nav-arrow", ariaLabel: "חודש הבא", children: <ArrowLeftIcon size={18} /> })}
+      {!isCurrentMonth &&
+        navItem({ y: todayYear, m: todayMonth, className: "calendar-nav-today", children: "היום" })}
     </div>
   );
 }

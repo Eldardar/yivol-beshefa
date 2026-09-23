@@ -1,9 +1,10 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import { WorkerPicker, type WorkerOption } from "./worker-picker";
 import { RangeTabs, type RangeKey } from "./range-tabs";
-import { formatHebrewDate } from "@/lib/dates";
+import { CalendarMonthNav } from "./calendar-month-nav";
+import { formatHebrewDate, monthRange } from "@/lib/dates";
 import { UNIT_LABEL, type Unit } from "@/lib/units";
 import { formatMoney } from "@/lib/format";
 import type { UnitRatesByField } from "./shifts-table";
@@ -39,23 +40,43 @@ export function EmployeePerformanceReport({
   workers,
   shiftsByWorker,
   unitRatesByField,
-  shiftCountsByRange
+  shiftCountsByRange,
+  totalHoursByWorker,
+  initialYear,
+  initialMonth
 }: {
   workers: WorkerOption[];
   shiftsByWorker: ShiftsByWorker;
   unitRatesByField: UnitRatesByField;
   shiftCountsByRange: Record<RangeKey, Record<number, number>>;
+  totalHoursByWorker: Record<number, number>;
+  initialYear: number;
+  initialMonth: number;
 }) {
   const [selected, setSelected] = useState<WorkerOption | null>(null);
   const [range, setRange] = useState<RangeKey>("all");
+  const [viewYear, setViewYear] = useState(initialYear);
+  const [viewMonth, setViewMonth] = useState(initialMonth);
   const shiftCounts = shiftCountsByRange[range];
-  const shifts = selected ? shiftsByWorker[selected.id] ?? [] : [];
+  const allShifts = selected ? shiftsByWorker[selected.id] ?? [] : [];
+  const { start: monthStart, end: monthEnd } = useMemo(() => monthRange(viewYear, viewMonth), [viewYear, viewMonth]);
+  const shifts = allShifts.filter(row => row.date >= monthStart && row.date < monthEnd);
   const totalEarnings = shifts.reduce((sum, row) => sum + (shiftEarnings(row, unitRatesByField) ?? 0), 0);
-  const rankedWorkers = [...workers].sort((a, b) => (shiftCounts[b.id] ?? 0) - (shiftCounts[a.id] ?? 0) || a.name.localeCompare(b.name, "he"));
+  const rankedWorkers = [...workers].sort((a, b) => (totalHoursByWorker[b.id] ?? 0) - (totalHoursByWorker[a.id] ?? 0) || a.name.localeCompare(b.name, "he"));
+
+  function selectWorker(worker: WorkerOption | null) {
+    setSelected(worker);
+    setViewYear(initialYear);
+    setViewMonth(initialMonth);
+  }
 
   return (
     <div className="stack">
-      <WorkerPicker workers={workers} selected={selected} onSelect={setSelected} />
+      <WorkerPicker workers={workers} selected={selected} onSelect={selectWorker} />
+
+      {selected && (
+        <CalendarMonthNav year={viewYear} month={viewMonth} onChange={(y, m) => { setViewYear(y); setViewMonth(m); }} />
+      )}
 
       {!selected && <RangeTabs active={range} onChange={setRange} />}
 
@@ -76,14 +97,15 @@ export function EmployeePerformanceReport({
         <div className="table-wrap card">
           <table className="table">
             <thead>
-              <tr><th>#</th><th>עובד/ת</th><th>מספר משמרות</th><th></th></tr>
+              <tr><th>#</th><th>עובד/ת</th><th>מספר משמרות</th><th>סה&quot;כ שעות עבודה</th><th></th></tr>
             </thead>
             <tbody>
               {rankedWorkers.map((worker, i) => (
-                <tr key={worker.id} className="table-row-clickable" onClick={() => setSelected(worker)}>
+                <tr key={worker.id} className="table-row-clickable" onClick={() => selectWorker(worker)}>
                   <td>{i + 1}</td>
                   <td>{worker.name}</td>
                   <td>{shiftCounts[worker.id] ?? 0}</td>
+                  <td>{(totalHoursByWorker[worker.id] ?? 0).toLocaleString("he-IL", { maximumFractionDigits: 1 })}</td>
                   <td>{worker.active ? "" : "(לא פעיל)"}</td>
                 </tr>
               ))}
@@ -94,7 +116,7 @@ export function EmployeePerformanceReport({
 
       {selected && shifts.length === 0 && (
         <section className="card empty-state">
-          <p>לא נמצאו משמרות עבור {selected.name}.</p>
+          <p>לא נמצאו משמרות עבור {selected.name} בחודש זה.</p>
         </section>
       )}
 

@@ -57,8 +57,8 @@ function HousingOverviewCalendar({ label, days }: { label: string; days: Housing
             {OVERVIEW_SECTIONS.map(section => {
               const list = selected.workersByStatus[section.key];
               return (
-                <section key={section.key}>
-                  <h3>{section.label} ({list.length})</h3>
+                <details className="status-section" key={section.key}>
+                  <summary>{section.label} ({list.length})</summary>
                   {list.length === 0 ? (
                     <p className="muted">אין עובדים</p>
                   ) : (
@@ -71,7 +71,7 @@ function HousingOverviewCalendar({ label, days }: { label: string; days: Housing
                       ))}
                     </div>
                   )}
-                </section>
+                </details>
               );
             })}
           </div>

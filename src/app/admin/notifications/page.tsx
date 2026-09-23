@@ -1,6 +1,9 @@
 import { AppShell } from "@/components/nav";
+import { ScheduleNotificationButton } from "@/components/schedule-notification-button";
+import type { NotifiableUser } from "@/components/schedule-notification-modal";
+import { AdminService } from "@/lib/services/admin";
 import { csrfValue, db, requireAdmin } from "@/lib/server";
-import { formatHebrewDateTime } from "@/lib/dates";
+import { formatHebrewDate, formatHebrewDateTime } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +14,8 @@ export default async function AdminNotifications({ searchParams }: { searchParam
   const database = db();
 
   const { workerCount } = database.prepare("SELECT COUNT(*) workerCount FROM users WHERE role='PICKER' AND active=1").get() as { workerCount: number };
+  const notifiableUsers = database.prepare("SELECT id,name,role FROM users WHERE active=1 ORDER BY name").all() as NotifiableUser[];
+  const scheduledNotifications = new AdminService(database).listScheduledNotifications();
   const rows = database
     .prepare("SELECT id,title,body,read_at,created_at FROM notifications WHERE user_id=? ORDER BY created_at DESC")
     .all(user.id) as Array<{ id: number; title: string; body: string; read_at: string | null; created_at: string }>;
@@ -32,6 +37,35 @@ export default async function AdminNotifications({ searchParams }: { searchParam
           <button className="btn" disabled={workerCount === 0}>שליחה לכל העובדים</button>
         </form>
       </section>
+
+      <section className="card">
+        <h2>הודעה מותאמת אישית ותזמון</h2>
+        <p className="muted">בחירת נמענים ספציפיים, ואפשרות לתזמן שליחה למועד עתידי במקום שליחה מיידית.</p>
+        <ScheduleNotificationButton users={notifiableUsers} csrf={csrf} />
+      </section>
+
+      {scheduledNotifications.length > 0 && (
+        <section className="card">
+          <h2>הודעות מתוזמנות ({scheduledNotifications.length})</h2>
+          <div className="stack">
+            {scheduledNotifications.map(s => (
+              <article className="card" key={s.id}>
+                <div className="page-header">
+                  <h2>{s.title}</h2>
+                  <form action="/api/actions" method="post">
+                    <input type="hidden" name="action" value="cancelScheduledNotification" />
+                    <input type="hidden" name="csrf" value={csrf} />
+                    <input type="hidden" name="scheduledNotificationId" value={s.id} />
+                    <button className="btn secondary btn-sm">ביטול</button>
+                  </form>
+                </div>
+                <p>{s.body}</p>
+                <small className="muted">{formatHebrewDate(s.sendAt.slice(0, 10))} · {s.sendAt.slice(11, 16)} · {s.recipientCount} נמענים</small>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="page-header">
         <h2>ההתראות שלי</h2>

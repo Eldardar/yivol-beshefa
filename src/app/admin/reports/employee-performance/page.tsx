@@ -5,7 +5,7 @@ import { EmployeePerformanceReport } from "@/components/employee-performance-rep
 import type { WorkerOption } from "@/components/worker-picker";
 import type { UnitRatesByField } from "@/components/shifts-table";
 import { db, requireAdmin } from "@/lib/server";
-import { getShiftsByWorker, getShiftCountsByWorker } from "@/lib/shifts-data";
+import { getShiftsByWorker, getShiftCountsByWorker, getTotalHoursByWorker } from "@/lib/shifts-data";
 import { jerusalemDate, currentJerusalemMonth, currentJerusalemYear } from "@/lib/dates";
 import type { Unit } from "@/lib/units";
 
@@ -28,11 +28,21 @@ export default async function EmployeePerformance() {
   const unitRatesByField: UnitRatesByField = {};
   for (const r of rateRows) (unitRatesByField[r.field_id] ??= {})[r.unit] = r.rate_nis;
 
+  const totalHoursByWorker = getTotalHoursByWorker(database, today);
+
   return (
     <AppShell user={user}>
       <h1>דוחות</h1>
       <ReportsTabs active="employee" />
-      <EmployeePerformanceReport workers={workers} shiftsByWorker={shiftsByWorker} unitRatesByField={unitRatesByField} shiftCountsByRange={shiftCountsByRange} />
+      <EmployeePerformanceReport
+        workers={workers}
+        shiftsByWorker={shiftsByWorker}
+        unitRatesByField={unitRatesByField}
+        shiftCountsByRange={shiftCountsByRange}
+        totalHoursByWorker={totalHoursByWorker}
+        initialYear={Number(today.slice(0, 4))}
+        initialMonth={Number(today.slice(5, 7))}
+      />
     </AppShell>
   );
 }

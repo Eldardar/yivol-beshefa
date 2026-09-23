@@ -26,6 +26,7 @@ function destination(action:string,form:FormData):string {
   if(action==="workerGoalSet")return "/assignments?saved=1";
   if(action==="readNotification"||action==="readAllNotifications")return "/notifications";
   if(action==="broadcastNotification")return "/admin/notifications?saved=1";
+  if(action==="cancelScheduledNotification")return "/admin/notifications?saved=1";
   return "/";
 }
 
@@ -123,6 +124,9 @@ export async function POST(req:Request){
     }else if(action==="broadcastNotification"){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
       sent=await new AdminService(database).broadcastNotification(user.id,{title:form.get("title"),body:form.get("body")});
+    }else if(action==="cancelScheduledNotification"){
+      if(user.role!=="ADMIN")throw new Error("אין הרשאה");
+      new AdminService(database).cancelScheduledNotification(user.id,positiveId.parse(form.get("scheduledNotificationId")));
     }else if(action==="readNotification"){
       new PickerService(database).markRead(user.id,positiveId.parse(form.get("notificationId")));
     }else if(action==="readAllNotifications"){
