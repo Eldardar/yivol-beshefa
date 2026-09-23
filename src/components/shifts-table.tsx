@@ -339,6 +339,7 @@ function CompletedEditButton({
       <Link className="icon-btn" title="עריכת דיווח קוטפים" aria-label="עריכת דיווח קוטפים" href={`/leader/${row.id}`}>
         <UsersIcon size={18} />
       </Link>
+      <AssignVehiclesButton shiftId={row.id} csrf={csrf} />
     </>
   );
 }

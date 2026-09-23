@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/nav";
 import { OnboardingChecklist } from "@/components/onboarding";
 import { csrfValue, db, requireUser } from "@/lib/server";
-import { formatHebrewDate, jerusalemDate, jerusalemHour, timeOfDayGreeting, timeOfDayWish } from "@/lib/dates";
+import { formatHebrewDate, jerusalemDate, jerusalemHour, jerusalemInstant, timeOfDayGreeting, timeOfDayWish } from "@/lib/dates";
 import { PickerService } from "@/lib/services/picker";
 import { DayCheckIn } from "@/components/day-checkin";
 import { HeroGallery } from "@/components/hero-gallery";
@@ -16,11 +16,16 @@ export default async function Home() {
   const firstName = user.name.trim().split(/\s+/)[0];
 
   if (user.role === "ADMIN") {
+    const [year, month, day] = today.split("-").map(Number) as [number, number, number];
+    const tomorrow = new Date(Date.UTC(year, month - 1, day + 1)).toISOString().slice(0, 10);
+    const dayStartUtc = jerusalemInstant(today, "00:00").toISOString().slice(0, 19).replace("T", " ");
+    const dayEndUtc = jerusalemInstant(tomorrow, "00:00").toISOString().slice(0, 19).replace("T", " ");
     const stats = {
       activePickers: (database.prepare("SELECT count(*) n FROM users WHERE role='PICKER' AND active=1").get() as { n: number }).n,
       totalPickers: (database.prepare("SELECT count(*) n FROM users WHERE role='PICKER'").get() as { n: number }).n,
       shifts: (database.prepare("SELECT count(*) n FROM shifts WHERE status='PUBLISHED' AND date>=?").get(today) as { n: number }).n,
       farms: (database.prepare("SELECT count(*) n FROM farms WHERE active=1").get() as { n: number }).n,
+      journalToday: (database.prepare("SELECT count(*) n FROM journal_entries WHERE created_at>=? AND created_at<?").get(dayStartUtc, dayEndUtc) as { n: number }).n,
     };
     return (
       <AppShell user={user}>
@@ -41,6 +46,10 @@ export default async function Home() {
           <article className="kpi-card">
             <span className="kpi-label">חקלאים פעילים</span>
             <div className="metric">{stats.farms}</div>
+          </article>
+          <article className="kpi-card">
+            <span className="kpi-label">מחשבות שנכתבו היום</span>
+            <div className="metric">{stats.journalToday}</div>
           </article>
         </div>
         <Link className="card" href="/admin/shifts">

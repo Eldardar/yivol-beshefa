@@ -58,6 +58,13 @@ export function adminWorkerAvailabilityWindow(now=new Date()):{start:string;end:
  const [year,month]=today.split("-").map(Number) as [number,number];
  return {start:new Date(Date.UTC(year,month-2,1)).toISOString().slice(0,10),end:new Date(Date.UTC(year,month+2,1)).toISOString().slice(0,10)};
 }
+export const HOUSING_EDIT_CUTOFF_HOUR=18;
+export function housingEditable(date:string,now=new Date()):boolean{
+ const today=jerusalemDate(now);
+ if(date>today) return true;
+ if(date<today) return false;
+ return jerusalemHour(now)<HOUSING_EDIT_CUTOFF_HOUR;
+}
 export function shiftMonthKey(key:string,delta:number):string{
  const [year,month]=key.split("-").map(Number) as [number,number];
  const target=new Date(Date.UTC(year,month-1+delta,1));

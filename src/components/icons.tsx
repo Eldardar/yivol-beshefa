@@ -28,6 +28,17 @@ export function HomeIcon(props: IconProps) {
   );
 }
 
+export function HouseIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 11.5 12 4.5l8 7" />
+      <path d="M6 10v9.5a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V10" />
+      <path d="M10 20.5v-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5" />
+      <path d="M15.5 6.5V4h2v4.5" />
+    </Svg>
+  );
+}
+
 export function UsersIcon(props: IconProps) {
   return (
     <Svg {...props}>

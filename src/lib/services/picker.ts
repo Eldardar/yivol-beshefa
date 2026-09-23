@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
-import { availabilityMonthSchema, journalEntrySchema, personalDetailsSchema } from "@/lib/schemas";
-import { availabilityWindow } from "@/lib/dates";
+import { availabilityMonthSchema, housingMonthSchema, journalEntrySchema, personalDetailsSchema } from "@/lib/schemas";
+import { availabilityWindow, housingEditable } from "@/lib/dates";
 
 type Notification={id:number;title:string;body:string;read_at:string|null;created_at:string};
 type JournalEntry={id:number;message:string;created_at:string};
@@ -43,6 +43,22 @@ export class PickerService{
    const upsert=this.db.prepare(`INSERT INTO availability(user_id,date,status) VALUES(?,?,?)
      ON CONFLICT(user_id,date) DO UPDATE SET status=excluded.status`);
    const clear=this.db.prepare("DELETE FROM availability WHERE user_id=? AND date=?");
+   for(const entry of input.entries){if(entry.status===null)clear.run(actorId,entry.date);else upsert.run(actorId,entry.date,entry.status);}
+  }).immediate();
+ }
+ setHousingStatus(actorId:number,raw:unknown,now=new Date()){
+  const input=housingMonthSchema.parse(raw); const user=this.db.prepare("SELECT role,active FROM users WHERE id=?").get(actorId) as {role:string;active:number}|undefined;
+  if(!user?.active || user.role!=="PICKER") throw new Error("אין הרשאה");
+  const seen=new Set<string>();
+  for(const entry of input.entries){
+   if(seen.has(entry.date)) throw new Error("תאריך כפול בבקשה");
+   seen.add(entry.date);
+   if(!housingEditable(entry.date,now)) throw new Error("ניתן לעדכן את סידור השינה של היום הנוכחי עד השעה 18:00 בלבד");
+  }
+  this.db.transaction(()=>{
+   const upsert=this.db.prepare(`INSERT INTO housing_status(user_id,date,status) VALUES(?,?,?)
+     ON CONFLICT(user_id,date) DO UPDATE SET status=excluded.status`);
+   const clear=this.db.prepare("DELETE FROM housing_status WHERE user_id=? AND date=?");
    for(const entry of input.entries){if(entry.status===null)clear.run(actorId,entry.date);else upsert.run(actorId,entry.date,entry.status);}
   }).immediate();
  }

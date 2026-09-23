@@ -886,6 +886,10 @@ button.bottom-nav-link { border: 0; background: transparent; }
 .calendar-day--unavailable { background: var(--color-danger-surface); border-color: #dba79a; }
 .calendar-day--locked { background: var(--neutral-200); border-color: var(--neutral-300); }
 .calendar-day--locked .calendar-day-number { color: var(--color-text-secondary); }
+.calendar-day--locked-available { background: #a9d3b6; border-color: #6fae84; }
+.calendar-day--locked-maybe { background: #e0c37e; border-color: #c9a13c; }
+.calendar-day--locked-unavailable { background: #d9a48f; border-color: #b56b52; }
+.calendar-day--past-choice { justify-items: center; align-content: center; text-align: center; }
 .calendar-day--past { filter: brightness(0.92) saturate(0.9); }
 .calendar-day--past .status-option:not(.is-selected) { opacity: 0.55; }
 .calendar-day-number { font: 700 0.95rem/1 var(--font-sans); }

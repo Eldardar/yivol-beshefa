@@ -42,6 +42,14 @@ export const adminAvailabilityUpdateSchema = z.object({
   entries: z.array(availabilitySchema).min(1)
 }).strict();
 
+export const housingStatusSchema = z.object({
+  date: isoDate,
+  status: z.enum(["IN_VILLAGE", "MAYBE", "AWAY"]).nullable()
+}).strict();
+export const housingMonthSchema = z.object({
+  entries: z.array(housingStatusSchema).min(1)
+}).strict();
+
 const goalLineSchema = z.object({
   unit: unitSchema,
   goal: z.coerce.number().finite().nonnegative(),

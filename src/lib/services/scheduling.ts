@@ -86,7 +86,7 @@ export class SchedulingService{
   const row=this.db.prepare("SELECT date,start_time,end_time,plantation_field_id,leader_id,notes FROM shifts WHERE id=?").get(shiftId) as {date:string;start_time:string;end_time:string;plantation_field_id:number;leader_id:number;notes:string}|undefined;
   if(!row)throw new Error("המשמרת לא נמצאה");
   const vehicleIds=(this.db.prepare("SELECT vehicle_id FROM shift_vehicles WHERE shift_id=?").all(shiftId) as Array<{vehicle_id:number}>).map(x=>x.vehicle_id);
-  const goals=this.db.prepare("SELECT unit,goal FROM shift_goals WHERE shift_id=?").all(shiftId) as ShiftInput["goals"];
+  const goals=this.db.prepare("SELECT unit,goal,actual FROM shift_goals WHERE shift_id=?").all(shiftId) as ShiftInput["goals"];
   const personalGoalUnits=(this.db.prepare("SELECT unit FROM shift_goal_units WHERE shift_id=?").all(shiftId) as Array<{unit:string}>).map(x=>x.unit) as ShiftInput["personalGoalUnits"];
   const ids=new Set(pickerIds);ids.add(row.leader_id);
   const raw:ShiftInput={date:row.date,startTime:row.start_time,endTime:row.end_time,plantationFieldId:row.plantation_field_id,pickerIds:[...ids],leaderId:row.leader_id,vehicleIds,goals,personalGoalUnits,notes:row.notes};
@@ -107,7 +107,7 @@ export class SchedulingService{
   const row=this.db.prepare("SELECT date,start_time,end_time,plantation_field_id,leader_id,notes FROM shifts WHERE id=?").get(shiftId) as {date:string;start_time:string;end_time:string;plantation_field_id:number;leader_id:number;notes:string}|undefined;
   if(!row)throw new Error("המשמרת לא נמצאה");
   const pickerIds=(this.db.prepare("SELECT user_id FROM shift_pickers WHERE shift_id=?").all(shiftId) as Array<{user_id:number}>).map(x=>x.user_id);
-  const goals=this.db.prepare("SELECT unit,goal FROM shift_goals WHERE shift_id=?").all(shiftId) as ShiftInput["goals"];
+  const goals=this.db.prepare("SELECT unit,goal,actual FROM shift_goals WHERE shift_id=?").all(shiftId) as ShiftInput["goals"];
   const personalGoalUnits=(this.db.prepare("SELECT unit FROM shift_goal_units WHERE shift_id=?").all(shiftId) as Array<{unit:string}>).map(x=>x.unit) as ShiftInput["personalGoalUnits"];
   const raw:ShiftInput={date:row.date,startTime:row.start_time,endTime:row.end_time,plantationFieldId:row.plantation_field_id,pickerIds,leaderId:row.leader_id,vehicleIds:[...new Set(vehicleIds)],goals,personalGoalUnits,notes:row.notes};
   return this.updateShift(actorId,shiftId,raw);
