@@ -4,10 +4,10 @@ import Image from "next/image";
 import { WorkerPicker, type WorkerOption } from "./worker-picker";
 import { RangeTabs, RANGE_LABEL, type RangeKey } from "./range-tabs";
 import { CalendarMonthNav } from "./calendar-month-nav";
-import { ExportExcelButton } from "./export-excel-button";
+import { ExcelDownloadButton, ExportExcelButton } from "./export-excel-button";
 import { formatHebrewDate, monthRange } from "@/lib/dates";
 import { UNIT_LABEL, unitsPresent, type Unit } from "@/lib/units";
-import type { XlsxSheet } from "@/lib/xlsx";
+import type { XlsxCell, XlsxSheet } from "@/lib/xlsx";
 import { formatMoney } from "@/lib/format";
 import type { UnitRatesByField } from "./shifts-table";
 import type { FruitTopResults } from "@/lib/shifts-data";
@@ -57,6 +57,38 @@ function workerShiftsSheet(shifts: EmployeeShiftRow[], unitRatesByField: UnitRat
   };
 }
 
+// One sheet with every worker's shifts, grouped by worker with a blank row between workers.
+function allWorkersMonthSheet(monthShifts: Array<{ worker: WorkerOption; shifts: EmployeeShiftRow[] }>, unitRatesByField: UnitRatesByField): XlsxSheet {
+  const units = unitsPresent(monthShifts.flatMap(({ shifts }) => shifts.map(row => row.quantities)));
+  const byName = [...monthShifts].sort((a, b) => a.worker.name.localeCompare(b.worker.name, "he"));
+  const rows: XlsxCell[][] = [];
+  const boldRows: number[] = [];
+  let totalEarnings = 0;
+  byName.forEach(({ worker, shifts }, i) => {
+    if (i > 0) rows.push([]);
+    let workerEarnings = 0;
+    for (const row of shifts) {
+      const earnings = shiftEarnings(row, unitRatesByField);
+      workerEarnings += earnings ?? 0;
+      rows.push([
+        worker.name, { date: row.date }, row.farm, row.fruit_type, row.leader, row.start_time, row.end_time, row.actual_start, row.actual_end,
+        ...units.map(u => row.quantities.find(q => q.unit === u)?.quantity),
+        earnings != null ? { money: earnings } : null
+      ]);
+    }
+    boldRows.push(rows.length);
+    rows.push([`סה"כ ${worker.name}`, ...Array<null>(8 + units.length).fill(null), { money: workerEarnings }]);
+    totalEarnings += workerEarnings;
+  });
+  return {
+    name: "משמרות",
+    header: ["עובד/ת", "תאריך", "חקלאי", "גידול", "מוביל משמרת", "התחלה מתוכננת", "סיום מתוכנן", "התחלה בפועל", "סיום בפועל", ...units.map(u => `כמות (${UNIT_LABEL[u]})`), "הכנסה"],
+    rows,
+    boldRows,
+    footer: ["סה\"כ הכנסה - כל העובדים", ...Array<null>(8 + units.length).fill(null), { money: totalEarnings }]
+  };
+}
+
 export function EmployeePerformanceReport({
   workers,
   shiftsByWorker,
@@ -88,6 +120,12 @@ export function EmployeePerformanceReport({
   const { start: monthStart, end: monthEnd } = useMemo(() => monthRange(viewYear, viewMonth), [viewYear, viewMonth]);
   const shifts = allShifts.filter(row => row.date >= monthStart && row.date < monthEnd);
   const totalEarnings = shifts.reduce((sum, row) => sum + (shiftEarnings(row, unitRatesByField) ?? 0), 0);
+  const allWorkersMonthShifts = selected
+    ? workers
+      .map(worker => ({ worker, shifts: (shiftsByWorker[worker.id] ?? []).filter(row => row.date >= monthStart && row.date < monthEnd) }))
+      .filter(({ shifts }) => shifts.length > 0)
+    : [];
+  const monthLabel = `${String(viewMonth).padStart(2, "0")}-${viewYear}`;
   const bestShiftCounts = bestShiftCountsByRange[range];
   const bestWorkers = workers
     .filter(worker => (bestShiftCounts[worker.id] ?? 0) > 0)
@@ -123,11 +161,22 @@ export function EmployeePerformanceReport({
         />
       )}
 
-      {selected && shifts.length > 0 && (
-        <ExportExcelButton
-          fileName={`${selected.name} - ${String(viewMonth).padStart(2, "0")}-${viewYear}`}
-          sheets={() => [workerShiftsSheet(shifts, unitRatesByField, totalEarnings)]}
-        />
+      {selected && (shifts.length > 0 || allWorkersMonthShifts.length > 0) && (
+        <div className="report-export">
+          {shifts.length > 0 && (
+            <ExcelDownloadButton
+              fileName={`${selected.name} - ${monthLabel}`}
+              sheets={() => [workerShiftsSheet(shifts, unitRatesByField, totalEarnings)]}
+            />
+          )}
+          {allWorkersMonthShifts.length > 0 && (
+            <ExcelDownloadButton
+              label="ייצוא לאקסל - כל העובדים"
+              fileName={`כל העובדים - ${monthLabel}`}
+              sheets={() => [allWorkersMonthSheet(allWorkersMonthShifts, unitRatesByField)]}
+            />
+          )}
+        </div>
       )}
 
       {!selected && rankedWorkers.length === 0 && (

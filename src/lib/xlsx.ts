@@ -2,7 +2,7 @@
 // money and date formats), packed into an uncompressed zip so it needs no dependency.
 
 export type XlsxCell = string | number | null | undefined | { money: number } | { date: string };
-export type XlsxSheet = { name: string; header: string[]; rows: XlsxCell[][]; footer?: XlsxCell[] };
+export type XlsxSheet = { name: string; header: string[]; rows: XlsxCell[][]; footer?: XlsxCell[]; boldRows?: number[] };
 
 const STYLE = { plain: 0, bold: 1, money: 2, moneyBold: 3, date: 4 } as const;
 
@@ -48,7 +48,7 @@ function displayLength(cell: XlsxCell): number {
 function sheetXml(sheet: XlsxSheet): string {
   const allRows: Array<{ cells: XlsxCell[]; bold: boolean }> = [
     { cells: sheet.header, bold: true },
-    ...sheet.rows.map(cells => ({ cells, bold: false })),
+    ...sheet.rows.map((cells, i) => ({ cells, bold: sheet.boldRows?.includes(i) ?? false })),
     ...(sheet.footer ? [{ cells: sheet.footer, bold: true }] : [])
   ];
   const columnCount = Math.max(...allRows.map(r => r.cells.length));
