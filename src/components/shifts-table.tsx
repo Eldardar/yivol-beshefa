@@ -1,7 +1,7 @@
 "use client";
 import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
-import { formatHebrewDate } from "@/lib/dates";
+import { formatHebrewDate, jerusalemInstant } from "@/lib/dates";
 import { UNIT_LABEL, unitsPresent, type Unit } from "@/lib/units";
 import type { XlsxSheet } from "@/lib/xlsx";
 import { ExportExcelButton } from "./export-excel-button";
@@ -120,6 +120,12 @@ function unratedUnits(units: UnitInfo[], plantationFieldId: number, ratedUnitsBy
   return units.filter(u => u.goal > 0 && !rated.includes(u.unit)).map(u => u.unit);
 }
 
+// Colors a unit's goal/result line by its achievement, once its result is entered.
+function goalResultClass(unit: UnitInfo): string {
+  if (unit.goal <= 0 || unit.produced == null) return "";
+  return unit.produced >= unit.goal ? "goal-cell--met" : "goal-cell--missed";
+}
+
 function UnratedUnitsWarning({ units }: { units: Unit[] }) {
   if (units.length === 0) return null;
   const title = units.length === 1
@@ -176,10 +182,13 @@ export function ShiftsTable({
   }, [initialExpanded]);
   const [search, setSearch] = useState("");
   const [showCancelled, setShowCancelled] = useState(false);
+  // Moment the "future only" toggle was switched on; null when off.
+  const [futureSince, setFutureSince] = useState<number | null>(null);
 
   const query = search.trim().toLowerCase();
   const filtered = shifts
     .filter(row => showCancelled || row.status !== "CANCELLED")
+    .filter(row => futureSince == null || jerusalemInstant(row.date, row.start_time).getTime() > futureSince)
     .filter(row =>
       !query || row.farm.toLowerCase().includes(query) || row.fruit_type.toLowerCase().includes(query) || row.leader.toLowerCase().includes(query) || formatHebrewDate(row.date).includes(query)
     );
@@ -195,6 +204,13 @@ export function ShiftsTable({
               <span className="switch-track" aria-hidden="true" />
             </span>
             <span>הצג משמרות מבוטלות</span>
+          </label>
+          <label className="switch-row">
+            <span className="switch">
+              <input type="checkbox" checked={futureSince != null} onChange={e => setFutureSince(e.target.checked ? Date.now() : null)} />
+              <span className="switch-track" aria-hidden="true" />
+            </span>
+            <span>הצג משמרות עתידיות בלבד</span>
           </label>
           <AddShiftButton csrf={csrf} pickers={pickers} farms={farms} plantationFieldsByFarm={plantationFieldsByFarm} />
         </div>
@@ -254,7 +270,7 @@ export function ShiftsTable({
       <div className="table-wrap desktop-only">
         <table className="table">
           <thead>
-            <tr><th aria-hidden="true"></th><th>תאריך</th><th>שעות</th><th>חקלאי וגידול</th><th>מוביל משמרת</th><th>קוטפים</th><th>יעד / בפועל</th><th>מצב</th><th>{readOnly ? "סה\"כ" : "פעולות"}</th></tr>
+            <tr><th aria-hidden="true"></th><th>תאריך</th><th>חקלאי וגידול</th><th>מוביל משמרת</th><th>קוטפים</th><th>יעד / בפועל</th><th>מצב</th><th>{readOnly ? "סה\"כ" : "פעולות"}</th></tr>
           </thead>
           <tbody>
             {filtered.map(row => {
@@ -269,14 +285,16 @@ export function ShiftsTable({
                         <ChevronDownIcon size={28} />
                       </button>
                     </td>
-                    <td>{formatHebrewDate(row.date)}</td>
-                    <td><span dir="ltr" className="ltr-field">{row.start_time}–{row.end_time}</span></td>
+                    <td>
+                      <span className="cell-main">{formatHebrewDate(row.date)}</span>
+                      <span className="cell-sub"><span dir="ltr" className="ltr-field">{row.start_time}–{row.end_time}</span></span>
+                    </td>
                     <td>{row.farm} · {row.fruit_type}</td>
                     <td>{row.leader}</td>
                     <td>{row.picker_count}</td>
                     <td>
                       {units.length ? units.map(u => (
-                        <span key={u.unit} className="unit-line">
+                        <span key={u.unit} className={`unit-line ${goalResultClass(u)}`}>
                           <span dir="ltr" className="ltr-field">{u.produced ?? "—"}/{u.goal}</span> {UNIT_LABEL[u.unit]}
                         </span>
                       )) : "—"}
@@ -295,7 +313,7 @@ export function ShiftsTable({
                   </tr>
                   {isOpen && (
                     <tr className="worker-expand-row">
-                      <td colSpan={9}>
+                      <td colSpan={8}>
                         <ShiftDetails units={units} pickerNames={pickerNamesByShift[row.id] ?? []} totalPickers={pickers.length} pickerHours={pickerHoursByShift[row.id] ?? []} unitRates={unitRatesByField[row.plantation_field_id] ?? {}} vehicles={vehiclesByShift[row.id] ?? []} notes={row.notes} plannedStart={row.start_time} plannedEnd={row.end_time} teamLeaderDetails={row.team_leader_details} completedEditButton={!readOnly && row.status === "COMPLETED" ? <CompletedEditButton row={row} csrf={csrf} pickers={pickers} farms={farms} plantationFieldsByFarm={plantationFieldsByFarm} pickerIdsByShift={pickerIdsByShift} vehicleIdsByShift={vehicleIdsByShift} unitsByShift={unitsByShift} personalGoalUnitsByShift={personalGoalUnitsByShift} /> : undefined} />
                       </td>
                     </tr>
