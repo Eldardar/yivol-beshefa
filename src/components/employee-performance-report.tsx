@@ -215,8 +215,7 @@ export function EmployeePerformanceReport({
                         <td>{record.fruitType}</td>
                         <td>{worker?.name ?? "—"}</td>
                         <td>
-                          {formatMoney(record.earnings)}
-                          <div className="muted">
+                          <div>
                             {record.quantities.map((q, i) => (
                               <span key={q.unit}>
                                 {i > 0 && " · "}
@@ -224,6 +223,7 @@ export function EmployeePerformanceReport({
                               </span>
                             ))}
                           </div>
+                          <div className="muted">{formatMoney(record.earnings)}</div>
                         </td>
                       </tr>
                     );
