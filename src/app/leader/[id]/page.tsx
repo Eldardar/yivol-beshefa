@@ -1,9 +1,11 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/nav";
 import { csrfValue, db, requireUser } from "@/lib/server";
 import { formatHebrewDate, jerusalemDate } from "@/lib/dates";
 import type { Unit } from "@/lib/units";
 import { UnitLines } from "@/components/unit-lines";
+import { ArrowRightIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +32,14 @@ export default async function Leader({ params }: { params: Promise<{ id: string 
 
   return (
     <AppShell user={user}>
-      <h1>דיווח כמויות · {formatHebrewDate(shift.date)}</h1>
+      <div className="page-title-row">
+        {user.role === "ADMIN" && (
+          <Link className="icon-btn" href={`/admin/shifts?shift=${id}`} title="חזרה לניהול משמרות" aria-label="חזרה לניהול משמרות">
+            <ArrowRightIcon size={20} />
+          </Link>
+        )}
+        <h1>דיווח כמויות · {formatHebrewDate(shift.date)}</h1>
+      </div>
       <form className="card stack" action="/api/actions" method="post">
         <input type="hidden" name="action" value="quantities" />
         <input type="hidden" name="csrf" value={csrf} />

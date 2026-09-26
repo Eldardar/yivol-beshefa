@@ -21,7 +21,8 @@ function destination(action:string,form:FormData):string {
   if(action==="userUpdate")return "/admin/users?saved=1";
   if(action.startsWith("vehicle"))return "/admin/transport?saved=1";
   if(action.startsWith("farm")||action.startsWith("plantationField"))return "/admin/resources?saved=1";
-  if(action.startsWith("shift")||action==="quantities")return "/admin/shifts?saved=1";
+  if(action==="quantities")return `/admin/shifts?saved=1&shift=${Number(form.get("shiftId"))||""}`;
+  if(action.startsWith("shift"))return "/admin/shifts?saved=1";
   if(action==="selfReport")return "/history?saved=1";
   if(action==="workerGoalSet")return "/assignments?saved=1";
   if(action==="readNotification"||action==="readAllNotifications")return "/notifications";

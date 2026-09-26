@@ -5,11 +5,12 @@ import { loadShiftsPageData } from "@/lib/shifts-data";
 
 export const dynamic = "force-dynamic";
 
-export default async function Shifts({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string; warning?: string }> }) {
+export default async function Shifts({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string; warning?: string; shift?: string }> }) {
   const user = await requireAdmin();
   const csrf = await csrfValue();
   const query = await searchParams;
   const data = loadShiftsPageData(db());
+  const focusShift = Number(query.shift);
 
   return (
     <AppShell user={user}>
@@ -18,7 +19,7 @@ export default async function Shifts({ searchParams }: { searchParams: Promise<{
       {query.warning && <p className="alert" role="alert">אזהרה: {query.warning}</p>}
       {query.error && <p className="alert" role="alert">{query.error}</p>}
       <section className="card">
-        <ShiftsTable {...data} csrf={csrf} />
+        <ShiftsTable {...data} csrf={csrf} initialExpanded={Number.isInteger(focusShift) && focusShift > 0 ? focusShift : null} />
       </section>
     </AppShell>
   );

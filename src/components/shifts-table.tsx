@@ -1,5 +1,5 @@
 "use client";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { formatHebrewDate } from "@/lib/dates";
 import { UNIT_LABEL, type Unit } from "@/lib/units";
@@ -8,7 +8,7 @@ import { EditShiftButton } from "./edit-shift-button";
 import { AssignPickersButton } from "./assign-pickers-button";
 import { AssignVehiclesButton } from "./assign-vehicles-button";
 import { AssignmentPieChart } from "./assignment-pie-chart";
-import { ChevronDownIcon, TrashIcon, AlertTriangleIcon, UsersIcon } from "./icons";
+import { ChevronDownIcon, TrashIcon, AlertTriangleIcon } from "./icons";
 import { LEADER_CONFLICT_MARKER, type Picker, type FarmOption, type PlantationFieldsByFarm } from "./shift-form";
 import { Modal } from "./modal";
 import { formatMoney } from "@/lib/format";
@@ -97,7 +97,8 @@ export function ShiftsTable({
   vehicleIdsByShift,
   personalGoalUnitsByShift,
   csrf,
-  readOnly = false
+  readOnly = false,
+  initialExpanded = null
 }: {
   shifts: ShiftRow[];
   pickers: Picker[];
@@ -114,8 +115,17 @@ export function ShiftsTable({
   personalGoalUnitsByShift: PersonalGoalUnitsByShift;
   csrf: string;
   readOnly?: boolean;
+  initialExpanded?: number | null;
 }) {
-  const [expanded, setExpanded] = useState<number | null>(null);
+  const [expanded, setExpanded] = useState<number | null>(initialExpanded);
+
+  // Returning from a shift's report page: bring the expanded shift into view.
+  // Both the mobile and desktop layouts are rendered, so pick the visible one.
+  useEffect(() => {
+    if (initialExpanded == null) return;
+    const target = Array.from(document.querySelectorAll<HTMLElement>(`[data-shift-id="${initialExpanded}"]`)).find(el => el.offsetParent !== null);
+    target?.scrollIntoView({ block: "center" });
+  }, [initialExpanded]);
   const [search, setSearch] = useState("");
   const [showCancelled, setShowCancelled] = useState(false);
 
@@ -151,7 +161,7 @@ export function ShiftsTable({
           const units = unitsByShift[row.id] ?? [];
           const unrated = unratedUnits(units, row.plantation_field_id, ratedUnitsByField);
           return (
-            <article className="record-card" key={row.id}>
+            <article className="record-card" key={row.id} data-shift-id={row.id}>
               <div className="record-card-head">
                 <div className="record-card-body">
                   <span className="record-card-name">{formatHebrewDate(row.date)} · <span dir="ltr" className="ltr-field">{row.start_time}–{row.end_time}</span></span>
@@ -201,7 +211,7 @@ export function ShiftsTable({
               const unrated = unratedUnits(units, row.plantation_field_id, ratedUnitsByField);
               return (
                 <Fragment key={row.id}>
-                  <tr>
+                  <tr data-shift-id={row.id}>
                     <td>
                       <button type="button" className={`expand-btn${isOpen ? " is-open" : ""}`} aria-expanded={isOpen} aria-label={isOpen ? "סגירת פרטי משמרת" : "פתיחת פרטי משמרת"} onClick={() => setExpanded(isOpen ? null : row.id)}>
                         <ChevronDownIcon size={28} />
@@ -336,10 +346,9 @@ function CompletedEditButton({
         existingGoals={(unitsByShift[row.id] ?? []).map(u => ({ value: u.goal, unit: u.unit, actual: u.produced }))}
         existingPersonalGoalUnits={personalGoalUnitsByShift[row.id] ?? []}
       />
-      <Link className="icon-btn" title="עריכת דיווח קוטפים" aria-label="עריכת דיווח קוטפים" href={`/leader/${row.id}`}>
-        <UsersIcon size={18} />
-      </Link>
+      <AssignPickersButton shiftId={row.id} leaderId={row.leader_id} date={row.date} csrf={csrf} />
       <AssignVehiclesButton shiftId={row.id} csrf={csrf} />
+      <Link className="btn btn-sm secondary" title="עריכת דיווח קוטפים" href={`/leader/${row.id}`}>דוח</Link>
     </>
   );
 }

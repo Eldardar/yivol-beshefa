@@ -198,6 +198,8 @@ img, svg { display: block; max-width: 100%; }
 .inline-icon-text svg { flex: none; }
 .page-title-group { display: grid; gap: var(--space-1); }
 .page-title-group p { color: var(--color-text-secondary); font: var(--text-body); }
+.page-title-row { display: flex; align-items: center; gap: var(--space-3); }
+.page-title-row > .icon-btn { flex-shrink: 0; }
 
 /* ==========================================================================
    Page header
