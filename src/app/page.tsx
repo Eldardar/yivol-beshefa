@@ -77,10 +77,6 @@ export default async function Home() {
         </div>
         <AdminGoal monthLabel={monthLabel} progress={goalProgress} csrf={csrf} />
         <FruitRecordsByPeriod byPeriod={fruitRecordsByPeriod} workers={workerNames} />
-        <Link className="card" href="/admin/shifts">
-          <h2>ניהול משמרות ←</h2>
-          <p className="muted">יצירה, פרסום ודיווח כמויות</p>
-        </Link>
         <div className="game-link">
           <Link href="/game" className="btn secondary">למשחק</Link>
         </div>
