@@ -506,6 +506,8 @@ select.input { appearance: auto; }
   white-space: nowrap;
 }
 .table td { text-align: start; padding: 0.85rem var(--space-3); border-bottom: 1px solid var(--color-border); vertical-align: middle; }
+.table .cell-main { display: block; white-space: nowrap; }
+.table .cell-sub { display: block; font-size: 0.8125rem; color: var(--color-text-secondary); white-space: nowrap; }
 .table tbody tr { transition: background var(--duration-fast) var(--ease-standard); }
 .table tbody tr:hover { background: var(--color-surface-sunk); }
 .table tbody tr:last-child td { border-bottom: 0; }

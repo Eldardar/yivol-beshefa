@@ -1,6 +1,8 @@
 const dateFormatter=new Intl.DateTimeFormat("he-IL",{timeZone:"Asia/Jerusalem",year:"numeric",month:"long",day:"numeric"});
+const shortDateFormatter=new Intl.DateTimeFormat("he-IL",{timeZone:"Asia/Jerusalem",year:"2-digit",month:"numeric",day:"numeric"});
 const dateTimeFormatter=new Intl.DateTimeFormat("he-IL",{timeZone:"Asia/Jerusalem",year:"numeric",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"});
 export function formatHebrewDate(iso:string):string{const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);if(!match)return iso;return dateFormatter.format(new Date(Date.UTC(Number(match[1]),Number(match[2])-1,Number(match[3]),12)));}
+export function formatHebrewShortDate(iso:string):string{const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);if(!match)return iso;return shortDateFormatter.format(new Date(Date.UTC(Number(match[1]),Number(match[2])-1,Number(match[3]),12)));}
 export function formatHebrewDateTime(value:string):string{const normalized=value.includes("T")?value:`${value.replace(" ","T")}Z`;const date=new Date(normalized);return Number.isNaN(date.getTime())?value:dateTimeFormatter.format(date);}
 export function jerusalemDate(now=new Date()):string{const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Jerusalem",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(now);const value=(type:string)=>parts.find(part=>part.type===type)?.value;if(!value("year")||!value("month")||!value("day"))throw new Error("לא ניתן לחשב תאריך מקומי");return `${value("year")}-${value("month")}-${value("day")}`;}
 export function jerusalemHour(now=new Date()):number{return Number(new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Jerusalem",hour:"2-digit",hourCycle:"h23"}).format(now));}

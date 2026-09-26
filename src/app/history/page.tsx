@@ -1,6 +1,6 @@
 import { AppShell } from "@/components/nav";
 import { db, requireUser } from "@/lib/server";
-import { formatHebrewDate, jerusalemDate, currentJerusalemMonth } from "@/lib/dates";
+import { formatHebrewShortDate, jerusalemDate, currentJerusalemMonth } from "@/lib/dates";
 import { UNIT_LABEL, type Unit } from "@/lib/units";
 import { WorkerEarningsChart, type EarningsPoint } from "@/components/worker-earnings-chart";
 
@@ -94,16 +94,20 @@ export default async function History({ searchParams }: { searchParams: Promise<
 
       <div className="table-wrap card">
         <table className="table">
-          <thead><tr><th>תאריך</th><th>חקלאי</th><th>גידול</th><th>שעות</th><th>כמות</th></tr></thead>
+          <thead><tr><th>תאריך</th><th>חקלאי</th><th>כמות</th></tr></thead>
           <tbody>
             {rows.map(x => {
               const parts = quantityParts(x.id);
               return (
                 <tr key={x.id}>
-                  <td>{formatHebrewDate(x.date)}</td>
-                  <td>{x.farm}</td>
-                  <td>{x.crop}</td>
-                  <td><span dir="ltr" className="ltr-field">{hoursText(x)}</span></td>
+                  <td>
+                    <span className="cell-main">{formatHebrewShortDate(x.date)}</span>
+                    <span className="cell-sub"><span dir="ltr" className="ltr-field">{hoursText(x)}</span></span>
+                  </td>
+                  <td>
+                    <span className="cell-main">{x.farm}</span>
+                    <span className="cell-sub">{x.crop}</span>
+                  </td>
                   <td>{parts.length ? parts.map((p) => <span key={p.key} className="unit-line">{p.node}</span>) : "—"}</td>
                 </tr>
               );
