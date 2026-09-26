@@ -505,6 +505,16 @@ select.input { appearance: auto; }
 .table tbody tr:hover { background: var(--color-surface-sunk); }
 .table tbody tr:last-child td { border-bottom: 0; }
 .table-row-clickable { cursor: pointer; }
+.row-inactive td { text-decoration: line-through; color: var(--color-text-secondary); }
+
+.report-with-aside { display: flex; flex-direction: column; gap: var(--space-4); align-items: stretch; }
+.report-with-aside > .table-wrap { flex: 1; min-width: 0; }
+.best-workers { display: grid; gap: var(--space-2); align-content: start; }
+.best-workers h2 { font-size: 1.05rem; margin: 0; }
+@media (min-width: 900px) {
+  .report-with-aside { flex-direction: row; align-items: flex-start; }
+  .best-workers { flex: 0 0 280px; }
+}
 
 .table-toolbar { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
 .report-export { display: flex; justify-content: flex-end; }

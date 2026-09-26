@@ -294,3 +294,27 @@ export function getShiftsByFarmer(database: Database.Database, today: string): S
   }
   return shiftsByFarmer;
 }
+
+// A shift's best worker is its top earner (quantity × field rate), matching the 👑 in the shift details; ties all count.
+export function getBestShiftCountsByWorker(database: Database.Database, today: string, range?: { start: string; end: string }): Record<number, number> {
+  const rangeClause = range ? "AND s.date >= ? AND s.date < ?" : "";
+  const params = range ? [today, range.start, range.end] : [today];
+  const rows = database
+    .prepare(
+      `SELECT q.shift_id shift_id, q.user_id user_id, SUM(q.quantity * r.rate_nis) earnings
+       FROM quantities q
+       JOIN shifts s ON s.id = q.shift_id
+       JOIN shift_pickers sp ON sp.shift_id = q.shift_id AND sp.user_id = q.user_id
+       JOIN field_unit_rates r ON r.field_id = s.plantation_field_id AND r.unit = q.unit
+       WHERE s.status IN ('PUBLISHED','COMPLETED') AND (s.date < ? OR s.status = 'COMPLETED') ${rangeClause}
+       GROUP BY q.shift_id, q.user_id`
+    )
+    .all(...params) as Array<{ shift_id: number; user_id: number; earnings: number }>;
+  const maxByShift = new Map<number, number>();
+  for (const r of rows) maxByShift.set(r.shift_id, Math.max(maxByShift.get(r.shift_id) ?? 0, r.earnings));
+  const counts: Record<number, number> = {};
+  for (const r of rows) {
+    if (r.earnings > 0 && r.earnings === maxByShift.get(r.shift_id)) counts[r.user_id] = (counts[r.user_id] ?? 0) + 1;
+  }
+  return counts;
+}
