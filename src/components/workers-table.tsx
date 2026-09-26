@@ -2,7 +2,8 @@
 import { Fragment, useState } from "react";
 import { formatHebrewDate } from "@/lib/dates";
 import { maskNationalId } from "@/lib/privacy";
-import { UNIT_LABEL, type Unit } from "@/lib/units";
+import { UNIT_LABEL, unitsPresent, type Unit } from "@/lib/units";
+import type { XlsxSheet } from "@/lib/xlsx";
 import { ResetPickerPassword } from "./reset-picker-password";
 import { AddWorkerButton } from "./add-worker-button";
 import { EditWorkerButton } from "./edit-worker-button";
@@ -10,6 +11,7 @@ import { ActiveSwitch } from "./active-switch";
 import { ShowArchivedToggle } from "./show-archived-toggle";
 import { ChevronDownIcon } from "./icons";
 import { DeleteRecordButton } from "./delete-record-button";
+import { ExportExcelButton } from "./export-excel-button";
 
 export type WorkerRow = {
   id: number; name: string; email: string; phone: string; national_id: string | null; notes: string; role: "ADMIN" | "PICKER"; active: number;
@@ -20,6 +22,36 @@ export type WorkerShiftRow = { id: number; date: string; start_time: string; end
 export type ShiftsByUser = Record<number, { past: WorkerShiftRow[]; future: WorkerShiftRow[] }>;
 
 const STATUS_LABEL: Record<string, string> = { DRAFT: "טיוטה", PUBLISHED: "פורסמה", COMPLETED: "הושלמה", CANCELLED: "בוטלה" };
+
+function workerSheets(workers: WorkerRow[], shiftsByUser: ShiftsByUser): XlsxSheet[] {
+  const shifts = workers.flatMap(worker => {
+    const bucket = shiftsByUser[worker.id];
+    return [...(bucket?.future ?? []), ...(bucket?.past ?? [])].map(shift => ({ worker, shift }));
+  });
+  const units = unitsPresent(shifts.map(({ shift }) => shift.lines));
+  return [
+    {
+      name: "עובדים",
+      header: ["מזהה", "שם", "תפקיד", "דוא״ל", "טלפון", "תעודת זהות", "תאריך לידה", "פרי אהוב", "מצב", "שם בעל החשבון", "מספר בנק", "שם בנק", "מספר סניף", "שם סניף", "מספר חשבון", "הערות"],
+      rows: workers.map(row => [
+        row.id, row.name, row.role === "ADMIN" ? "מנהל" : "עובד", row.email, row.phone, row.national_id,
+        row.date_of_birth ? { date: row.date_of_birth } : null, row.favorite_fruit, row.active ? "פעיל" : "לא פעיל",
+        row.bank_account_holder, row.bank_number, row.bank_name, row.bank_branch_number, row.bank_branch_name, row.bank_account_number, row.notes
+      ])
+    },
+    {
+      name: "משמרות",
+      header: ["עובד", "תאריך", "שעת התחלה", "שעת סיום", "חקלאי", "גידול", "מצב", ...units.map(u => `כמות (${UNIT_LABEL[u]})`)],
+      rows: shifts.map(({ worker, shift }) => [
+        worker.name, { date: shift.date }, shift.start_time, shift.end_time, shift.farm, shift.crop, STATUS_LABEL[shift.status] ?? shift.status,
+        ...units.map(u => {
+          const lines = shift.lines.filter(l => l.unit === u);
+          return lines.length ? lines.reduce((sum, l) => sum + l.quantity, 0) : null;
+        })
+      ])
+    }
+  ];
+}
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/);
@@ -43,6 +75,7 @@ export function WorkersTable({ users, shiftsByUser, csrf, currentUserId }: { use
         <input className="input search-input" type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="חיפוש לפי שם, דוא״ל או טלפון" aria-label="חיפוש עובדים" />
         <ShowArchivedToggle checked={showArchived} onChange={setShowArchived} />
         <AddWorkerButton csrf={csrf} />
+        {filtered.length > 0 && <ExportExcelButton fileName="עובדים" sheets={() => workerSheets(filtered, shiftsByUser)} />}
       </div>
 
       {filtered.length === 0 && <p className="muted">לא נמצאו עובדים</p>}
