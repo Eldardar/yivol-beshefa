@@ -132,9 +132,9 @@ export function VehicleTransportReport({
           fileName={`דוח תחבורה - ${selected.name} - ${RANGE_LABEL[range]}`}
           sheets={() => [{
             name: "נסיעות",
-            header: ["תאריך", "שעות", "חקלאי", "שדה", "גידול", "מוביל משמרת", "כמות עובדים", "משך (שעות)"],
+            header: ["תאריך", "שעות", "חקלאי", "שדה", "גידול", "מוביל משמרת", "משך (שעות)"],
             rows: trips.map(t => [
-              { date: t.date }, `${t.start_time}–${t.end_time}`, t.farm_name, t.field_name, t.fruit_type, t.leader, t.workers,
+              { date: t.date }, `${t.start_time}–${t.end_time}`, t.farm_name, t.field_name, t.fruit_type, t.leader,
               Math.round(t.hours * 100) / 100
             ])
           }]}
@@ -152,7 +152,7 @@ export function VehicleTransportReport({
           <p className="muted">מציג {trips.length} נסיעות</p>
           <table className="table">
             <thead>
-              <tr><th>תאריך</th><th>שעות</th><th>חקלאי · שדה</th><th>מוביל משמרת</th><th>כמות עובדים</th></tr>
+              <tr><th>תאריך</th><th>שעות</th><th>חקלאי · שדה</th><th>מוביל משמרת</th></tr>
             </thead>
             <tbody>
               {trips.map(t => (
@@ -161,7 +161,6 @@ export function VehicleTransportReport({
                   <td><span dir="ltr" className="ltr-field">{t.start_time}–{t.end_time}</span></td>
                   <td>{t.farm_name} · {t.field_name} ({t.fruit_type})</td>
                   <td>{t.leader}</td>
-                  <td>{t.workers}</td>
                 </tr>
               ))}
             </tbody>
