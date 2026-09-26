@@ -1,25 +1,23 @@
-import Image from "next/image";
 import { AppShell } from "@/components/nav";
-import { requireAdmin } from "@/lib/server";
+import { VehicleTransportReport, type VehicleOption } from "@/components/vehicle-transport-report";
+import { db, requireAdmin } from "@/lib/server";
+import { getTripsByVehicle } from "@/lib/shifts-data";
+import { jerusalemDate, currentJerusalemMonth, currentJerusalemYear } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
 export default async function TransportReport() {
   const user = await requireAdmin();
+  const database = db();
 
   return (
     <AppShell user={user}>
       <h1>דוח תחבורה</h1>
-      <section className="card empty-state" style={{ justifyItems: "center", textAlign: "center" }}>
-        <Image
-          src="/reports-placeholder.jpg"
-          alt=""
-          width={2316}
-          height={3088}
-          style={{ maxWidth: "100%", width: 240, height: "auto", borderRadius: "var(--radius-md)" }}
-        />
-        <p>הדוח בבנייה ויתווסף בקרוב.</p>
-      </section>
+      <VehicleTransportReport
+        vehicles={database.prepare("SELECT id,number,name,active FROM vehicles ORDER BY active DESC,name").all() as VehicleOption[]}
+        tripsByVehicle={getTripsByVehicle(database, jerusalemDate())}
+        ranges={{ month: currentJerusalemMonth(), year: currentJerusalemYear() }}
+      />
     </AppShell>
   );
 }

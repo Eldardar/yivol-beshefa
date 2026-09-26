@@ -16,6 +16,7 @@ import type {
 import type { Unit } from "@/lib/units";
 import type { EmployeeShiftRow, ShiftsByWorker } from "@/components/employee-performance-report";
 import type { FarmerShiftRow, ShiftsByFarmer } from "@/components/farmer-performance-report";
+import type { VehicleTripRow, TripsByVehicle } from "@/components/vehicle-transport-report";
 
 export type ShiftsPageData = {
   pickers: Picker[];
@@ -356,4 +357,25 @@ export function getTopResultsByFruit(database: Database.Database, today: string,
       results: list.sort((a, b) => b.earnings - a.earnings || a.date.localeCompare(b.date)).slice(0, limit)
     }))
     .sort((a, b) => a.fruitType.localeCompare(b.fruitType, "he"));
+}
+
+// Every shift a vehicle was assigned to counts as one trip for that vehicle.
+export function getTripsByVehicle(database: Database.Database, today: string): TripsByVehicle {
+  const rows = database
+    .prepare(
+      `SELECT sv.vehicle_id vehicle_id, s.id id, s.date date, s.start_time start_time, s.end_time end_time,
+              f.name farm_name, pf.name field_name, pf.fruit_type fruit_type, u.name leader,
+              (SELECT COUNT(*) FROM shift_pickers sp WHERE sp.shift_id = s.id) workers
+       FROM shift_vehicles sv
+       JOIN shifts s ON s.id = sv.shift_id
+       JOIN plantation_fields pf ON pf.id = s.plantation_field_id
+       JOIN farms f ON f.id = pf.farm_id
+       JOIN users u ON u.id = s.leader_id
+       WHERE s.status IN ('PUBLISHED','COMPLETED') AND (s.date < ? OR s.status = 'COMPLETED')
+       ORDER BY sv.vehicle_id, s.date DESC, s.start_time DESC`
+    )
+    .all(today) as Array<Omit<VehicleTripRow, "hours"> & { vehicle_id: number }>;
+  const tripsByVehicle: TripsByVehicle = {};
+  for (const { vehicle_id, ...row } of rows) (tripsByVehicle[vehicle_id] ??= []).push({ ...row, hours: hoursBetween(row.start_time, row.end_time) });
+  return tripsByVehicle;
 }
