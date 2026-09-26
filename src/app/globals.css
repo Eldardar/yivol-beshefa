@@ -253,7 +253,8 @@ img, svg { display: block; max-width: 100%; }
 .hero-gallery { display: grid; gap: var(--space-2); }
 .hero-gallery-viewport { position: relative; border-radius: var(--radius-xl); overflow: hidden; }
 .hero-gallery-track { display: flex; direction: ltr; transition: transform 0.5s ease; }
-.hero-gallery-image { flex: 0 0 100%; width: 100%; height: auto; display: block; }
+/* Fixed 4:3 frame; images of other shapes are cropped to fit instead of resizing the gallery. */
+.hero-gallery-image { flex: 0 0 100%; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; }
 .hero-gallery-nav {
   position: absolute;
   top: 50%;
