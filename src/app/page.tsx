@@ -10,7 +10,6 @@ import { FruitRecordsByPeriod } from "@/components/fruit-records-by-period";
 import { getPickedAmountsByFruitType, getTopResultsByFruit } from "@/lib/shifts-data";
 import { AdminService } from "@/lib/services/admin";
 import { AdminGoal } from "@/components/admin-goal";
-import { AdminGameButton } from "@/components/admin-game-gate";
 import { UNITS } from "@/lib/units";
 
 export const dynamic = "force-dynamic";
@@ -83,7 +82,7 @@ export default async function Home() {
           <p className="muted">יצירה, פרסום ודיווח כמויות</p>
         </Link>
         <div className="game-link">
-          <AdminGameButton />
+          <Link href="/game" className="btn secondary">למשחק</Link>
         </div>
       </AppShell>
     );

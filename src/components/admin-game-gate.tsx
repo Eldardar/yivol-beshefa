@@ -1,21 +1,10 @@
 "use client";
-import { useState, useSyncExternalStore, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "./modal";
 
 // Playful gate that keeps admins out of the snake game unless they know the password.
 const PASSWORD = "kingeldar";
-const UNLOCK_KEY = "picker-snake-admin-unlocked";
-
-function readUnlocked() {
-  try { return sessionStorage.getItem(UNLOCK_KEY) === "1"; } catch { return false; }
-}
-
-function unlock() {
-  try { sessionStorage.setItem(UNLOCK_KEY, "1"); } catch { /* storage unavailable */ }
-}
-
-const noopSubscribe = () => () => {};
 
 function PasswordModal({ onSuccess, onClose }: { onSuccess: () => void; onClose: () => void }) {
   const [value, setValue] = useState("");
@@ -24,7 +13,6 @@ function PasswordModal({ onSuccess, onClose }: { onSuccess: () => void; onClose:
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (value.trim().toLowerCase() !== PASSWORD) { setWrong(true); return; }
-    unlock();
     onSuccess();
   }
 
@@ -33,10 +21,19 @@ function PasswordModal({ onSuccess, onClose }: { onSuccess: () => void; onClose:
       <form className="stack" onSubmit={handleSubmit}>
         <input
           className="input"
-          type="password"
+          // A masked text field instead of type="password", so browsers and password managers don't offer to save it.
+          type="text"
+          name="game-gate"
           dir="ltr"
           autoFocus
           autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          data-1p-ignore
+          data-lpignore="true"
+          data-bwignore
+          style={{ WebkitTextSecurity: "disc" } as React.CSSProperties}
           aria-label="סיסמה"
           value={value}
           onChange={e => { setValue(e.target.value); setWrong(false); }}
@@ -50,23 +47,10 @@ function PasswordModal({ onSuccess, onClose }: { onSuccess: () => void; onClose:
   );
 }
 
-// Admin homepage button: asks for the password before going to the game.
-export function AdminGameButton() {
-  const router = useRouter();
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <button type="button" className="btn secondary" onClick={() => readUnlocked() ? router.push("/game") : setOpen(true)}>למשחק</button>
-      {open && <PasswordModal onSuccess={() => router.push("/game")} onClose={() => setOpen(false)} />}
-    </>
-  );
-}
-
-// Wraps the game page for admins, so opening /game directly still asks for the password.
+// Wraps the game page for admins. The password is asked on every visit and never remembered.
 export function AdminGameGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const storedUnlock = useSyncExternalStore(noopSubscribe, readUnlocked, () => false);
-  const [unlockedNow, setUnlockedNow] = useState(false);
-  if (storedUnlock || unlockedNow) return <>{children}</>;
-  return <PasswordModal onSuccess={() => setUnlockedNow(true)} onClose={() => router.push("/")} />;
+  const [unlocked, setUnlocked] = useState(false);
+  if (unlocked) return <>{children}</>;
+  return <PasswordModal onSuccess={() => setUnlocked(true)} onClose={() => router.push("/")} />;
 }
