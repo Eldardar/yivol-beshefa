@@ -41,7 +41,7 @@ export function PushToggle({ vapidPublicKey, csrf }: { vapidPublicKey: string; c
       const registration = await navigator.serviceWorker.register("/sw.js");
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource,
       });
       const res = await fetch("/api/push/subscribe", {
         method: "POST",

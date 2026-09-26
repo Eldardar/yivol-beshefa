@@ -197,12 +197,12 @@ export function getPickedAmountsByFruitType(database: Database.Database, today: 
   const params = range ? [today, range.start, range.end] : [today];
   const rows = database
     .prepare(
-      `SELECT pf.fruit_type fruit_type, q.unit unit, SUM(q.quantity) total
-       FROM quantities q
-       JOIN shifts s ON s.id = q.shift_id
+      `SELECT pf.fruit_type fruit_type, g.unit unit, SUM(g.actual) total
+       FROM shift_goals g
+       JOIN shifts s ON s.id = g.shift_id
        JOIN plantation_fields pf ON pf.id = s.plantation_field_id
-       WHERE s.status IN ('PUBLISHED','COMPLETED') AND (s.date < ? OR s.status = 'COMPLETED') ${rangeClause}
-       GROUP BY pf.fruit_type, q.unit`
+       WHERE g.actual IS NOT NULL AND s.status IN ('PUBLISHED','COMPLETED') AND (s.date < ? OR s.status = 'COMPLETED') ${rangeClause}
+       GROUP BY pf.fruit_type, g.unit`
     )
     .all(...params) as Array<{ fruit_type: string; unit: Unit; total: number }>;
   const amounts: Record<string, Array<{ unit: Unit; quantity: number }>> = {};
