@@ -11,6 +11,7 @@ import type { XlsxSheet } from "@/lib/xlsx";
 import { formatMoney } from "@/lib/format";
 import type { UnitRatesByField } from "./shifts-table";
 import type { FruitTopResults } from "@/lib/shifts-data";
+import { FruitTopResultsCards } from "./fruit-top-results";
 
 export type EmployeeShiftRow = {
   id: number;
@@ -169,41 +170,13 @@ export function EmployeePerformanceReport({
 
           {/* DOM order after the table puts this on the visual left in RTL */}
           <div className="report-aside">
-            {fruitTopResults.map(({ fruitType, results }) => (
-              <section key={fruitType} className="card best-workers">
-                <h2>🏆 {fruitType}</h2>
-                <p className="muted">5 התוצאות הטובות ביותר במשמרת אחת ({RANGE_LABEL[range]})</p>
-                <table className="table">
-                  <thead>
-                    <tr><th>#</th><th>עובד/ת</th><th>תוצאה</th><th>שווי</th></tr>
-                  </thead>
-                  <tbody>
-                    {results.map((result, i) => {
-                      const worker = workersById.get(result.userId);
-                      return (
-                        <tr
-                          key={`${result.userId}:${result.date}:${i}`}
-                          className={`${worker ? "table-row-clickable" : ""}${worker && !worker.active ? " row-inactive" : ""}`}
-                          title={formatHebrewDate(result.date)}
-                          onClick={worker ? () => selectWorker(worker) : undefined}
-                        >
-                          <td>{i + 1}</td>
-                          <td>{worker?.name ?? "—"}</td>
-                          <td>
-                            {result.quantities.map((q, j) => (
-                              <span key={q.unit} className="unit-line">
-                                <span dir="ltr" className="ltr-field">{q.quantity}</span> {UNIT_LABEL[q.unit]}
-                              </span>
-                            ))}
-                          </td>
-                          <td>{formatMoney(result.earnings)}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </section>
-            ))}
+            <FruitTopResultsCards
+              fruitTopResults={fruitTopResults}
+              workersById={workersById}
+              rangeLabel={RANGE_LABEL[range]}
+              showEarnings
+              onSelectWorker={id => selectWorker(workersById.get(id) ?? null)}
+            />
 
             <section className="card best-workers">
               <h2>👑 עובד/ת המשמרת</h2>

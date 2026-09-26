@@ -2,10 +2,12 @@ import Link from "next/link";
 import { AppShell } from "@/components/nav";
 import { OnboardingChecklist } from "@/components/onboarding";
 import { csrfValue, db, requireUser } from "@/lib/server";
-import { formatHebrewDate, jerusalemDate, jerusalemHour, jerusalemInstant, timeOfDayGreeting, timeOfDayWish } from "@/lib/dates";
+import { currentJerusalemMonth, currentJerusalemYear, formatHebrewDate, jerusalemDate, jerusalemHour, jerusalemInstant, timeOfDayGreeting, timeOfDayWish } from "@/lib/dates";
 import { PickerService } from "@/lib/services/picker";
 import { DayCheckIn } from "@/components/day-checkin";
 import { HeroGallery } from "@/components/hero-gallery";
+import { FruitRecordsByPeriod } from "@/components/fruit-records-by-period";
+import { getTopResultsByFruit } from "@/lib/shifts-data";
 
 export const dynamic = "force-dynamic";
 
@@ -82,6 +84,11 @@ export default async function Home() {
   const greeting = timeOfDayGreeting(hour);
   const wish = timeOfDayWish(hour);
   const csrf = await csrfValue();
+  const fruitRecordsByPeriod = {
+    month: getTopResultsByFruit(database, today, currentJerusalemMonth()),
+    year: getTopResultsByFruit(database, today, currentJerusalemYear())
+  };
+  const workerNames = database.prepare("SELECT id,name FROM users WHERE role='PICKER'").all() as Array<{ id: number; name: string }>;
 
   return (
     <AppShell user={user}>
@@ -99,6 +106,7 @@ export default async function Home() {
         <p>אין שיבוצים קרובים</p>
       )}
       <HeroGallery images={[{ src: "/worker-hero.png", alt: "" }, { src: "/worker-hero-2.png", alt: "" }]} />
+      <FruitRecordsByPeriod byPeriod={fruitRecordsByPeriod} workers={workerNames} />
     </AppShell>
   );
 }
