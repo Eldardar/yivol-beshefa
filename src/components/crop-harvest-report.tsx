@@ -1,8 +1,9 @@
 "use client";
 import { useState } from "react";
 import { FruitTypePicker } from "./fruit-type-picker";
-import { RangeTabs, type RangeKey } from "./range-tabs";
-import { UNIT_LABEL, type Unit } from "@/lib/units";
+import { RangeTabs, RANGE_LABEL, type RangeKey } from "./range-tabs";
+import { ExportExcelButton } from "./export-excel-button";
+import { UNIT_LABEL, unitsPresent, type Unit } from "@/lib/units";
 import type { FruitTypeFarmerRow } from "@/lib/shifts-data";
 
 export type PickedAmounts = Record<string, Array<{ unit: Unit; quantity: number }>>;
@@ -15,6 +16,19 @@ function formatAmounts(entries: Array<{ unit: Unit; quantity: number }> | undefi
       <span dir="ltr" className="ltr-field">{e.quantity.toLocaleString("he-IL")}</span> {UNIT_LABEL[e.unit]}
     </span>
   ));
+}
+
+// Units can't be added together, so rank by the fruit type's main unit (largest total) first, then the next unit, and so on.
+function sortByResults(rows: FruitTypeFarmerRow[], totals: Array<{ unit: Unit; quantity: number }> | undefined) {
+  const unitOrder = [...(totals ?? [])].sort((a, b) => b.quantity - a.quantity).map((t) => t.unit);
+  const qty = (row: FruitTypeFarmerRow, unit: Unit) => row.amounts.find((a) => a.unit === unit)?.quantity ?? 0;
+  return [...rows].sort((a, b) => {
+    for (const unit of unitOrder) {
+      const diff = qty(b, unit) - qty(a, unit);
+      if (diff !== 0) return diff;
+    }
+    return b.shiftCount - a.shiftCount || a.farmName.localeCompare(b.farmName, "he");
+  });
 }
 
 export function CropHarvestReport({
@@ -30,13 +44,41 @@ export function CropHarvestReport({
   const [range, setRange] = useState<RangeKey>("all");
 
   const amounts = pickedAmountsByRange[range];
-  const farmerRows = selectedFruitType ? (farmerBreakdownByRange[range][selectedFruitType] ?? []) : [];
+  const farmerRows = selectedFruitType ? sortByResults(farmerBreakdownByRange[range][selectedFruitType] ?? [], amounts[selectedFruitType]) : [];
 
   return (
     <div className="stack">
       <FruitTypePicker fruitTypes={fruitTypes} selected={selectedFruitType} onSelect={setSelectedFruitType} />
 
       <RangeTabs active={range} onChange={setRange} />
+
+      {!selectedFruitType && fruitTypes.length > 0 && (
+        <ExportExcelButton
+          fileName={`נתוני קטיף לפי סוג פרי - ${RANGE_LABEL[range]}`}
+          sheets={() => {
+            const units = unitsPresent(fruitTypes.map(f => amounts[f]));
+            return [{
+              name: "סוגי פרי",
+              header: ["#", "סוג פרי", ...units.map(u => `כמות שנקטפה (${UNIT_LABEL[u]})`)],
+              rows: fruitTypes.map((fruitType, i) => [i + 1, fruitType, ...units.map(u => amounts[fruitType]?.find(a => a.unit === u)?.quantity)])
+            }];
+          }}
+        />
+      )}
+
+      {selectedFruitType && farmerRows.length > 0 && (
+        <ExportExcelButton
+          fileName={`נתוני קטיף - ${selectedFruitType} - ${RANGE_LABEL[range]}`}
+          sheets={() => {
+            const units = unitsPresent(farmerRows.map(r => r.amounts));
+            return [{
+              name: selectedFruitType,
+              header: ["#", "חקלאי", ...units.map(u => `כמות שנקטפה (${UNIT_LABEL[u]})`), "משמרות"],
+              rows: farmerRows.map((row, i) => [i + 1, row.farmName, ...units.map(u => row.amounts.find(a => a.unit === u)?.quantity), row.shiftCount])
+            }];
+          }}
+        />
+      )}
 
       {!selectedFruitType && fruitTypes.length === 0 && (
         <section className="card empty-state">

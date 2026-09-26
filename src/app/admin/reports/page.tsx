@@ -85,7 +85,7 @@ export default async function Reports({ searchParams }: { searchParams: Promise<
         </article>
       </div>
       <section className="card">
-        <ShiftsTable {...data} csrf={csrf} readOnly />
+        <ShiftsTable {...data} csrf={csrf} readOnly exportFileName={periodTitle(period, range, today).replace(" · ", " - ")} />
       </section>
     </AppShell>
   );

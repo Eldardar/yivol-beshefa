@@ -2,9 +2,11 @@
 import { useState } from "react";
 import Image from "next/image";
 import { FarmerPicker, type FarmerOption } from "./farmer-picker";
-import { RangeTabs, type RangeKey } from "./range-tabs";
+import { RangeTabs, RANGE_LABEL, type RangeKey } from "./range-tabs";
+import { ExportExcelButton } from "./export-excel-button";
 import { formatHebrewDate } from "@/lib/dates";
-import { UNIT_LABEL, type Unit } from "@/lib/units";
+import { UNIT_LABEL, unitsPresent, type Unit } from "@/lib/units";
+import type { XlsxSheet } from "@/lib/xlsx";
 
 export type FarmerShiftRow = {
   id: number;
@@ -19,6 +21,22 @@ export type FarmerShiftRow = {
   actualHours: number | null;
 };
 export type ShiftsByFarmer = Record<number, FarmerShiftRow[]>;
+
+function farmerShiftsSheet(shifts: FarmerShiftRow[]): XlsxSheet {
+  const units = unitsPresent(shifts.map(row => row.units));
+  return {
+    name: "משמרות",
+    header: ["תאריך", "שדה", "גידול", "מוביל משמרת", "כמות עובדים", "סך השעות בפועל", ...units.flatMap(u => [`יעד (${UNIT_LABEL[u]})`, `תוצאה (${UNIT_LABEL[u]})`])],
+    rows: shifts.map(row => [
+      { date: row.date }, row.field_name, row.fruit_type, row.leader, row.pickers.length,
+      row.actualHours != null ? Math.round(row.actualHours * 100) / 100 : null,
+      ...units.flatMap(u => {
+        const entry = row.units.find(e => e.unit === u);
+        return [entry?.goal, entry?.actual];
+      })
+    ])
+  };
+}
 
 export function FarmerPerformanceReport({
   farmers,
@@ -40,6 +58,19 @@ export function FarmerPerformanceReport({
       <FarmerPicker farmers={farmers} selected={selected} onSelect={setSelected} />
 
       {!selected && <RangeTabs active={range} onChange={setRange} />}
+
+      {!selected && rankedFarmers.length > 0 && (
+        <ExportExcelButton
+          fileName={`נתוני קטיף לפי חקלאי - ${RANGE_LABEL[range]}`}
+          sheets={() => [{
+            name: "חקלאים",
+            header: ["#", "חקלאי", `מספר משמרות (${RANGE_LABEL[range]})`, "סטטוס"],
+            rows: rankedFarmers.map((farmer, i) => [i + 1, farmer.name, shiftCounts[farmer.id] ?? 0, farmer.active ? "פעיל" : "לא פעיל"])
+          }]}
+        />
+      )}
+
+      {selected && shifts.length > 0 && <ExportExcelButton fileName={`נתוני קטיף - ${selected.name}`} sheets={() => [farmerShiftsSheet(shifts)]} />}
 
       {!selected && rankedFarmers.length === 0 && (
         <section className="card empty-state" style={{ justifyItems: "center", textAlign: "center" }}>

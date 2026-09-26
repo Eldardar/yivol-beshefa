@@ -2,7 +2,9 @@
 import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { formatHebrewDate } from "@/lib/dates";
-import { UNIT_LABEL, type Unit } from "@/lib/units";
+import { UNIT_LABEL, unitsPresent, type Unit } from "@/lib/units";
+import type { XlsxSheet } from "@/lib/xlsx";
+import { ExportExcelButton } from "./export-excel-button";
 import { AddShiftButton } from "./add-shift-button";
 import { EditShiftButton } from "./edit-shift-button";
 import { AssignPickersButton } from "./assign-pickers-button";
@@ -69,6 +71,50 @@ function totalEarnings(pickerHours: Array<{ quantities: Array<{ unit: Unit; quan
 const STATUS_LABEL: Record<string, string> = { DRAFT: "טיוטה", PUBLISHED: "פורסמה", COMPLETED: "הושלמה", CANCELLED: "בוטלה" };
 const STATUS_TAG: Record<string, string> = { DRAFT: "warn", PUBLISHED: "", COMPLETED: "info", CANCELLED: "bad" };
 
+function exportSheets(shifts: ShiftRow[], unitsByShift: UnitsByShift, pickerHoursByShift: PickerHoursByShift, unitRatesByField: UnitRatesByField): XlsxSheet[] {
+  const goalUnits = unitsPresent(shifts.map(row => unitsByShift[row.id]));
+  const pickerRows = shifts.flatMap(row => (pickerHoursByShift[row.id] ?? []).map(picker => ({ row, picker })));
+  const pickerUnits = unitsPresent(pickerRows.map(({ picker }) => picker.quantities));
+  let grandTotal = 0;
+  const shiftRows = shifts.map(row => {
+    const units = unitsByShift[row.id] ?? [];
+    const total = totalEarnings(pickerHoursByShift[row.id] ?? [], unitRatesByField[row.plantation_field_id] ?? {});
+    grandTotal += total;
+    return [
+      { date: row.date }, row.start_time, row.end_time, row.farm, row.fruit_type, row.leader, row.picker_count,
+      ...goalUnits.flatMap(u => {
+        const entry = units.find(e => e.unit === u);
+        return [entry?.goal, entry?.produced];
+      }),
+      STATUS_LABEL[row.status] ?? row.status,
+      { money: total }
+    ];
+  });
+  return [
+    {
+      name: "משמרות",
+      header: ["תאריך", "התחלה", "סיום", "חקלאי", "גידול", "מוביל משמרת", "קוטפים", ...goalUnits.flatMap(u => [`יעד (${UNIT_LABEL[u]})`, `בפועל (${UNIT_LABEL[u]})`]), "מצב", "סה\"כ"],
+      rows: shiftRows,
+      footer: ["סה\"כ", ...Array<null>(7 + goalUnits.length * 2).fill(null), { money: grandTotal }]
+    },
+    {
+      name: "קוטפים",
+      header: ["תאריך", "חקלאי", "גידול", "שם", "התחלה", "סיום", "שעות", ...pickerUnits.map(u => `כמות (${UNIT_LABEL[u]})`), "ש\"ח לשעה", "סה\"כ הכנסה"],
+      rows: pickerRows.map(({ row, picker }) => {
+        const hours = hoursBetween(picker.startTime, picker.endTime);
+        const earnings = pickerEarnings(picker.quantities, unitRatesByField[row.plantation_field_id] ?? {});
+        return [
+          { date: row.date }, row.farm, row.fruit_type, picker.name, picker.startTime, picker.endTime,
+          hours != null ? Math.round(hours * 100) / 100 : null,
+          ...pickerUnits.map(u => picker.quantities.find(q => q.unit === u)?.quantity),
+          earnings != null && hours ? { money: earnings / hours } : null,
+          earnings != null ? { money: earnings } : null
+        ];
+      })
+    }
+  ];
+}
+
 function unratedUnits(units: UnitInfo[], plantationFieldId: number, ratedUnitsByField: RatedUnitsByField): Unit[] {
   const rated = ratedUnitsByField[plantationFieldId] ?? [];
   return units.filter(u => u.goal > 0 && !rated.includes(u.unit)).map(u => u.unit);
@@ -98,7 +144,8 @@ export function ShiftsTable({
   personalGoalUnitsByShift,
   csrf,
   readOnly = false,
-  initialExpanded = null
+  initialExpanded = null,
+  exportFileName
 }: {
   shifts: ShiftRow[];
   pickers: Picker[];
@@ -116,6 +163,7 @@ export function ShiftsTable({
   csrf: string;
   readOnly?: boolean;
   initialExpanded?: number | null;
+  exportFileName?: string;
 }) {
   const [expanded, setExpanded] = useState<number | null>(initialExpanded);
 
@@ -150,6 +198,10 @@ export function ShiftsTable({
           </label>
           <AddShiftButton csrf={csrf} pickers={pickers} farms={farms} plantationFieldsByFarm={plantationFieldsByFarm} />
         </div>
+      )}
+
+      {exportFileName && filtered.length > 0 && (
+        <ExportExcelButton fileName={exportFileName} sheets={() => exportSheets(filtered, unitsByShift, pickerHoursByShift, unitRatesByField)} />
       )}
 
       {filtered.length === 0 && <p className="muted">לא נמצאו משמרות</p>}

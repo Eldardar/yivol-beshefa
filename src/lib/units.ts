@@ -9,3 +9,9 @@ export const UNIT_LABEL: Record<Unit, string> = {
   BAG: "תרמיל(ים)",
   OTHER: "אחר"
 };
+
+// Units that appear in any of the given lists, in canonical order — used to lay out one spreadsheet column per unit.
+export function unitsPresent(lists: Array<Array<{ unit: Unit }> | undefined>): Unit[] {
+  const present = new Set(lists.flatMap(list => (list ?? []).map(entry => entry.unit)));
+  return UNITS.filter(unit => present.has(unit));
+}

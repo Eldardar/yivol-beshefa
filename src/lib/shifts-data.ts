@@ -229,12 +229,12 @@ export function getFarmerBreakdownByFruitType(database: Database.Database, today
     .all(...params) as Array<{ fruit_type: string; farm_id: number; farm_name: string; count: number }>;
   const amountRows = database
     .prepare(
-      `SELECT pf.fruit_type fruit_type, pf.farm_id farm_id, q.unit unit, SUM(q.quantity) total
-       FROM quantities q
-       JOIN shifts s ON s.id = q.shift_id
+      `SELECT pf.fruit_type fruit_type, pf.farm_id farm_id, g.unit unit, SUM(g.actual) total
+       FROM shift_goals g
+       JOIN shifts s ON s.id = g.shift_id
        JOIN plantation_fields pf ON pf.id = s.plantation_field_id
-       ${where}
-       GROUP BY pf.fruit_type, pf.farm_id, q.unit`
+       ${where} AND g.actual IS NOT NULL
+       GROUP BY pf.fruit_type, pf.farm_id, g.unit`
     )
     .all(...params) as Array<{ fruit_type: string; farm_id: number; unit: Unit; total: number }>;
   const breakdown: Record<string, FruitTypeFarmerRow[]> = {};

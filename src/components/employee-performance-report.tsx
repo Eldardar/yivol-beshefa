@@ -2,10 +2,12 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import { WorkerPicker, type WorkerOption } from "./worker-picker";
-import { RangeTabs, type RangeKey } from "./range-tabs";
+import { RangeTabs, RANGE_LABEL, type RangeKey } from "./range-tabs";
 import { CalendarMonthNav } from "./calendar-month-nav";
+import { ExportExcelButton } from "./export-excel-button";
 import { formatHebrewDate, monthRange } from "@/lib/dates";
-import { UNIT_LABEL, type Unit } from "@/lib/units";
+import { UNIT_LABEL, unitsPresent, type Unit } from "@/lib/units";
+import type { XlsxSheet } from "@/lib/xlsx";
 import { formatMoney } from "@/lib/format";
 import type { UnitRatesByField } from "./shifts-table";
 
@@ -34,6 +36,23 @@ function shiftEarnings(row: EmployeeShiftRow, unitRatesByField: UnitRatesByField
     if (rate != null) { total += q.quantity * rate; rated = true; }
   }
   return rated ? total : null;
+}
+
+function workerShiftsSheet(shifts: EmployeeShiftRow[], unitRatesByField: UnitRatesByField, totalEarnings: number): XlsxSheet {
+  const units = unitsPresent(shifts.map(row => row.quantities));
+  return {
+    name: "משמרות",
+    header: ["תאריך", "חקלאי", "גידול", "מוביל משמרת", "התחלה מתוכננת", "סיום מתוכנן", "התחלה בפועל", "סיום בפועל", ...units.map(u => `כמות (${UNIT_LABEL[u]})`), "הכנסה"],
+    rows: shifts.map(row => {
+      const earnings = shiftEarnings(row, unitRatesByField);
+      return [
+        { date: row.date }, row.farm, row.fruit_type, row.leader, row.start_time, row.end_time, row.actual_start, row.actual_end,
+        ...units.map(u => row.quantities.find(q => q.unit === u)?.quantity),
+        earnings != null ? { money: earnings } : null
+      ];
+    }),
+    footer: ["סה\"כ הכנסה", ...Array<null>(7 + units.length).fill(null), { money: totalEarnings }]
+  };
 }
 
 export function EmployeePerformanceReport({
@@ -79,6 +98,24 @@ export function EmployeePerformanceReport({
       )}
 
       {!selected && <RangeTabs active={range} onChange={setRange} />}
+
+      {!selected && rankedWorkers.length > 0 && (
+        <ExportExcelButton
+          fileName={`ביצועי עובדים - ${RANGE_LABEL[range]}`}
+          sheets={() => [{
+            name: "ביצועי עובדים",
+            header: ["#", "עובד/ת", `מספר משמרות (${RANGE_LABEL[range]})`, "סה\"כ שעות עבודה", "סטטוס"],
+            rows: rankedWorkers.map((worker, i) => [i + 1, worker.name, shiftCounts[worker.id] ?? 0, Math.round((totalHoursByWorker[worker.id] ?? 0) * 100) / 100, worker.active ? "פעיל" : "לא פעיל"])
+          }]}
+        />
+      )}
+
+      {selected && shifts.length > 0 && (
+        <ExportExcelButton
+          fileName={`${selected.name} - ${String(viewMonth).padStart(2, "0")}-${viewYear}`}
+          sheets={() => [workerShiftsSheet(shifts, unitRatesByField, totalEarnings)]}
+        />
+      )}
 
       {!selected && rankedWorkers.length === 0 && (
         <section className="card empty-state" style={{ justifyItems: "center", textAlign: "center" }}>

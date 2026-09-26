@@ -8,6 +8,7 @@ const TABS = [
 
 export type RangeKey = (typeof TABS)[number]["key"];
 export const RANGE_KEYS: RangeKey[] = TABS.map(tab => tab.key);
+export const RANGE_LABEL = Object.fromEntries(TABS.map(tab => [tab.key, tab.label])) as Record<RangeKey, string>;
 
 export function RangeTabs({ active, onChange }: { active: RangeKey; onChange: (range: RangeKey) => void }) {
   return (
