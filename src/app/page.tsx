@@ -108,14 +108,14 @@ export default async function Home() {
 
   return (
     <AppShell user={user}>
-      <section className="hero">
+      <section className="hero hero-compact">
         <h1>שלום {firstName}</h1>
         <p>{greeting}</p>
         <DayCheckIn wish={wish} csrf={csrf} />
       </section>
       <OnboardingChecklist steps={onboardingSteps} />
       {next ? (
-        <Link href="/assignments" className="card">
+        <Link href="/assignments" className="card next-shift-card">
           <p>{`השיבוץ הבא: ${formatHebrewDate(next.date)} · ${next.start_time}–${next.end_time} · ${next.farm}`}</p>
         </Link>
       ) : (

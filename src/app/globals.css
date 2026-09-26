@@ -245,6 +245,8 @@ img, svg { display: block; max-width: 100%; }
   background: radial-gradient(circle, rgba(255, 255, 255, 0.08), transparent 70%);
 }
 @media (max-width: 599px) { .hero { padding: var(--space-5); border-radius: var(--radius-lg); } }
+.hero-compact { padding: var(--space-5); gap: var(--space-1); }
+@media (max-width: 599px) { .hero-compact { padding: var(--space-4); } }
 .hero-gallery { display: grid; gap: var(--space-2); }
 .hero-gallery-viewport { position: relative; border-radius: var(--radius-xl); overflow: hidden; }
 .hero-gallery-track { display: flex; direction: ltr; transition: transform 0.5s ease; }
@@ -295,6 +297,8 @@ img, svg { display: block; max-width: 100%; }
 
 a.card { transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard); }
 a.card:hover, a.card:focus-visible { border-color: var(--brand-forest-600); box-shadow: var(--shadow-sm); }
+.next-shift-card { border: 2px solid var(--brand-forest-700); box-shadow: var(--shadow-sm); }
+.next-shift-card p { font-weight: 700; color: var(--brand-forest-800); }
 
 .metric { font: 700 2.25rem/1.1 var(--font-sans); color: var(--color-primary); font-variant-numeric: tabular-nums; }
 
