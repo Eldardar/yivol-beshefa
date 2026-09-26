@@ -26,7 +26,6 @@ const OPTIONS: { status: Status; label: string; cssKey: "available" | "maybe" | 
   { status: "MAYBE", label: "אולי", cssKey: "maybe" },
   { status: "AWAY", label: "חוגג את החיים במקום אחר", cssKey: "unavailable" }
 ];
-const STATUS_LABEL = Object.fromEntries(OPTIONS.map(o => [o.status, o.label])) as Record<Status, string>;
 const STATUS_CSS_KEY = Object.fromEntries(OPTIONS.map(o => [o.status, o.cssKey])) as Record<Status, "available" | "maybe" | "unavailable">;
 const OVERVIEW_SECTIONS: { key: keyof HousingOverviewDay["workersByStatus"]; label: string; pillClass: string }[] = [
   { key: "inVillage", label: "ישן בכפר", pillClass: "count-pill--available" },
@@ -90,13 +89,12 @@ function HousingOverviewCalendar({ label, days }: { label: string; days: Housing
 function WorkerHousingCalendar({ worker, label, days, csrf }: { worker: WorkerOption; label: string; days: HousingDay[]; csrf: string }) {
   const router = useRouter();
   const leadingPad = days.length ? days[0]!.weekday : 0;
-  const editableDays = days.filter(d => !d.isPast);
-  const [map, setMap] = useState<Record<string, Status | null>>(() => Object.fromEntries(editableDays.map(d => [d.date, d.status])));
+  const [map, setMap] = useState<Record<string, Status | null>>(() => Object.fromEntries(days.map(d => [d.date, d.status])));
   const [draft, setDraft] = useState<Record<string, Status | null>>(map);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const dirty = editableDays.some(d => (draft[d.date] ?? null) !== (map[d.date] ?? null));
+  const dirty = days.some(d => (draft[d.date] ?? null) !== (map[d.date] ?? null));
 
   function toggle(date: string, status: Status) {
     setDraft(prev => ({ ...prev, [date]: prev[date] === status ? null : status }));
@@ -108,7 +106,7 @@ function WorkerHousingCalendar({ worker, label, days, csrf }: { worker: WorkerOp
   }
 
   async function save() {
-    const entries = editableDays
+    const entries = days
       .filter(d => (draft[d.date] ?? null) !== (map[d.date] ?? null))
       .map(d => ({ date: d.date, status: draft[d.date] ?? null }));
     if (entries.length === 0) return;
@@ -138,17 +136,11 @@ function WorkerHousingCalendar({ worker, label, days, csrf }: { worker: WorkerOp
         {WEEKDAYS.map(weekday => <div className="calendar-head" key={weekday} role="columnheader">{weekday}</div>)}
         {Array.from({ length: leadingPad }, (_, i) => <div className="calendar-pad" key={`pad-${i}`} aria-hidden="true" />)}
         {days.map(d => {
-          if (d.isPast) {
-            const colorClass = d.status ? ` calendar-day--locked-${STATUS_CSS_KEY[d.status]}` : " calendar-day--locked";
-            return (
-              <div className={`calendar-day calendar-day--past-choice${colorClass}`} key={d.date} role="gridcell" aria-disabled="true">
-                <span className="calendar-day-number">{d.day}</span>
-                <span className="calendar-day-status-label">{d.status ? STATUS_LABEL[d.status] : "לא עודכן"}</span>
-              </div>
-            );
-          }
           const status = draft[d.date] ?? null;
-          const statusClass = status ? ` calendar-day--${STATUS_CSS_KEY[status]}` : "";
+          // Past days stay dark (locked colors) but remain editable for admins.
+          const statusClass = d.isPast
+            ? (status ? ` calendar-day--locked-${STATUS_CSS_KEY[status]}` : " calendar-day--locked")
+            : (status ? ` calendar-day--${STATUS_CSS_KEY[status]}` : "");
           return (
             <div className={`calendar-day${statusClass}${d.isToday ? " calendar-day--today" : ""}`} key={d.date} role="gridcell">
               <span className="calendar-day-number">{d.day}</span>
@@ -171,7 +163,7 @@ function WorkerHousingCalendar({ worker, label, days, csrf }: { worker: WorkerOp
           );
         })}
       </div>
-      {editableDays.length > 0 && (
+      {days.length > 0 && (
         <div className="actions">
           <button type="button" className="btn" onClick={save} disabled={!dirty || busy}>{busy ? "שומר…" : "שמירת שינויים"}</button>
           <button type="button" className="btn secondary" onClick={cancel} disabled={!dirty || busy}>ביטול</button>

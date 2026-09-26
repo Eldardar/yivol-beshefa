@@ -2,7 +2,7 @@ import type Database from "better-sqlite3";
 import { generatePassword, hashPassword } from "@/lib/security";
 import { adminAvailabilityUpdateSchema, adminHousingUpdateSchema, broadcastNotificationSchema, fieldUnitRatesSchema, notificationTargetSchema } from "@/lib/schemas";
 import { pushToUsers } from "@/lib/push";
-import { jerusalemDate, jerusalemInstant } from "@/lib/dates";
+import { jerusalemInstant } from "@/lib/dates";
 
 export type ManagedEntity = "USER" | "FARM" | "PLANTATION_FIELD" | "VEHICLE";
 const tables: Record<ManagedEntity,string> = { USER:"users", FARM:"farms", PLANTATION_FIELD:"plantation_fields", VEHICLE:"vehicles" };
@@ -106,18 +106,16 @@ export class AdminService {
     await pushToUsers(this.db,[{userId:input.userId,title,body}]);
   }
 
-  async setWorkerHousing(actorId:number, raw:unknown, now=new Date()):Promise<void> {
+  async setWorkerHousing(actorId:number, raw:unknown):Promise<void> {
     const input=adminHousingUpdateSchema.parse(raw);
     const actor=this.db.prepare("SELECT role,active FROM users WHERE id=?").get(actorId) as {role:string;active:number}|undefined;
     if(!actor?.active || actor.role!=="ADMIN") throw new Error("אין הרשאה");
     const target=this.db.prepare("SELECT role,active FROM users WHERE id=?").get(input.userId) as {role:string;active:number}|undefined;
     if(!target?.active || target.role!=="PICKER") throw new Error("עובד לא נמצא");
-    const today=jerusalemDate(now);
     const seen=new Set<string>();
     for(const entry of input.entries){
       if(seen.has(entry.date)) throw new Error("תאריך כפול בבקשה");
       seen.add(entry.date);
-      if(entry.date<today) throw new Error("ניתן לעדכן סידור שינה רק להיום ולימים הבאים");
     }
     const title="עדכון סידור שינה";
     const body="מנהל/ת עדכן/ה את סידור השינה שלך. אפשר לבדוק ולערוך בעמוד \"מגורים\".";
