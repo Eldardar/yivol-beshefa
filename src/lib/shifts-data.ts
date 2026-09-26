@@ -320,9 +320,10 @@ export function getBestShiftCountsByWorker(database: Database.Database, today: s
 }
 
 export type FruitRecord = { fruitType: string; userId: number; date: string; earnings: number; quantities: Array<{ unit: Unit; quantity: number }> };
+export type FruitTopResults = { fruitType: string; results: FruitRecord[] };
 
-// Per fruit type, the single best worker result in one shift (by earnings, like the 👑); ties go to the earliest shift.
-export function getFruitRecords(database: Database.Database, today: string, range?: { start: string; end: string }): FruitRecord[] {
+// Per fruit type, the best single-shift worker results (by earnings, like the 👑); ties go to the earliest shift.
+export function getTopResultsByFruit(database: Database.Database, today: string, range?: { start: string; end: string }, limit = 5): FruitTopResults[] {
   const rangeClause = range ? "AND s.date >= ? AND s.date < ?" : "";
   const params = range ? [today, range.start, range.end] : [today];
   const rows = database
@@ -345,10 +346,14 @@ export function getFruitRecords(database: Database.Database, today: string, rang
     result.quantities.push({ unit: r.unit, quantity: r.quantity });
     results.set(key, result);
   }
-  const best = new Map<string, FruitRecord>();
+  const byFruit: Record<string, FruitRecord[]> = {};
   for (const result of results.values()) {
-    const current = best.get(result.fruitType);
-    if (result.earnings > 0 && (!current || result.earnings > current.earnings)) best.set(result.fruitType, result);
+    if (result.earnings > 0) (byFruit[result.fruitType] ??= []).push(result);
   }
-  return [...best.values()].sort((a, b) => a.fruitType.localeCompare(b.fruitType, "he"));
+  return Object.entries(byFruit)
+    .map(([fruitType, list]) => ({
+      fruitType,
+      results: list.sort((a, b) => b.earnings - a.earnings || a.date.localeCompare(b.date)).slice(0, limit)
+    }))
+    .sort((a, b) => a.fruitType.localeCompare(b.fruitType, "he"));
 }

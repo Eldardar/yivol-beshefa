@@ -509,11 +509,12 @@ select.input { appearance: auto; }
 
 .report-with-aside { display: flex; flex-direction: column; gap: var(--space-4); align-items: stretch; }
 .report-with-aside > .table-wrap { flex: 1; min-width: 0; }
+.report-aside { display: grid; gap: var(--space-4); align-content: start; }
 .best-workers { display: grid; gap: var(--space-2); align-content: start; }
 .best-workers h2 { font-size: 1.05rem; margin: 0; }
 @media (min-width: 900px) {
   .report-with-aside { flex-direction: row; align-items: flex-start; }
-  .best-workers { flex: 0 0 280px; }
+  .report-aside { flex: 0 0 340px; }
 }
 
 .table-toolbar { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); flex-wrap: wrap; }

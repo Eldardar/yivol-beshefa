@@ -10,7 +10,7 @@ import { UNIT_LABEL, unitsPresent, type Unit } from "@/lib/units";
 import type { XlsxSheet } from "@/lib/xlsx";
 import { formatMoney } from "@/lib/format";
 import type { UnitRatesByField } from "./shifts-table";
-import type { FruitRecord } from "@/lib/shifts-data";
+import type { FruitTopResults } from "@/lib/shifts-data";
 
 export type EmployeeShiftRow = {
   id: number;
@@ -63,7 +63,7 @@ export function EmployeePerformanceReport({
   shiftCountsByRange,
   totalHoursByRange,
   bestShiftCountsByRange,
-  fruitRecordsByRange,
+  fruitTopResultsByRange,
   initialYear,
   initialMonth
 }: {
@@ -73,7 +73,7 @@ export function EmployeePerformanceReport({
   shiftCountsByRange: Record<RangeKey, Record<number, number>>;
   totalHoursByRange: Record<RangeKey, Record<number, number>>;
   bestShiftCountsByRange: Record<RangeKey, Record<number, number>>;
-  fruitRecordsByRange: Record<RangeKey, FruitRecord[]>;
+  fruitTopResultsByRange: Record<RangeKey, FruitTopResults[]>;
   initialYear: number;
   initialMonth: number;
 }) {
@@ -92,7 +92,7 @@ export function EmployeePerformanceReport({
     .filter(worker => (bestShiftCounts[worker.id] ?? 0) > 0)
     .sort((a, b) => (bestShiftCounts[b.id] ?? 0) - (bestShiftCounts[a.id] ?? 0) || a.name.localeCompare(b.name, "he"));
   const workersById = new Map(workers.map(worker => [worker.id, worker]));
-  const fruitRecords = fruitRecordsByRange[range];
+  const fruitTopResults = fruitTopResultsByRange[range];
   const rankedWorkers = [...workers].sort((a, b) => (totalHoursByWorker[b.id] ?? 0) - (totalHoursByWorker[a.id] ?? 0) || a.name.localeCompare(b.name, "he"));
 
   function selectWorker(worker: WorkerOption | null) {
@@ -168,70 +168,70 @@ export function EmployeePerformanceReport({
           </div>
 
           {/* DOM order after the table puts this on the visual left in RTL */}
-          <aside className="card best-workers">
-            <h2>🏆 שיא לפי גידול</h2>
-            <p className="muted">התוצאה הטובה ביותר של עובד/ת במשמרת אחת, לכל גידול ({RANGE_LABEL[range]})</p>
-            {fruitRecords.length === 0 ? (
-              <p className="muted">אין עדיין נתונים.</p>
-            ) : (
-              <table className="table">
-                <thead>
-                  <tr><th>גידול</th><th>עובד/ת</th><th>שיא</th></tr>
-                </thead>
-                <tbody>
-                  {fruitRecords.map(record => {
-                    const worker = workersById.get(record.userId);
-                    return (
-                      <tr
-                        key={record.fruitType}
-                        className={`${worker ? "table-row-clickable" : ""}${worker && !worker.active ? " row-inactive" : ""}`}
-                        title={formatHebrewDate(record.date)}
-                        onClick={worker ? () => selectWorker(worker) : undefined}
-                      >
-                        <td>{record.fruitType}</td>
-                        <td>{worker?.name ?? "—"}</td>
-                        <td>
-                          <div>
-                            {record.quantities.map((q, i) => (
+          <div className="report-aside">
+            {fruitTopResults.map(({ fruitType, results }) => (
+              <section key={fruitType} className="card best-workers">
+                <h2>🏆 {fruitType}</h2>
+                <p className="muted">5 התוצאות הטובות ביותר במשמרת אחת ({RANGE_LABEL[range]})</p>
+                <table className="table">
+                  <thead>
+                    <tr><th>#</th><th>עובד/ת</th><th>תוצאה</th><th>שווי</th></tr>
+                  </thead>
+                  <tbody>
+                    {results.map((result, i) => {
+                      const worker = workersById.get(result.userId);
+                      return (
+                        <tr
+                          key={`${result.userId}:${result.date}:${i}`}
+                          className={`${worker ? "table-row-clickable" : ""}${worker && !worker.active ? " row-inactive" : ""}`}
+                          title={formatHebrewDate(result.date)}
+                          onClick={worker ? () => selectWorker(worker) : undefined}
+                        >
+                          <td>{i + 1}</td>
+                          <td>{worker?.name ?? "—"}</td>
+                          <td>
+                            {result.quantities.map((q, j) => (
                               <span key={q.unit}>
-                                {i > 0 && " · "}
+                                {j > 0 && " · "}
                                 <span dir="ltr" className="ltr-field">{q.quantity}</span> {UNIT_LABEL[q.unit]}
                               </span>
                             ))}
-                          </div>
-                          <div className="muted">{formatMoney(record.earnings)}</div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
+                          </td>
+                          <td>{formatMoney(result.earnings)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </section>
+            ))}
 
-            <h2>👑 עובד/ת המשמרת</h2>
-            <p className="muted">מספר המשמרות שבהן העובד/ת הרוויח/ה הכי הרבה ({RANGE_LABEL[range]})</p>
-            {bestWorkers.length === 0 ? (
-              <p className="muted">אין עדיין נתונים.</p>
-            ) : (
-              <table className="table">
-                <thead>
-                  <tr><th>עובד/ת</th><th>משמרות</th></tr>
-                </thead>
-                <tbody>
-                  {bestWorkers.map(worker => (
-                    <tr
-                      key={worker.id}
-                      className={`table-row-clickable${worker.active ? "" : " row-inactive"}`}
-                      onClick={() => selectWorker(worker)}
-                    >
-                      <td>{worker.name}</td>
-                      <td>{bestShiftCounts[worker.id]}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </aside>
+            <section className="card best-workers">
+              <h2>👑 עובד/ת המשמרת</h2>
+              <p className="muted">מספר המשמרות שבהן העובד/ת הרוויח/ה הכי הרבה ({RANGE_LABEL[range]})</p>
+              {bestWorkers.length === 0 ? (
+                <p className="muted">אין עדיין נתונים.</p>
+              ) : (
+                <table className="table">
+                  <thead>
+                    <tr><th>עובד/ת</th><th>משמרות</th></tr>
+                  </thead>
+                  <tbody>
+                    {bestWorkers.map(worker => (
+                      <tr
+                        key={worker.id}
+                        className={`table-row-clickable${worker.active ? "" : " row-inactive"}`}
+                        onClick={() => selectWorker(worker)}
+                      >
+                        <td>{worker.name}</td>
+                        <td>{bestShiftCounts[worker.id]}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </section>
+          </div>
         </div>
       )}
 
