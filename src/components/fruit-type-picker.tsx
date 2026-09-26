@@ -41,7 +41,7 @@ export function FruitTypePicker({
         {selected ? (
           <div className="worker-search-selected">
             <span className="worker-search-selected-name">{selected}</span>
-            <button type="button" className="icon-btn" aria-label="בחירת סוג פרי אחר" onClick={() => { onSelect(null); setOpen(true); }}>
+            <button type="button" className="icon-btn" aria-label="בחירת סוג פרי אחר" onClick={() => { onSelect(null); setOpen(false); }}>
               <XIcon size={18} />
             </button>
           </div>

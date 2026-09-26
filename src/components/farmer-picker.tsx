@@ -45,7 +45,7 @@ export function FarmerPicker({
           <div className="worker-search-selected">
             <span className="avatar" aria-hidden="true">{initials(selected.name)}</span>
             <span className="worker-search-selected-name">{selected.name}</span>
-            <button type="button" className="icon-btn" aria-label="בחירת חקלאי אחר" onClick={() => { onSelect(null); setOpen(true); }}>
+            <button type="button" className="icon-btn" aria-label="בחירת חקלאי אחר" onClick={() => { onSelect(null); setOpen(false); }}>
               <XIcon size={18} />
             </button>
           </div>
