@@ -978,6 +978,8 @@ button.bottom-nav-link { border: 0; background: transparent; }
   max-width: 420px;
 }
 .worker-search-selected-name { font: 600 0.9375rem/1.3 var(--font-sans); flex: 1; }
+.worker-search-result.is-active { background: var(--color-surface-sunk); }
+.bank-search, .bank-selected { max-width: none; }
 
 /* ==========================================================================
    Line-item rows (quantities / goals)

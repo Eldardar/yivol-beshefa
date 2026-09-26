@@ -12,7 +12,7 @@ export default async function Users({ searchParams }: { searchParams: Promise<{ 
   const { saved, error } = await searchParams;
   const database = db();
 
-  const users = database.prepare("SELECT id,name,email,phone,national_id,notes,role,active FROM users ORDER BY id").all() as WorkerRow[];
+  const users = database.prepare("SELECT id,name,email,phone,national_id,notes,role,active,date_of_birth,favorite_fruit,bank_account_holder,bank_number,bank_name,bank_branch_number,bank_branch_name,bank_account_number FROM users ORDER BY id").all() as WorkerRow[];
 
   const today = jerusalemDate();
   const shiftRows = database.prepare(`

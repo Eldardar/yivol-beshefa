@@ -11,7 +11,11 @@ import { ShowArchivedToggle } from "./show-archived-toggle";
 import { ChevronDownIcon } from "./icons";
 import { DeleteRecordButton } from "./delete-record-button";
 
-export type WorkerRow = { id: number; name: string; email: string; phone: string; national_id: string | null; notes: string; role: "ADMIN" | "PICKER"; active: number };
+export type WorkerRow = {
+  id: number; name: string; email: string; phone: string; national_id: string | null; notes: string; role: "ADMIN" | "PICKER"; active: number;
+  date_of_birth: string | null; favorite_fruit: string;
+  bank_account_holder: string; bank_number: string; bank_name: string; bank_branch_number: string; bank_branch_name: string; bank_account_number: string;
+};
 export type WorkerShiftRow = { id: number; date: string; start_time: string; end_time: string; status: string; farm: string; crop: string; lines: Array<{ quantity: number; unit: Unit }> };
 export type ShiftsByUser = Record<number, { past: WorkerShiftRow[]; future: WorkerShiftRow[] }>;
 
@@ -74,7 +78,7 @@ export function WorkersTable({ users, shiftsByUser, csrf, currentUserId }: { use
               </div>
               {isOpen && (
                 <div className="record-card-details">
-                  <WorkerDetails csrf={csrf} id={row.id} name={row.name} active={Boolean(row.active)} nationalId={row.national_id} past={shifts?.past ?? []} future={shifts?.future ?? []} />
+                  <WorkerDetails csrf={csrf} worker={row} past={shifts?.past ?? []} future={shifts?.future ?? []} />
                 </div>
               )}
             </article>
@@ -119,7 +123,7 @@ export function WorkersTable({ users, shiftsByUser, csrf, currentUserId }: { use
                   {isOpen && (
                     <tr className="worker-expand-row">
                       <td colSpan={8}>
-                        <WorkerDetails csrf={csrf} id={row.id} name={row.name} active={Boolean(row.active)} nationalId={row.national_id} past={shifts?.past ?? []} future={shifts?.future ?? []} />
+                        <WorkerDetails csrf={csrf} worker={row} past={shifts?.past ?? []} future={shifts?.future ?? []} />
                       </td>
                     </tr>
                   )}
@@ -133,12 +137,28 @@ export function WorkersTable({ users, shiftsByUser, csrf, currentUserId }: { use
   );
 }
 
-function WorkerDetails({ csrf, id, name, active, nationalId, past, future }: { csrf: string; id: number; name: string; active: boolean; nationalId: string | null; past: WorkerShiftRow[]; future: WorkerShiftRow[] }) {
+function WorkerDetails({ csrf, worker, past, future }: { csrf: string; worker: WorkerRow; past: WorkerShiftRow[]; future: WorkerShiftRow[] }) {
+  const { id, name, national_id: nationalId } = worker;
+  const active = Boolean(worker.active);
+  const hasBank = Boolean(worker.bank_number || worker.bank_account_number);
   return (
     <div className="sub-tables">
       <div className="stack">
         <h3>פרטים נוספים</h3>
         <p><strong>תעודת זהות: </strong>{nationalId ? <span dir="ltr" className="ltr-field">{maskNationalId(nationalId)}</span> : "חסרה (רשומה ותיקה)"}</p>
+        <p><strong>תאריך לידה: </strong>{worker.date_of_birth ? formatHebrewDate(worker.date_of_birth) : <span className="muted">לא הוזן</span>}</p>
+        <p><strong>פרי אהוב: </strong>{worker.favorite_fruit || <span className="muted">לא הוזן</span>}</p>
+      </div>
+      <div className="stack">
+        <h3>פרטי חשבון בנק</h3>
+        {hasBank ? (
+          <>
+            <p><strong>שם בעל החשבון: </strong>{worker.bank_account_holder}</p>
+            <p><strong>בנק: </strong>{[worker.bank_number, worker.bank_name].filter(Boolean).join(" · ")}</p>
+            <p><strong>סניף: </strong>{[worker.bank_branch_number, worker.bank_branch_name].filter(Boolean).join(" · ")}</p>
+            <p><strong>מספר חשבון: </strong><span dir="ltr" className="ltr-field">{worker.bank_account_number}</span></p>
+          </>
+        ) : <p className="muted">העובד עדיין לא הזין פרטי חשבון</p>}
       </div>
       <ShiftsList title="משמרות עתידיות" rows={future} empty="אין שיבוצים עתידיים" />
       <ShiftsList title="משמרות קודמות" rows={past} empty="אין משמרות קודמות" />

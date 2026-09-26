@@ -1,8 +1,10 @@
 import type Database from "better-sqlite3";
-import { availabilityMonthSchema, housingMonthSchema, journalEntrySchema, personalDetailsSchema } from "@/lib/schemas";
+import { availabilityMonthSchema, bankDetailsSchema, housingMonthSchema, journalEntrySchema, personalDetailsSchema } from "@/lib/schemas";
+import { findBank, findBranch } from "@/lib/israeli-banks";
 import { availabilityWindow, housingEditable } from "@/lib/dates";
 
 type Notification={id:number;title:string;body:string;read_at:string|null;created_at:string};
+export type BankDetails={accountHolder:string;bankNumber:string;bankName:string;branchNumber:string;branchName:string;accountNumber:string};
 type JournalEntry={id:number;message:string;created_at:string};
 export class PickerService{
  constructor(private readonly db:Database.Database){}
@@ -19,6 +21,19 @@ export class PickerService{
   const input=personalDetailsSchema.parse(raw);
   const result=this.db.prepare("UPDATE users SET date_of_birth=?,favorite_fruit=? WHERE id=? AND active=1").run(input.dateOfBirth||null,input.favoriteFruit,actorId);
   if(result.changes!==1)throw new Error("המשתמש לא נמצא");
+ }
+ bankDetails(actorId:number){
+  return this.db.prepare("SELECT bank_account_holder AS accountHolder, bank_number AS bankNumber, bank_name AS bankName, bank_branch_number AS branchNumber, bank_branch_name AS branchName, bank_account_number AS accountNumber FROM users WHERE id=?").get(actorId) as BankDetails|undefined;
+ }
+ updateBankDetails(actorId:number,raw:unknown):void{
+  const input=bankDetailsSchema.parse(raw);
+  // Known banks/branches get their official names; unknown numbers keep whatever the worker typed.
+  const bankName=findBank(input.bankNumber)?.name??(input.bankNumber?input.bankName:"");
+  const branch=findBranch(input.bankNumber,input.branchNumber);
+  const branchName=branch?[...new Set([branch.name,branch.city].filter(Boolean))].join(", "):(input.branchNumber?input.branchName:"");
+  const result=this.db.prepare("UPDATE users SET bank_account_holder=?,bank_number=?,bank_name=?,bank_branch_number=?,bank_branch_name=?,bank_account_number=? WHERE id=? AND active=1").run(input.accountHolder,input.bankNumber,bankName,input.branchNumber,branchName,input.accountNumber,actorId);
+  if(result.changes!==1)throw new Error("המשתמש לא נמצא");
+  this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(actorId,"UPDATE_BANK_DETAILS","USER",actorId);
  }
  notifications(actorId:number):Notification[]{return this.db.prepare("SELECT id,title,body,read_at,created_at FROM notifications WHERE user_id=? ORDER BY created_at DESC").all(actorId) as Notification[];}
  unreadCount(actorId:number):number{return (this.db.prepare("SELECT COUNT(*) AS n FROM notifications WHERE user_id=? AND read_at IS NULL").get(actorId) as {n:number}).n;}

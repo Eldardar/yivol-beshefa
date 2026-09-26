@@ -2,14 +2,17 @@ import { AppShell } from "@/components/nav";
 import { csrfValue, db, requireUser } from "@/lib/server";
 import { UserIcon } from "@/components/icons";
 import { PickerService } from "@/lib/services/picker";
+import { BankDetailsFields } from "@/components/bank-details-fields";
 
 export const dynamic = "force-dynamic";
 
-export default async function Account({ searchParams }: { searchParams: Promise<{ error?: string; detailsError?: string; detailsSaved?: string }> }) {
+export default async function Account({ searchParams }: { searchParams: Promise<{ error?: string; detailsError?: string; detailsSaved?: string; bankError?: string; bankSaved?: string }> }) {
   const user = await requireUser();
   const csrf = await csrfValue();
-  const { error, detailsError, detailsSaved } = await searchParams;
-  const personalDetails = new PickerService(db()).personalDetails(user.id);
+  const { error, detailsError, detailsSaved, bankError, bankSaved } = await searchParams;
+  const pickers = new PickerService(db());
+  const personalDetails = pickers.personalDetails(user.id);
+  const bankDetails = pickers.bankDetails(user.id);
 
   return (
     <AppShell user={user}>
@@ -37,6 +40,16 @@ export default async function Account({ searchParams }: { searchParams: Promise<
             <label htmlFor="favoriteFruit">פרי אהוב</label>
             <input className="input" id="favoriteFruit" type="text" name="favoriteFruit" maxLength={100} defaultValue={personalDetails?.favoriteFruit ?? ""} />
           </div>
+          <button className="btn" type="submit">שמירה</button>
+        </form>
+      </section>
+      <section className="card" id="bank">
+        <h2>פרטי חשבון בנק</h2>
+        {bankError && <p className="alert" role="alert">{bankError}</p>}
+        {bankSaved && !bankError && <p className="alert" role="status">פרטי החשבון נשמרו בהצלחה</p>}
+        <form action="/api/account/bank-details" method="post" className="stack">
+          <input type="hidden" name="csrf" value={csrf} />
+          <BankDetailsFields initial={bankDetails} />
           <button className="btn" type="submit">שמירה</button>
         </form>
       </section>
