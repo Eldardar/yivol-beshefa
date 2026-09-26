@@ -169,30 +169,6 @@ export function EmployeePerformanceReport({
 
           {/* DOM order after the table puts this on the visual left in RTL */}
           <aside className="card best-workers">
-            <h2>👑 עובד/ת המשמרת</h2>
-            <p className="muted">מספר המשמרות שבהן העובד/ת הרוויח/ה הכי הרבה ({RANGE_LABEL[range]})</p>
-            {bestWorkers.length === 0 ? (
-              <p className="muted">אין עדיין נתונים.</p>
-            ) : (
-              <table className="table">
-                <thead>
-                  <tr><th>עובד/ת</th><th>משמרות</th></tr>
-                </thead>
-                <tbody>
-                  {bestWorkers.map(worker => (
-                    <tr
-                      key={worker.id}
-                      className={`table-row-clickable${worker.active ? "" : " row-inactive"}`}
-                      onClick={() => selectWorker(worker)}
-                    >
-                      <td>{worker.name}</td>
-                      <td>{bestShiftCounts[worker.id]}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-
             <h2>🏆 שיא לפי גידול</h2>
             <p className="muted">התוצאה הטובה ביותר של עובד/ת במשמרת אחת, לכל גידול ({RANGE_LABEL[range]})</p>
             {fruitRecords.length === 0 ? (
@@ -228,6 +204,30 @@ export function EmployeePerformanceReport({
                       </tr>
                     );
                   })}
+                </tbody>
+              </table>
+            )}
+
+            <h2>👑 עובד/ת המשמרת</h2>
+            <p className="muted">מספר המשמרות שבהן העובד/ת הרוויח/ה הכי הרבה ({RANGE_LABEL[range]})</p>
+            {bestWorkers.length === 0 ? (
+              <p className="muted">אין עדיין נתונים.</p>
+            ) : (
+              <table className="table">
+                <thead>
+                  <tr><th>עובד/ת</th><th>משמרות</th></tr>
+                </thead>
+                <tbody>
+                  {bestWorkers.map(worker => (
+                    <tr
+                      key={worker.id}
+                      className={`table-row-clickable${worker.active ? "" : " row-inactive"}`}
+                      onClick={() => selectWorker(worker)}
+                    >
+                      <td>{worker.name}</td>
+                      <td>{bestShiftCounts[worker.id]}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             )}
