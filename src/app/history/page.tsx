@@ -8,6 +8,12 @@ export const dynamic = "force-dynamic";
 
 type HistoryRow = { id: number; date: string; status: string; farm: string; crop: string; start_time: string | null; end_time: string | null };
 
+// Gold when the worker met their goal for a unit, red when they fell short; uncolored until a quantity is entered.
+function goalResultClass(goal: number, produced: number | undefined): string | undefined {
+  if (goal <= 0 || produced == null) return undefined;
+  return produced >= goal ? "goal-cell--met" : "goal-cell--missed";
+}
+
 export default async function History({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string }> }) {
   const user = await requireUser();
   if (user.role !== "PICKER") return null;
@@ -76,8 +82,9 @@ export default async function History({ searchParams }: { searchParams: Promise<
     const goals = goalsByShift.get(id) ?? [];
     const goalUnits = new Set(goals.map(g => g.unit));
     const byUnit = new Map(lines.map(l => [l.unit, l.quantity]));
-    const parts: Array<{ key: string; node: React.ReactNode }> = goals.map(g => ({
+    const parts: Array<{ key: string; className?: string; node: React.ReactNode }> = goals.map(g => ({
       key: `g-${g.unit}`,
+      className: goalResultClass(g.goal, byUnit.get(g.unit)),
       node: <><span dir="ltr" className="ltr-field">{byUnit.get(g.unit) ?? "—"}/{g.goal}</span> {UNIT_LABEL[g.unit]}</>
     }));
     for (const l of lines) if (!goalUnits.has(l.unit)) parts.push({ key: `q-${l.unit}`, node: <>{l.quantity} {UNIT_LABEL[l.unit]}</> });
@@ -108,7 +115,7 @@ export default async function History({ searchParams }: { searchParams: Promise<
                     <span className="cell-main">{x.farm}</span>
                     <span className="cell-sub">{x.crop}</span>
                   </td>
-                  <td>{parts.length ? parts.map((p) => <span key={p.key} className="unit-line">{p.node}</span>) : "—"}</td>
+                  <td>{parts.length ? parts.map((p) => <span key={p.key} className={p.className ? `unit-line ${p.className}` : "unit-line"}>{p.node}</span>) : "—"}</td>
                 </tr>
               );
             })}

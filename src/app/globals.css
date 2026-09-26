@@ -300,7 +300,7 @@ img, svg { display: block; max-width: 100%; }
 
 a.card { transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard); }
 a.card:hover, a.card:focus-visible { border-color: var(--brand-forest-600); box-shadow: var(--shadow-sm); }
-.next-shift-card { border: 2px solid var(--brand-forest-700); box-shadow: var(--shadow-sm); }
+.next-shift-card { text-align: center; border: 2px solid var(--brand-forest-700); box-shadow: var(--shadow-sm); }
 .next-shift-card p { font-weight: 700; color: var(--brand-forest-800); }
 
 .metric { font: 700 2.25rem/1.1 var(--font-sans); color: var(--color-primary); font-variant-numeric: tabular-nums; }
@@ -502,7 +502,20 @@ select.input { appearance: auto; }
 .tag.holiday-muslim { background: #dbf2ec; color: #1a6b5f; }
 
 /* Shift goal/result line per unit, text colored once its result is entered. */
-.goal-cell--met { color: var(--color-success); font-weight: 600; }
+/* Goal met: gold text with a light sweeping across it, matching the gold goal bar. */
+.goal-cell--met {
+  width: fit-content;
+  font-weight: 700;
+  color: #b8860b;
+  background: linear-gradient(110deg, #b8860b 0%, #d4a017 35%, #ffe38a 50%, #d4a017 65%, #b8860b 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gold-text-shine 2.4s linear infinite;
+}
+@keyframes gold-text-shine { from { background-position: 100% 0; } to { background-position: -150% 0; } }
+@media (prefers-reduced-motion: reduce) { .goal-cell--met { animation: none; } }
 .goal-cell--missed { color: var(--color-danger); font-weight: 600; }
 .warn-icon { display: inline-flex; color: var(--color-danger); vertical-align: middle; }
 
