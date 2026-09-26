@@ -7,7 +7,10 @@ import { PickerService } from "@/lib/services/picker";
 import { DayCheckIn } from "@/components/day-checkin";
 import { HeroGallery } from "@/components/hero-gallery";
 import { FruitRecordsByPeriod } from "@/components/fruit-records-by-period";
-import { getTopResultsByFruit } from "@/lib/shifts-data";
+import { getPickedAmountsByFruitType, getTopResultsByFruit } from "@/lib/shifts-data";
+import { AdminService } from "@/lib/services/admin";
+import { AdminGoal } from "@/components/admin-goal";
+import { UNITS } from "@/lib/units";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +33,16 @@ export default async function Home() {
       farms: (database.prepare("SELECT count(*) n FROM farms WHERE active=1").get() as { n: number }).n,
       journalToday: (database.prepare("SELECT count(*) n FROM journal_entries WHERE created_at>=? AND created_at<?").get(dayStartUtc, dayEndUtc) as { n: number }).n,
     };
+    // Monthly goal progress counts shifts' final results, the same totals as the harvest report.
+    const monthRange = currentJerusalemMonth();
+    const doneByUnit = new Map<string, number>();
+    for (const amounts of Object.values(getPickedAmountsByFruitType(database, today, monthRange)))
+      for (const a of amounts) doneByUnit.set(a.unit, (doneByUnit.get(a.unit) ?? 0) + a.quantity);
+    const goalProgress = new AdminService(database).monthlyGoal(user.id, today.slice(0, 7))
+      .sort((a, b) => UNITS.indexOf(a.unit) - UNITS.indexOf(b.unit))
+      .map(g => ({ ...g, done: doneByUnit.get(g.unit) ?? 0 }));
+    const monthLabel = new Intl.DateTimeFormat("he-IL", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${monthRange.start}T00:00:00Z`));
+    const csrf = await csrfValue();
     return (
       <AppShell user={user}>
         <section className="hero">
@@ -57,6 +70,7 @@ export default async function Home() {
             <div className="metric">{stats.journalToday}</div>
           </article>
         </div>
+        <AdminGoal monthLabel={monthLabel} progress={goalProgress} csrf={csrf} />
         <Link className="card" href="/admin/shifts">
           <h2>ניהול משמרות ←</h2>
           <p className="muted">יצירה, פרסום ודיווח כמויות</p>

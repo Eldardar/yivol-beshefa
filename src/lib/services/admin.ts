@@ -1,8 +1,9 @@
 import type Database from "better-sqlite3";
 import { generatePassword, hashPassword } from "@/lib/security";
-import { adminAvailabilityUpdateSchema, adminHousingUpdateSchema, broadcastNotificationSchema, fieldUnitRatesSchema, notificationTargetSchema } from "@/lib/schemas";
+import { adminAvailabilityUpdateSchema, adminMonthlyGoalSchema, adminHousingUpdateSchema, broadcastNotificationSchema, fieldUnitRatesSchema, notificationTargetSchema } from "@/lib/schemas";
 import { pushToUsers } from "@/lib/push";
 import { jerusalemInstant } from "@/lib/dates";
+import type { Unit } from "@/lib/units";
 
 export type ManagedEntity = "USER" | "FARM" | "PLANTATION_FIELD" | "VEHICLE";
 const tables: Record<ManagedEntity,string> = { USER:"users", FARM:"farms", PLANTATION_FIELD:"plantation_fields", VEHICLE:"vehicles" };
@@ -48,7 +49,7 @@ export class AdminService {
       if(!row) throw new Error("הרשומה לא נמצאה");
       if(row.active) throw new Error("ניתן למחוק רק רשומות בארכיון");
       if(entity==="USER"){
-        for(const t of ["sessions","availability","notifications","password_reset_tokens","push_subscriptions","journal_entries","shift_report_reminders","scheduled_notification_recipients"]){
+        for(const t of ["sessions","availability","notifications","password_reset_tokens","push_subscriptions","journal_entries","shift_report_reminders","scheduled_notification_recipients","admin_monthly_goals"]){
           this.db.prepare(`DELETE FROM ${t} WHERE user_id=?`).run(entityId);
         }
       }
@@ -104,6 +105,21 @@ export class AdminService {
       this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)").run(actorId,"UPDATE","AVAILABILITY",input.userId,JSON.stringify({dates:input.entries.map(e=>e.date)}));
     }).immediate();
     await pushToUsers(this.db,[{userId:input.userId,title,body}]);
+  }
+
+  monthlyGoal(userId:number, month:string):Array<{unit:Unit;goal:number}> {
+    return this.db.prepare("SELECT unit,goal FROM admin_monthly_goals WHERE user_id=? AND month=?").all(userId,month) as Array<{unit:Unit;goal:number}>;
+  }
+
+  setMonthlyGoal(actorId:number, month:string, raw:unknown):void {
+    const input=adminMonthlyGoalSchema.parse(raw);
+    const actor=this.db.prepare("SELECT role,active FROM users WHERE id=?").get(actorId) as {role:string;active:number}|undefined;
+    if(!actor?.active || actor.role!=="ADMIN") throw new Error("אין הרשאה");
+    this.db.transaction(()=>{
+      this.db.prepare("DELETE FROM admin_monthly_goals WHERE user_id=? AND month=?").run(actorId,month);
+      const add=this.db.prepare("INSERT INTO admin_monthly_goals(user_id,month,unit,goal) VALUES(?,?,?,?)");
+      for(const g of input.goals)add.run(actorId,month,g.unit,g.goal);
+    }).immediate();
   }
 
   async setWorkerHousing(actorId:number, raw:unknown):Promise<void> {

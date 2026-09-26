@@ -348,6 +348,8 @@ a.card:hover, a.card:focus-visible { border-color: var(--brand-forest-600); box-
   background: var(--color-primary);
   transition: width var(--duration-normal) var(--ease-standard);
 }
+.goal-progress-list { list-style: none; }
+.goal-progress { display: grid; gap: var(--space-1); }
 .onboarding-steps { display: grid; gap: var(--space-2); list-style: none; }
 .onboarding-step-link {
   display: flex;
@@ -1004,7 +1006,14 @@ button.bottom-nav-link { border: 0; background: transparent; }
    Line-item rows (quantities / goals)
    ========================================================================== */
 .line-row { display: flex; gap: var(--space-2); align-items: center; }
-.line-row .input { flex: 1; min-width: 0; }
+.line-row .input { flex: 0 1 6.5rem; min-width: 0; }
+/* Quantity + unit rows: fixed narrow columns, then a fixed slot for remove and one for add so the remove button lines up on every row. */
+.unit-entry { display: grid; gap: var(--space-2); align-items: center; grid-template-columns: 6.5rem minmax(0, 10rem) 44px 44px; justify-content: start; }
+.unit-entry .input { min-width: 0; }
+.unit-entry-remove { grid-column: 3; }
+.unit-entry-add { grid-column: 4; }
+/* A single row has no remove button, so add takes its slot. */
+.unit-entry > .input + .input + .unit-entry-add { grid-column: 3; }
 
 /* ==========================================================================
    Auth pages

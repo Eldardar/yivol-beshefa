@@ -142,3 +142,9 @@ describe("עריכת מגורים על ידי מנהל", () => {
     expect(db.prepare("SELECT COUNT(*) AS n FROM housing_status").get()).toEqual({ n: 0 });
   });
 });
+
+describe("יעד חודשי של מנהל", () => {
+  it("שומר יעד בכמה יחידות לחודש, מחליף אותו ומנקה",()=>{const x=setup();const service=new AdminService(db);expect(service.monthlyGoal(x.admin,"2026-09")).toEqual([]);service.setMonthlyGoal(x.admin,"2026-09",{goals:[{unit:"DOLAV",goal:"70"},{unit:"KG",goal:500}]});expect(service.monthlyGoal(x.admin,"2026-09")).toEqual(expect.arrayContaining([{unit:"DOLAV",goal:70},{unit:"KG",goal:500}]));expect(service.monthlyGoal(x.admin,"2026-10")).toEqual([]);service.setMonthlyGoal(x.admin,"2026-09",{goals:[{unit:"BAG",goal:3}]});expect(service.monthlyGoal(x.admin,"2026-09")).toEqual([{unit:"BAG",goal:3}]);service.setMonthlyGoal(x.admin,"2026-09",{goals:[]});expect(service.monthlyGoal(x.admin,"2026-09")).toEqual([]);});
+  it("דוחה יחידה כפולה או יעד שאינו חיובי",()=>{const x=setup();const service=new AdminService(db);expect(()=>service.setMonthlyGoal(x.admin,"2026-09",{goals:[{unit:"KG",goal:1},{unit:"KG",goal:2}]})).toThrow();expect(()=>service.setMonthlyGoal(x.admin,"2026-09",{goals:[{unit:"KG",goal:0}]})).toThrow();});
+  it("מונע מקוטף לשמור יעד מנהל",()=>{const x=setup();expect(()=>new AdminService(db).setMonthlyGoal(x.p1,"2026-09",{goals:[{unit:"KG",goal:1}]})).toThrow("אין הרשאה");});
+});

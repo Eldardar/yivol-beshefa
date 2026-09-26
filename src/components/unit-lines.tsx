@@ -15,7 +15,7 @@ export function UnitLines({ valueName, unitName, initial, addLabel, valueLabel, 
   return (
     <div className="stack">
       {lines.map((line, i) => (
-        <div className="line-row" key={line.key}>
+        <div className="unit-entry" key={line.key}>
           <input className="input" name={valueName} aria-label={valueLabel} type="number" min="0" step="0.01" required value={line.value}
             onChange={(e) => setLines(lines.map((l, j) => (j === i ? { ...l, value: e.target.value } : l)))} />
           <select className="input" name={unitName} aria-label={unitLabel} required value={line.unit}
@@ -24,10 +24,10 @@ export function UnitLines({ valueName, unitName, initial, addLabel, valueLabel, 
             {units.map((u) => <option value={u} key={u}>{UNIT_LABEL[u]}</option>)}
           </select>
           {lines.length > 1 && (
-            <button type="button" className="icon-btn" aria-label="הסרת שורה" onClick={() => setLines(lines.filter((_, j) => j !== i))}><XIcon size={18} /></button>
+            <button type="button" className="icon-btn unit-entry-remove" aria-label="הסרת שורה" onClick={() => setLines(lines.filter((_, j) => j !== i))}><XIcon size={18} /></button>
           )}
           {i === lines.length - 1 && (
-            <button type="button" className="icon-btn-circle" aria-label={addLabel} onClick={() => setLines([...lines, makeLine()])}><PlusIcon size={18} /></button>
+            <button type="button" className="icon-btn-circle unit-entry-add" aria-label={addLabel} onClick={() => setLines([...lines, makeLine()])}><PlusIcon size={18} /></button>
           )}
         </div>
       ))}
