@@ -210,6 +210,44 @@ export function getPickedAmountsByFruitType(database: Database.Database, today: 
   return amounts;
 }
 
+export type FruitTypeFarmerRow = { farmId: number; farmName: string; shiftCount: number; amounts: Array<{ unit: Unit; quantity: number }> };
+
+export function getFarmerBreakdownByFruitType(database: Database.Database, today: string, range?: { start: string; end: string }): Record<string, FruitTypeFarmerRow[]> {
+  const rangeClause = range ? "AND s.date >= ? AND s.date < ?" : "";
+  const params = range ? [today, range.start, range.end] : [today];
+  const where = `WHERE s.status IN ('PUBLISHED','COMPLETED') AND (s.date < ? OR s.status = 'COMPLETED') ${rangeClause}`;
+  const shiftRows = database
+    .prepare(
+      `SELECT pf.fruit_type fruit_type, f.id farm_id, f.name farm_name, COUNT(*) count
+       FROM shifts s
+       JOIN plantation_fields pf ON pf.id = s.plantation_field_id
+       JOIN farms f ON f.id = pf.farm_id
+       ${where}
+       GROUP BY pf.fruit_type, f.id
+       ORDER BY f.name`
+    )
+    .all(...params) as Array<{ fruit_type: string; farm_id: number; farm_name: string; count: number }>;
+  const amountRows = database
+    .prepare(
+      `SELECT pf.fruit_type fruit_type, pf.farm_id farm_id, q.unit unit, SUM(q.quantity) total
+       FROM quantities q
+       JOIN shifts s ON s.id = q.shift_id
+       JOIN plantation_fields pf ON pf.id = s.plantation_field_id
+       ${where}
+       GROUP BY pf.fruit_type, pf.farm_id, q.unit`
+    )
+    .all(...params) as Array<{ fruit_type: string; farm_id: number; unit: Unit; total: number }>;
+  const breakdown: Record<string, FruitTypeFarmerRow[]> = {};
+  const byKey = new Map<string, FruitTypeFarmerRow>();
+  for (const r of shiftRows) {
+    const row: FruitTypeFarmerRow = { farmId: r.farm_id, farmName: r.farm_name, shiftCount: r.count, amounts: [] };
+    (breakdown[r.fruit_type] ??= []).push(row);
+    byKey.set(`${r.fruit_type}|${r.farm_id}`, row);
+  }
+  for (const r of amountRows) byKey.get(`${r.fruit_type}|${r.farm_id}`)?.amounts.push({ unit: r.unit, quantity: r.total });
+  return breakdown;
+}
+
 export function getShiftsByFarmer(database: Database.Database, today: string): ShiftsByFarmer {
   const rows = database
     .prepare(

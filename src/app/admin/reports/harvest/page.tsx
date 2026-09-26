@@ -5,7 +5,7 @@ import { FarmerPerformanceReport } from "@/components/farmer-performance-report"
 import type { FarmerOption } from "@/components/farmer-picker";
 import { CropHarvestReport } from "@/components/crop-harvest-report";
 import { db, requireAdmin } from "@/lib/server";
-import { getShiftsByFarmer, getShiftCountsByFarmer, getPickedAmountsByFruitType } from "@/lib/shifts-data";
+import { getShiftsByFarmer, getShiftCountsByFarmer, getPickedAmountsByFruitType, getFarmerBreakdownByFruitType } from "@/lib/shifts-data";
 import { jerusalemDate, currentJerusalemMonth, currentJerusalemYear } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
@@ -47,6 +47,11 @@ export default async function HarvestReport({ searchParams }: { searchParams: Pr
             year: getPickedAmountsByFruitType(database, today, currentJerusalemYear()),
             all: getPickedAmountsByFruitType(database, today)
           } satisfies Record<RangeKey, ReturnType<typeof getPickedAmountsByFruitType>>}
+          farmerBreakdownByRange={{
+            month: getFarmerBreakdownByFruitType(database, today, currentJerusalemMonth()),
+            year: getFarmerBreakdownByFruitType(database, today, currentJerusalemYear()),
+            all: getFarmerBreakdownByFruitType(database, today)
+          } satisfies Record<RangeKey, ReturnType<typeof getFarmerBreakdownByFruitType>>}
         />
       )}
       {view === "season" && (

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { FruitTypePicker } from "./fruit-type-picker";
 import { RangeTabs, type RangeKey } from "./range-tabs";
 import { UNIT_LABEL, type Unit } from "@/lib/units";
+import type { FruitTypeFarmerRow } from "@/lib/shifts-data";
 
 export type PickedAmounts = Record<string, Array<{ unit: Unit; quantity: number }>>;
 
@@ -18,15 +19,18 @@ function formatAmounts(entries: Array<{ unit: Unit; quantity: number }> | undefi
 
 export function CropHarvestReport({
   fruitTypes,
-  pickedAmountsByRange
+  pickedAmountsByRange,
+  farmerBreakdownByRange
 }: {
   fruitTypes: string[];
   pickedAmountsByRange: Record<RangeKey, PickedAmounts>;
+  farmerBreakdownByRange: Record<RangeKey, Record<string, FruitTypeFarmerRow[]>>;
 }) {
   const [selectedFruitType, setSelectedFruitType] = useState<string | null>(null);
   const [range, setRange] = useState<RangeKey>("all");
 
   const amounts = pickedAmountsByRange[range];
+  const farmerRows = selectedFruitType ? (farmerBreakdownByRange[range][selectedFruitType] ?? []) : [];
 
   return (
     <div className="stack">
@@ -65,6 +69,32 @@ export function CropHarvestReport({
             <span className="kpi-label">כמות שנקטפה · {selectedFruitType}</span>
             <div className="metric">{formatAmounts(amounts[selectedFruitType])}</div>
           </article>
+        </div>
+      )}
+
+      {selectedFruitType && farmerRows.length === 0 && (
+        <section className="card empty-state">
+          <p>אין משמרות לסוג פרי זה בטווח זה.</p>
+        </section>
+      )}
+
+      {selectedFruitType && farmerRows.length > 0 && (
+        <div className="table-wrap card">
+          <table className="table">
+            <thead>
+              <tr><th>#</th><th>חקלאי</th><th>כמות שנקטפה</th><th>משמרות</th></tr>
+            </thead>
+            <tbody>
+              {farmerRows.map((row, i) => (
+                <tr key={row.farmId}>
+                  <td>{i + 1}</td>
+                  <td>{row.farmName}</td>
+                  <td>{formatAmounts(row.amounts)}</td>
+                  <td>{row.shiftCount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
