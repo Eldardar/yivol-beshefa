@@ -26,6 +26,7 @@ export default async function Home() {
       activePickers: (database.prepare("SELECT count(*) n FROM users WHERE role='PICKER' AND active=1").get() as { n: number }).n,
       totalPickers: (database.prepare("SELECT count(*) n FROM users WHERE role='PICKER'").get() as { n: number }).n,
       shifts: (database.prepare("SELECT count(*) n FROM shifts WHERE status='PUBLISHED' AND date>=?").get(today) as { n: number }).n,
+      shiftWorkers: (database.prepare("SELECT count(*) n FROM shift_pickers sp JOIN shifts s ON s.id=sp.shift_id WHERE s.status='PUBLISHED' AND s.date>=?").get(today) as { n: number }).n,
       farms: (database.prepare("SELECT count(*) n FROM farms WHERE active=1").get() as { n: number }).n,
       journalToday: (database.prepare("SELECT count(*) n FROM journal_entries WHERE created_at>=? AND created_at<?").get(dayStartUtc, dayEndUtc) as { n: number }).n,
     };
@@ -43,7 +44,9 @@ export default async function Home() {
           </article>
           <article className="kpi-card">
             <span className="kpi-label">משמרות קרובות</span>
-            <div className="metric">{stats.shifts}</div>
+            <div className="metric">
+              {stats.shifts} <span className="kpi-sublabel">({stats.shiftWorkers} עובדים)</span>
+            </div>
           </article>
           <article className="kpi-card">
             <span className="kpi-label">חקלאים פעילים</span>
@@ -84,9 +87,22 @@ export default async function Home() {
   const greeting = timeOfDayGreeting(hour);
   const wish = timeOfDayWish(hour);
   const csrf = await csrfValue();
+  // Fruit types of the worker's past shifts, most recent first — their last shift's fruit leads the records.
+  const recentFruitTypes = (database
+    .prepare(
+      `SELECT pf.fruit_type FROM shift_pickers sp
+       JOIN shifts s ON s.id=sp.shift_id JOIN plantation_fields pf ON pf.id=s.plantation_field_id
+       WHERE sp.user_id=? AND s.status IN ('PUBLISHED','COMPLETED') AND s.date<=?
+       GROUP BY pf.fruit_type ORDER BY MAX(s.date || ' ' || s.start_time) DESC`
+    )
+    .all(user.id, today) as Array<{ fruit_type: string }>).map(r => r.fruit_type);
+  const fruitRank = (fruitType: string) => {
+    const i = recentFruitTypes.indexOf(fruitType);
+    return i === -1 ? recentFruitTypes.length : i;
+  };
   const fruitRecordsByPeriod = {
     month: getTopResultsByFruit(database, today, currentJerusalemMonth()),
-    year: getTopResultsByFruit(database, today, currentJerusalemYear())
+    year: getTopResultsByFruit(database, today, currentJerusalemYear()).sort((a, b) => fruitRank(a.fruitType) - fruitRank(b.fruitType))
   };
   const workerNames = database.prepare("SELECT id,name FROM users WHERE role='PICKER'").all() as Array<{ id: number; name: string }>;
 
