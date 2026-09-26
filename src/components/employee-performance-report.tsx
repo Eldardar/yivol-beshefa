@@ -60,7 +60,7 @@ export function EmployeePerformanceReport({
   shiftsByWorker,
   unitRatesByField,
   shiftCountsByRange,
-  totalHoursByWorker,
+  totalHoursByRange,
   initialYear,
   initialMonth
 }: {
@@ -68,7 +68,7 @@ export function EmployeePerformanceReport({
   shiftsByWorker: ShiftsByWorker;
   unitRatesByField: UnitRatesByField;
   shiftCountsByRange: Record<RangeKey, Record<number, number>>;
-  totalHoursByWorker: Record<number, number>;
+  totalHoursByRange: Record<RangeKey, Record<number, number>>;
   initialYear: number;
   initialMonth: number;
 }) {
@@ -77,6 +77,7 @@ export function EmployeePerformanceReport({
   const [viewYear, setViewYear] = useState(initialYear);
   const [viewMonth, setViewMonth] = useState(initialMonth);
   const shiftCounts = shiftCountsByRange[range];
+  const totalHoursByWorker = totalHoursByRange[range];
   const allShifts = selected ? shiftsByWorker[selected.id] ?? [] : [];
   const { start: monthStart, end: monthEnd } = useMemo(() => monthRange(viewYear, viewMonth), [viewYear, viewMonth]);
   const shifts = allShifts.filter(row => row.date >= monthStart && row.date < monthEnd);
@@ -104,7 +105,7 @@ export function EmployeePerformanceReport({
           fileName={`ביצועי עובדים - ${RANGE_LABEL[range]}`}
           sheets={() => [{
             name: "ביצועי עובדים",
-            header: ["#", "עובד/ת", `מספר משמרות (${RANGE_LABEL[range]})`, "סה\"כ שעות עבודה", "סטטוס"],
+            header: ["#", "עובד/ת", `מספר משמרות (${RANGE_LABEL[range]})`, `סה"כ שעות עבודה (${RANGE_LABEL[range]})`, "סטטוס"],
             rows: rankedWorkers.map((worker, i) => [i + 1, worker.name, shiftCounts[worker.id] ?? 0, Math.round((totalHoursByWorker[worker.id] ?? 0) * 100) / 100, worker.active ? "פעיל" : "לא פעיל"])
           }]}
         />

@@ -28,7 +28,11 @@ export default async function EmployeePerformance() {
   const unitRatesByField: UnitRatesByField = {};
   for (const r of rateRows) (unitRatesByField[r.field_id] ??= {})[r.unit] = r.rate_nis;
 
-  const totalHoursByWorker = getTotalHoursByWorker(database, today);
+  const totalHoursByRange: Record<RangeKey, Record<number, number>> = {
+    month: getTotalHoursByWorker(database, today, currentJerusalemMonth()),
+    year: getTotalHoursByWorker(database, today, currentJerusalemYear()),
+    all: getTotalHoursByWorker(database, today)
+  };
 
   return (
     <AppShell user={user}>
@@ -39,7 +43,7 @@ export default async function EmployeePerformance() {
         shiftsByWorker={shiftsByWorker}
         unitRatesByField={unitRatesByField}
         shiftCountsByRange={shiftCountsByRange}
-        totalHoursByWorker={totalHoursByWorker}
+        totalHoursByRange={totalHoursByRange}
         initialYear={Number(today.slice(0, 4))}
         initialMonth={Number(today.slice(5, 7))}
       />
