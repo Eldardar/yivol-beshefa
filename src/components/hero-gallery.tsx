@@ -27,6 +27,8 @@ export function HeroGallery({ images }: { images: GalleryImage[] }) {
       <div className="hero-gallery-viewport">
         <div className="hero-gallery-track" style={{ transform: `translateX(-${index * 100}%)` }}>
           {images.map((image) => (
+            // Plain <img>: the carousel sizes slides with CSS, which next/image's fixed dimensions would fight.
+            // eslint-disable-next-line @next/next/no-img-element
             <img key={image.src} src={image.src} alt={image.alt} className="hero-gallery-image" />
           ))}
         </div>

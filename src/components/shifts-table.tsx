@@ -434,7 +434,7 @@ function ShiftDetails({ units, pickerNames, totalPickers, pickerHours, unitRates
           <div className="table-wrap">
             <table className="table">
               <thead>
-                <tr><th>#</th><th>שם</th><th>שעות</th><th>כמות תוצרת</th><th>ש"ח לשעה</th><th>סה"כ הכנסה</th></tr>
+                <tr><th>#</th><th>שם</th><th>שעות</th><th>כמות תוצרת</th><th>ש&quot;ח לשעה</th><th>סה&quot;כ הכנסה</th></tr>
               </thead>
               <tbody>
                 {(() => {

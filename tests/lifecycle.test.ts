@@ -51,7 +51,8 @@ describe("מחזור משמרת ודיווח", () => {
     expect(() => service.saveQuantities(x.p1, x.shift, [{ userId: x.p1, quantity: 1, unit: "KG" }])).toThrow("כל הקוטפים");
     expect(() => service.saveQuantities(x.p1, x.shift, [{ userId: x.p1, quantity: -1, unit: "KG" }, { userId: x.p2, quantity: 1, unit: "KG" }])).toThrow("כמות");
   });
-  it("פרסום ופתיחה מחדש מאמתים מחדש משאבים והתנגשויות",()=>{const x=setup();const service=new ShiftService(db);db.prepare("UPDATE users SET active=0 WHERE id=?").run(x.p2);expect(()=>service.transition(x.admin,x.shift,"PUBLISHED")).toThrow("קוטף אינו פעיל");db.prepare("UPDATE users SET active=1 WHERE id=?").run(x.p2);db.prepare("UPDATE shifts SET status='CANCELLED' WHERE id=?").run(x.shift);const other=Number(db.prepare("INSERT INTO shifts(date,start_time,end_time,plantation_field_id,leader_id,created_by) VALUES(?,?,?,?,?,?)").run("2026-08-10","06:00","12:00",x.field,x.p1,x.admin).lastInsertRowid);db.prepare("INSERT INTO shift_goals(shift_id,unit,goal) VALUES(?,?,?)").run(other,"KG",1);db.prepare("INSERT INTO shift_pickers(shift_id,user_id) VALUES(?,?)").run(other,x.p1);expect(()=>service.transition(x.admin,x.shift,"DRAFT")).toThrow("שיבוץ כפול");});
+  it("פרסום ופתיחה מחדש מאמתים מחדש משאבים והתנגשויות",()=>{const x=setup();const service=new ShiftService(db);db.prepare("UPDATE users SET active=0 WHERE id=?").run(x.p2);// A picker deactivated after being assigned stays on the shift and doesn't block publishing.
+expect(()=>service.transition(x.admin,x.shift,"PUBLISHED")).not.toThrow();db.prepare("UPDATE users SET active=1 WHERE id=?").run(x.p2);db.prepare("UPDATE shifts SET status='CANCELLED' WHERE id=?").run(x.shift);const other=Number(db.prepare("INSERT INTO shifts(date,start_time,end_time,plantation_field_id,leader_id,created_by) VALUES(?,?,?,?,?,?)").run("2026-08-10","06:00","12:00",x.field,x.p1,x.admin).lastInsertRowid);db.prepare("INSERT INTO shift_goals(shift_id,unit,goal) VALUES(?,?,?)").run(other,"KG",1);db.prepare("INSERT INTO shift_pickers(shift_id,user_id) VALUES(?,?)").run(other,x.p1);expect(()=>service.transition(x.admin,x.shift,"DRAFT")).toThrow("שיבוץ כפול");});
   it("אינו משלים משמרת בלי דוח מלא ומדויק לכל הקוטפים",()=>{const x=setup();const service=new ShiftService(db);service.transition(x.admin,x.shift,"PUBLISHED");expect(()=>service.transition(x.admin,x.shift,"COMPLETED")).toThrow("דיווח מלא");db.prepare("INSERT INTO quantities(shift_id,user_id,quantity,unit,updated_by) VALUES(?,?,?,?,?)").run(x.shift,x.p1,1,"KG",x.admin);expect(()=>service.transition(x.admin,x.shift,"COMPLETED")).toThrow("דיווח מלא");db.prepare("INSERT INTO quantities(shift_id,user_id,quantity,unit,updated_by) VALUES(?,?,?,?,?)").run(x.shift,x.p2,2,"KG",x.admin);expect(()=>service.transition(x.admin,x.shift,"COMPLETED")).toThrow("תוצאה סופית");expect(()=>service.transition(x.admin,x.shift,"COMPLETED",{results:[{unit:"KG",result:9.75}]})).not.toThrow();expect(db.prepare("SELECT actual FROM shift_goals WHERE shift_id=? AND unit='KG'").get(x.shift)).toEqual({actual:9.75});});
   it("אינו משלים משמרת כשקוטף מדווח מספר יחידות וקוטף אחר לא דיווח כלל",()=>{const x=setup();const service=new ShiftService(db);service.transition(x.admin,x.shift,"PUBLISHED");db.prepare("INSERT INTO quantities(shift_id,user_id,quantity,unit,updated_by) VALUES(?,?,?,?,?),(?,?,?,?,?)").run(x.shift,x.p1,3,"KG",x.admin,x.shift,x.p1,2,"CRATE_LARGE",x.admin);expect(()=>service.transition(x.admin,x.shift,"COMPLETED")).toThrow("דיווח מלא");});
   it("השלמה סופית ומשיכת פרסום מודיעה לצוות",()=>{const x=setup();const service=new ShiftService(db);service.transition(x.admin,x.shift,"PUBLISHED");db.prepare("DELETE FROM notifications").run();service.transition(x.admin,x.shift,"DRAFT");expect(db.prepare("SELECT count(*) count FROM notifications").get()).toEqual({count:2});service.transition(x.admin,x.shift,"PUBLISHED");service.saveQuantities(x.admin,x.shift,[{userId:x.p1,quantity:1,unit:"KG"},{userId:x.p2,quantity:2,unit:"KG"}]);service.transition(x.admin,x.shift,"COMPLETED",{results:[{unit:"KG",result:3}]});expect(()=>service.transition(x.admin,x.shift,"PUBLISHED")).toThrow("מעבר מצב");});
@@ -78,25 +79,25 @@ describe("דיווח תוצאות עצמי של קוטף", () => {
     const outsider=Number(db.prepare("INSERT INTO users(name,email,phone,role,password_hash) VALUES(?,?,?,?,?)").run("זר","outsider@example.com","0500000004","PICKER","x").lastInsertRowid);
     expect(()=>new ShiftService(db).reportOwnQuantities(outsider,x.shift,[{quantity:1,unit:"KG"}])).toThrow("אינך משובץ");
   });
-  it("מאפשר לקוטף לדווח על התוצאות שלו בלבד ולעדכן אותן",()=>{
+  it("מאפשר לקוטף לדווח על התוצאות שלו בלבד, פעם אחת",()=>{
     const x=setup();const service=new ShiftService(db);db.prepare("UPDATE shifts SET status='PUBLISHED' WHERE id=?").run(x.shift);
     service.reportOwnQuantities(x.p2,x.shift,[{quantity:4.5,unit:"KG"}]);
     expect(db.prepare("SELECT quantity,unit,updated_by FROM quantities WHERE shift_id=? AND user_id=?").get(x.shift,x.p2)).toEqual({quantity:4.5,unit:"KG",updated_by:x.p2});
     expect(db.prepare("SELECT count(*) count FROM quantities WHERE shift_id=?").get(x.shift)).toEqual({count:1});
-    service.reportOwnQuantities(x.p2,x.shift,[{quantity:6,unit:"KG"},{quantity:1,unit:"CRATE_LARGE"}]);
-    expect(db.prepare("SELECT count(*) count FROM quantities WHERE shift_id=? AND user_id=?").get(x.shift,x.p2)).toEqual({count:2});
+    expect(()=>service.reportOwnQuantities(x.p2,x.shift,[{quantity:6,unit:"KG"},{quantity:1,unit:"CRATE_LARGE"}])).toThrow("כבר דיווחת");
+    expect(db.prepare("SELECT quantity FROM quantities WHERE shift_id=? AND user_id=?").all(x.shift,x.p2)).toEqual([{quantity:4.5}]);
   });
   it("חוסם כמות שלילית או יחידת מידה כפולה בדיווח עצמי",()=>{
     const x=setup();const service=new ShiftService(db);db.prepare("UPDATE shifts SET status='PUBLISHED' WHERE id=?").run(x.shift);
     expect(()=>service.reportOwnQuantities(x.p2,x.shift,[{quantity:-1,unit:"KG"}])).toThrow("כמות");
     expect(()=>service.reportOwnQuantities(x.p2,x.shift,[{quantity:1,unit:"KG"},{quantity:2,unit:"KG"}])).toThrow("יחידת מידה כפולה");
   });
-  it("מאפשר לקוטף לעדכן את שעות המשמרת בפועל שלו בעצמו",()=>{
+  it("מאפשר לקוטף לדווח את שעות המשמרת בפועל שלו בעצמו, פעם אחת",()=>{
     const x=setup();const service=new ShiftService(db);db.prepare("UPDATE shifts SET status='PUBLISHED' WHERE id=?").run(x.shift);
     service.reportOwnQuantities(x.p2,x.shift,[{quantity:1,unit:"KG"}],{startTime:"06:15",endTime:"10:45"});
     expect(db.prepare("SELECT start_time,end_time,updated_by FROM shift_hours WHERE shift_id=? AND user_id=?").get(x.shift,x.p2)).toEqual({start_time:"06:15",end_time:"10:45",updated_by:x.p2});
-    service.reportOwnQuantities(x.p2,x.shift,[{quantity:2,unit:"KG"}],{startTime:"06:00",endTime:"11:00"});
-    expect(db.prepare("SELECT start_time,end_time FROM shift_hours WHERE shift_id=? AND user_id=?").get(x.shift,x.p2)).toEqual({start_time:"06:00",end_time:"11:00"});
+    expect(()=>service.reportOwnQuantities(x.p2,x.shift,[{quantity:2,unit:"KG"}],{startTime:"06:00",endTime:"11:00"})).toThrow("כבר דיווחת");
+    expect(db.prepare("SELECT start_time,end_time FROM shift_hours WHERE shift_id=? AND user_id=?").get(x.shift,x.p2)).toEqual({start_time:"06:15",end_time:"10:45"});
     expect(db.prepare("SELECT count(*) count FROM shift_hours WHERE shift_id=?").get(x.shift)).toEqual({count:1});
   });
   it("חוסם קביעת יעד אישי במשמרת שאינה פורסמה",()=>{const x=setup();expect(()=>new ShiftService(db).setOwnGoal(x.p2,x.shift,[{unit:"KG",goal:5}],new Date("2026-08-01T00:00:00Z"))).toThrow("מצב המשמרת");});

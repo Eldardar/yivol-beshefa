@@ -37,13 +37,12 @@ export default async function History({ searchParams }: { searchParams: Promise<
     )
     .all(user.id, monthStart, today) as Array<{ date: string; amount: number }>;
   const earningsByDay = new Map(dailyEarningsRows.map(r => [Number(r.date.slice(8, 10)), r.amount]));
+  const earningsPoints: EarningsPoint[] = [];
   let cumulativeEarnings = 0;
-  const earningsPoints: EarningsPoint[] = Array.from({ length: currentDay }, (_, i) => {
-    const day = i + 1;
-    const hasShift = earningsByDay.has(day);
+  for (let day = 1; day <= currentDay; day++) {
     cumulativeEarnings += earningsByDay.get(day) ?? 0;
-    return { day, total: cumulativeEarnings, hasShift };
-  });
+    earningsPoints.push({ day, total: cumulativeEarnings, hasShift: earningsByDay.has(day) });
+  }
 
   const pastMonthTotals = db()
     .prepare(
