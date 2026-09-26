@@ -10,6 +10,7 @@ import { UNIT_LABEL, unitsPresent, type Unit } from "@/lib/units";
 import type { XlsxSheet } from "@/lib/xlsx";
 import { formatMoney } from "@/lib/format";
 import type { UnitRatesByField } from "./shifts-table";
+import type { FruitRecord } from "@/lib/shifts-data";
 
 export type EmployeeShiftRow = {
   id: number;
@@ -62,6 +63,7 @@ export function EmployeePerformanceReport({
   shiftCountsByRange,
   totalHoursByRange,
   bestShiftCountsByRange,
+  fruitRecordsByRange,
   initialYear,
   initialMonth
 }: {
@@ -71,6 +73,7 @@ export function EmployeePerformanceReport({
   shiftCountsByRange: Record<RangeKey, Record<number, number>>;
   totalHoursByRange: Record<RangeKey, Record<number, number>>;
   bestShiftCountsByRange: Record<RangeKey, Record<number, number>>;
+  fruitRecordsByRange: Record<RangeKey, FruitRecord[]>;
   initialYear: number;
   initialMonth: number;
 }) {
@@ -88,6 +91,8 @@ export function EmployeePerformanceReport({
   const bestWorkers = workers
     .filter(worker => (bestShiftCounts[worker.id] ?? 0) > 0)
     .sort((a, b) => (bestShiftCounts[b.id] ?? 0) - (bestShiftCounts[a.id] ?? 0) || a.name.localeCompare(b.name, "he"));
+  const workersById = new Map(workers.map(worker => [worker.id, worker]));
+  const fruitRecords = fruitRecordsByRange[range];
   const rankedWorkers = [...workers].sort((a, b) => (totalHoursByWorker[b.id] ?? 0) - (totalHoursByWorker[a.id] ?? 0) || a.name.localeCompare(b.name, "he"));
 
   function selectWorker(worker: WorkerOption | null) {
@@ -184,6 +189,45 @@ export function EmployeePerformanceReport({
                       <td>{bestShiftCounts[worker.id]}</td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            )}
+
+            <h2>🏆 שיא לפי גידול</h2>
+            <p className="muted">התוצאה הטובה ביותר של עובד/ת במשמרת אחת, לכל גידול ({RANGE_LABEL[range]})</p>
+            {fruitRecords.length === 0 ? (
+              <p className="muted">אין עדיין נתונים.</p>
+            ) : (
+              <table className="table">
+                <thead>
+                  <tr><th>גידול</th><th>עובד/ת</th><th>שיא</th></tr>
+                </thead>
+                <tbody>
+                  {fruitRecords.map(record => {
+                    const worker = workersById.get(record.userId);
+                    return (
+                      <tr
+                        key={record.fruitType}
+                        className={`${worker ? "table-row-clickable" : ""}${worker && !worker.active ? " row-inactive" : ""}`}
+                        title={formatHebrewDate(record.date)}
+                        onClick={worker ? () => selectWorker(worker) : undefined}
+                      >
+                        <td>{record.fruitType}</td>
+                        <td>{worker?.name ?? "—"}</td>
+                        <td>
+                          {formatMoney(record.earnings)}
+                          <div className="muted">
+                            {record.quantities.map((q, i) => (
+                              <span key={q.unit}>
+                                {i > 0 && " · "}
+                                <span dir="ltr" className="ltr-field">{q.quantity}</span> {UNIT_LABEL[q.unit]}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}

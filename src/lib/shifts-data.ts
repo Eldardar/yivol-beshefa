@@ -318,3 +318,37 @@ export function getBestShiftCountsByWorker(database: Database.Database, today: s
   }
   return counts;
 }
+
+export type FruitRecord = { fruitType: string; userId: number; date: string; earnings: number; quantities: Array<{ unit: Unit; quantity: number }> };
+
+// Per fruit type, the single best worker result in one shift (by earnings, like the 👑); ties go to the earliest shift.
+export function getFruitRecords(database: Database.Database, today: string, range?: { start: string; end: string }): FruitRecord[] {
+  const rangeClause = range ? "AND s.date >= ? AND s.date < ?" : "";
+  const params = range ? [today, range.start, range.end] : [today];
+  const rows = database
+    .prepare(
+      `SELECT pf.fruit_type fruit_type, q.shift_id shift_id, q.user_id user_id, s.date date, q.unit unit, q.quantity quantity, q.quantity * r.rate_nis earnings
+       FROM quantities q
+       JOIN shifts s ON s.id = q.shift_id
+       JOIN shift_pickers sp ON sp.shift_id = q.shift_id AND sp.user_id = q.user_id
+       JOIN plantation_fields pf ON pf.id = s.plantation_field_id
+       JOIN field_unit_rates r ON r.field_id = s.plantation_field_id AND r.unit = q.unit
+       WHERE s.status IN ('PUBLISHED','COMPLETED') AND (s.date < ? OR s.status = 'COMPLETED') ${rangeClause}
+       ORDER BY s.date, q.shift_id`
+    )
+    .all(...params) as Array<{ fruit_type: string; shift_id: number; user_id: number; date: string; unit: Unit; quantity: number; earnings: number }>;
+  const results = new Map<string, FruitRecord>();
+  for (const r of rows) {
+    const key = `${r.shift_id}:${r.user_id}`;
+    const result = results.get(key) ?? { fruitType: r.fruit_type, userId: r.user_id, date: r.date, earnings: 0, quantities: [] };
+    result.earnings += r.earnings;
+    result.quantities.push({ unit: r.unit, quantity: r.quantity });
+    results.set(key, result);
+  }
+  const best = new Map<string, FruitRecord>();
+  for (const result of results.values()) {
+    const current = best.get(result.fruitType);
+    if (result.earnings > 0 && (!current || result.earnings > current.earnings)) best.set(result.fruitType, result);
+  }
+  return [...best.values()].sort((a, b) => a.fruitType.localeCompare(b.fruitType, "he"));
+}
