@@ -11,8 +11,7 @@ export type PickedAmounts = Record<string, Array<{ unit: Unit; quantity: number 
 function formatAmounts(entries: Array<{ unit: Unit; quantity: number }> | undefined) {
   if (!entries || entries.length === 0) return <span className="muted">לא נקטף בטווח זה</span>;
   return entries.map((e, i) => (
-    <span key={e.unit}>
-      {i > 0 && " · "}
+    <span key={e.unit} className="unit-line">
       <span dir="ltr" className="ltr-field">{e.quantity.toLocaleString("he-IL")}</span> {UNIT_LABEL[e.unit]}
     </span>
   ));

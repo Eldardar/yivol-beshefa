@@ -191,8 +191,7 @@ export function EmployeePerformanceReport({
                           <td>{worker?.name ?? "—"}</td>
                           <td>
                             {result.quantities.map((q, j) => (
-                              <span key={q.unit}>
-                                {j > 0 && " · "}
+                              <span key={q.unit} className="unit-line">
                                 <span dir="ltr" className="ltr-field">{q.quantity}</span> {UNIT_LABEL[q.unit]}
                               </span>
                             ))}
@@ -265,8 +264,7 @@ export function EmployeePerformanceReport({
                       {row.quantities.length === 0
                         ? <span className="muted">טרם דווח</span>
                         : row.quantities.map((q, i) => (
-                          <span key={q.unit}>
-                            {i > 0 && " · "}
+                          <span key={q.unit} className="unit-line">
                             <span dir="ltr" className="ltr-field">{q.quantity}</span> {UNIT_LABEL[q.unit]}
                           </span>
                         ))}

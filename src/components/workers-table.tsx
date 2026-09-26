@@ -219,7 +219,7 @@ function ShiftsList({ title, rows, empty }: { title: string; rows: WorkerShiftRo
                   <td><span dir="ltr" className="ltr-field">{s.start_time}–{s.end_time}</span></td>
                   <td>{s.farm} · {s.crop}</td>
                   <td>{STATUS_LABEL[s.status] ?? s.status}</td>
-                  <td>{s.lines.length ? s.lines.map((l) => `${l.quantity} ${UNIT_LABEL[l.unit]}`).join(" · ") : "—"}</td>
+                  <td>{s.lines.length ? s.lines.map((l, i) => <span key={i} className="unit-line">{l.quantity} {UNIT_LABEL[l.unit]}</span>) : "—"}</td>
                 </tr>
               ))}
             </tbody>

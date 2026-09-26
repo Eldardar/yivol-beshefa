@@ -165,6 +165,7 @@ img, svg { display: block; max-width: 100%; }
 /* Directional exception for values that must stay LTR inside the RTL shell
    (ids, phone numbers, codes) while remaining aligned with surrounding text. */
 .ltr-field { display: inline-block; unicode-bidi: isolate; }
+.unit-line { display: block; white-space: nowrap; }
 
 /* ==========================================================================
    Layout primitives

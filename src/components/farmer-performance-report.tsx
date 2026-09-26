@@ -129,8 +129,7 @@ export function FarmerPerformanceReport({
                     {row.units.length === 0
                       ? <span className="muted">לא הוגדר יעד</span>
                       : row.units.map((u, i) => (
-                        <span key={u.unit}>
-                          {i > 0 && " · "}
+                        <span key={u.unit} className="unit-line">
                           <span dir="ltr" className="ltr-field">{u.actual ?? "—"}/{u.goal}</span> {UNIT_LABEL[u.unit]}
                         </span>
                       ))}

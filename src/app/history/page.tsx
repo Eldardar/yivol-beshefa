@@ -104,7 +104,7 @@ export default async function History({ searchParams }: { searchParams: Promise<
                   <td>{x.farm}</td>
                   <td>{x.crop}</td>
                   <td><span dir="ltr" className="ltr-field">{hoursText(x)}</span></td>
-                  <td>{parts.length ? parts.map((p, i) => <span key={p.key}>{i > 0 ? " · " : ""}{p.node}</span>) : "—"}</td>
+                  <td>{parts.length ? parts.map((p) => <span key={p.key} className="unit-line">{p.node}</span>) : "—"}</td>
                 </tr>
               );
             })}

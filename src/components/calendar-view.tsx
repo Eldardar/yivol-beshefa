@@ -148,8 +148,7 @@ export function CalendarView({ year, month, label, days, unitRatesByField }: { y
                             <td>{p.name}</td>
                             <td>
                               {p.quantities.length === 0 ? "—" : p.quantities.map((q, qi) => (
-                                <span key={q.unit}>
-                                  {qi > 0 && " · "}
+                                <span key={q.unit} className="unit-line">
                                   <span dir="ltr" className="ltr-field">{q.quantity}</span> {UNIT_LABEL[q.unit]}
                                 </span>
                               ))}
@@ -165,8 +164,7 @@ export function CalendarView({ year, month, label, days, unitRatesByField }: { y
                         <td colSpan={2}>סה&quot;כ</td>
                         <td>
                           {totalsByUnit(selected.shift.pickers).length === 0 ? "—" : totalsByUnit(selected.shift.pickers).map((t, i) => (
-                            <span key={t.unit}>
-                              {i > 0 && " · "}
+                            <span key={t.unit} className="unit-line">
                               <span dir="ltr" className="ltr-field">{t.quantity}</span> {UNIT_LABEL[t.unit]}
                             </span>
                           ))}
