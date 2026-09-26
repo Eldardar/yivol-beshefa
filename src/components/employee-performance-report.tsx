@@ -285,7 +285,7 @@ export function EmployeePerformanceReport({
                     <td>
                       {row.quantities.length === 0
                         ? <span className="muted">טרם דווח</span>
-                        : row.quantities.map((q, i) => (
+                        : row.quantities.map(q => (
                           <span key={q.unit} className="unit-line">
                             <span dir="ltr" className="ltr-field">{q.quantity}</span> {UNIT_LABEL[q.unit]}
                           </span>

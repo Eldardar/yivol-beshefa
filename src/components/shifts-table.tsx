@@ -275,7 +275,7 @@ export function ShiftsTable({
                     <td>{row.leader}</td>
                     <td>{row.picker_count}</td>
                     <td>
-                      {units.length ? units.map((u, i) => (
+                      {units.length ? units.map(u => (
                         <span key={u.unit} className="unit-line">
                           <span dir="ltr" className="ltr-field">{u.produced ?? "—"}/{u.goal}</span> {UNIT_LABEL[u.unit]}
                         </span>
@@ -452,7 +452,7 @@ function ShiftDetails({ units, pickerNames, totalPickers, pickerHours, unitRates
                         <td>{p.name}</td>
                         <td>{p.startTime && p.endTime ? <span dir="ltr" className="ltr-field">{p.startTime}–{p.endTime}</span> : <span className="muted">טרם דווח</span>}</td>
                         <td>
-                          {p.quantities.length === 0 ? "—" : p.quantities.map((q, qi) => (
+                          {p.quantities.length === 0 ? "—" : p.quantities.map(q => (
                             <span key={q.unit} className="unit-line">
                               <span dir="ltr" className="ltr-field">{q.quantity}</span> {UNIT_LABEL[q.unit]}
                             </span>
@@ -469,7 +469,7 @@ function ShiftDetails({ units, pickerNames, totalPickers, pickerHours, unitRates
                 <tr className="totals-row">
                   <td colSpan={3}>סה&quot;כ</td>
                   <td>
-                    {totalsByUnit(pickerHours).length === 0 ? "—" : totalsByUnit(pickerHours).map((t, i) => (
+                    {totalsByUnit(pickerHours).length === 0 ? "—" : totalsByUnit(pickerHours).map(t => (
                       <span key={t.unit} className="unit-line">
                         <span dir="ltr" className="ltr-field">{t.quantity}</span> {UNIT_LABEL[t.unit]}
                       </span>
