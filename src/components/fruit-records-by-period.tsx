@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { FruitTopResultsCard, type WorkerRef } from "./fruit-top-results";
 import type { FruitTopResults } from "@/lib/shifts-data";
+import { playRandomFunnySound } from "@/lib/funny-sounds";
 
 type Period = "month" | "year";
 const PERIODS: Array<{ key: Period; label: string }> = [
@@ -47,6 +48,7 @@ function FruitCard({
       results={results}
       workersById={workersById}
       rangeLabel={PERIODS.find(p => p.key === period)!.label}
+      onSelectWorker={playRandomFunnySound}
       controls={
         <div className="tabs" role="tablist" aria-label={`טווח זמן · ${fruitType}`}>
           {PERIODS.map(p => (

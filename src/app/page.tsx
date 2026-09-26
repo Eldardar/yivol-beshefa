@@ -135,7 +135,7 @@ export default async function Home() {
       ) : (
         <p>אין שיבוצים קרובים</p>
       )}
-      <HeroGallery images={[{ src: "/worker-hero.png", alt: "" }, { src: "/worker-hero-2.png", alt: "" }]} />
+      <HeroGallery images={[{ src: "/worker-hero.png", alt: "" }, { src: "/worker-hero-2.png", alt: "" }, { src: "/worker-hero-3.png", alt: "" }]} />
       <FruitRecordsByPeriod byPeriod={fruitRecordsByPeriod} workers={workerNames} />
     </AppShell>
   );
