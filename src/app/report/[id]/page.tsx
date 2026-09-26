@@ -62,18 +62,21 @@ export default async function ReportOwnResults({ params }: { params: Promise<{ i
         <input type="hidden" name="csrf" value={csrf} />
         <input type="hidden" name="shiftId" value={id} />
         <p className="muted">{shift.farm} · {shift.crop} · <span className="muted">שעות מתוכננות:</span> <span dir="ltr" className="ltr-field">{shift.start_time}–{shift.end_time}</span></p>
-        <div className="grid">
+        <div className="time-pair">
           <div className="field"><label htmlFor="report-hours-start">שעת התחלה בפועל</label><input className="input" id="report-hours-start" type="time" name="hoursStart" required defaultValue={hours?.start_time ?? ""} /></div>
           <div className="field"><label htmlFor="report-hours-end">שעת סיום בפועל</label><input className="input" id="report-hours-end" type="time" name="hoursEnd" required defaultValue={hours?.end_time ?? ""} /></div>
         </div>
-        <UnitLines
-          valueName="qty"
-          unitName="unit"
-          initial={quantities.map(q => ({ value: q.quantity, unit: q.unit }))}
-          addLabel="הוספת שורת דיווח נוספת"
-          valueLabel="כמות"
-          unitLabel="יחידת מידה"
-        />
+        <div className="field">
+          <span>תוצאה (הכמות שהושגה בפועל)</span>
+          <UnitLines
+            valueName="qty"
+            unitName="unit"
+            initial={quantities.map(q => ({ value: q.quantity, unit: q.unit }))}
+            addLabel="הוספת שורת דיווח נוספת"
+            valueLabel="כמות"
+            unitLabel="יחידת מידה"
+          />
+        </div>
         <button className="btn">שמירת הדיווח</button>
       </form>
     </AppShell>

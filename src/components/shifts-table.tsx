@@ -607,7 +607,7 @@ function CompleteShiftButton({ csrf, id, units }: { csrf: string; id: number; un
         <Modal title="תוצאה סופית של המשמרת" onClose={() => setOpen(false)}>
           <form className="stack" onSubmit={submit}>
             {error && <p className="alert" role="alert">{error}</p>}
-            <p>נא להזין את התוצאה הסופית של המשמרת, באותן יחידות מידה שנקבעו ביעד.</p>
+            <p>נא להזין את התוצאה הסופית של המשמרת — הכמות שהושגה בפועל — באותן יחידות מידה שנקבעו ביעד.</p>
             {units.map(u => (
               <div className="field" key={u.unit}>
                 <label htmlFor={`result-${id}-${u.unit}`}>{UNIT_LABEL[u.unit]} (יעד: <span dir="ltr" className="ltr-field">{u.goal}</span>)</label>

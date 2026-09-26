@@ -199,6 +199,7 @@ export function ShiftForm({
       {shift?.status === "COMPLETED" && existingGoals.length > 0 && (
         <div className="field">
           <span>תוצאה סופית</span>
+          <span className="muted">הכמות שהושגה בפועל במשמרת</span>
           <div className="stack">
             {existingGoals.map(g => (
               <div className="line-row" key={g.unit}>

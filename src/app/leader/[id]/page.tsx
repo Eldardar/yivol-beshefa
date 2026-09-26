@@ -51,11 +51,14 @@ export default async function Leader({ params }: { params: Promise<{ id: string 
           return (
             <div className="field" key={p.id}>
               <span>{p.name}</span>
-              <div className="grid">
-                <div className="field"><label htmlFor={`hours-start-${p.id}`}>שעת התחלה · {p.name}</label><input className="input" id={`hours-start-${p.id}`} type="time" name={`hoursStart_${p.id}`} required defaultValue={hours?.start_time ?? shift.start_time} /></div>
-                <div className="field"><label htmlFor={`hours-end-${p.id}`}>שעת סיום · {p.name}</label><input className="input" id={`hours-end-${p.id}`} type="time" name={`hoursEnd_${p.id}`} required defaultValue={hours?.end_time ?? shift.end_time} /></div>
+              <div className="time-pair">
+                <div className="field"><label htmlFor={`hours-start-${p.id}`}>שעת התחלה</label><input className="input" id={`hours-start-${p.id}`} aria-label={`שעת התחלה · ${p.name}`} type="time" name={`hoursStart_${p.id}`} required defaultValue={hours?.start_time ?? shift.start_time} /></div>
+                <div className="field"><label htmlFor={`hours-end-${p.id}`}>שעת סיום</label><input className="input" id={`hours-end-${p.id}`} aria-label={`שעת סיום · ${p.name}`} type="time" name={`hoursEnd_${p.id}`} required defaultValue={hours?.end_time ?? shift.end_time} /></div>
               </div>
-              <UnitLines valueName={`qty_${p.id}`} unitName={`unit_${p.id}`} initial={linesByUser.get(p.id) ?? []} addLabel={`הוספת שורת דיווח נוספת עבור ${p.name}`} valueLabel={`כמות · ${p.name}`} unitLabel={`יחידת מידה · ${p.name}`} />
+              <div className="field">
+                <span>תוצאה (הכמות שהושגה בפועל)</span>
+                <UnitLines valueName={`qty_${p.id}`} unitName={`unit_${p.id}`} initial={linesByUser.get(p.id) ?? []} addLabel={`הוספת שורת דיווח נוספת עבור ${p.name}`} valueLabel={`כמות · ${p.name}`} unitLabel={`יחידת מידה · ${p.name}`} />
+              </div>
             </div>
           );
         })}

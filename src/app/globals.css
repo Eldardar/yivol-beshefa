@@ -189,6 +189,9 @@ img, svg { display: block; max-width: 100%; }
 .row { display: flex; gap: var(--space-4); align-items: center; flex-wrap: wrap; }
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-4); }
 
+/* Actual start/end time inputs on report pages: two compact columns instead of stretching across the card. */
+.time-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 9.5rem)); justify-content: start; gap: var(--space-3); }
+
 .footer { text-align: center; color: var(--color-text-secondary); font: var(--text-body-sm); padding: var(--space-7) 0; }
 
 /* ==========================================================================
@@ -350,6 +353,23 @@ a.card:hover, a.card:focus-visible { border-color: var(--brand-forest-600); box-
 }
 .goal-progress-list { list-style: none; }
 .goal-progress { display: grid; gap: var(--space-1); }
+/* Goal reached: gold fill with a light sweeping across it. */
+.progress-fill--gold {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(90deg, #b8860b, #f5c542 45%, #ffe38a 55%, #d4a017);
+  box-shadow: 0 0 8px rgba(245, 197, 66, 0.6);
+}
+.progress-fill--gold::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.75) 50%, transparent 70%);
+  transform: translateX(-100%);
+  animation: gold-shine 2.4s ease-in-out infinite;
+}
+@keyframes gold-shine { to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { .progress-fill--gold::after { animation: none; } }
 .onboarding-steps { display: grid; gap: var(--space-2); list-style: none; }
 .onboarding-step-link {
   display: flex;
@@ -398,6 +418,9 @@ a.card:hover, a.card:focus-visible { border-color: var(--brand-forest-600); box-
 
 .btn.danger { background: var(--color-danger); }
 .btn.danger:hover { background: var(--color-danger-hover); }
+
+/* Buttons placed directly in grid containers (forms, cards) size to their text instead of stretching across. */
+:is(.stack, .card, .field) > .btn { justify-self: start; }
 
 .btn-sm { min-height: 40px; padding: 0 var(--space-4); font-size: 0.9375rem; }
 .btn-icon-leading { display: inline-flex; align-items: center; gap: var(--space-2); }

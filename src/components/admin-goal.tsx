@@ -66,14 +66,15 @@ export function AdminGoal({ monthLabel, progress, csrf }: { monthLabel: string; 
           <ul className="stack goal-progress-list">
             {progress.map(p => {
               const left = Math.max(p.goal - p.done, 0);
-              const percent = Math.min(100, Math.round((p.done / p.goal) * 100));
+              const percent = Math.round((p.done / p.goal) * 100);
+              const reached = p.done >= p.goal;
               return (
                 <li key={p.unit} className="goal-progress">
                   <strong>
                     {left > 0 ? `נותרו ${formatQty(left)} ${UNIT_LABEL[p.unit]} החודש` : `היעד של ${UNIT_LABEL[p.unit]} הושג 🎉`}
                   </strong>
-                  <div className="progress-track" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
-                    <div className="progress-fill" style={{ width: `${percent}%` }} />
+                  <div className="progress-track" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={Math.max(100, percent)}>
+                    <div className={reached ? "progress-fill progress-fill--gold" : "progress-fill"} style={{ width: `${Math.min(100, percent)}%` }} />
                   </div>
                   <span className="muted">{`בוצעו ${formatQty(p.done)} מתוך ${formatQty(p.goal)} (${percent}%)`}</span>
                 </li>
