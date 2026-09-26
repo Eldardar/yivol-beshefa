@@ -115,9 +115,12 @@ function exportSheets(shifts: ShiftRow[], unitsByShift: UnitsByShift, pickerHour
   ];
 }
 
-function unratedUnits(units: UnitInfo[], plantationFieldId: number, ratedUnitsByField: RatedUnitsByField): Unit[] {
+// Units pickers reported quantities in that have no pay rate on the field. The shift's own goal units are
+// exempt — a goal unit only tracks the shift's target and doesn't need a rate.
+function unratedUnits(units: UnitInfo[], pickerHours: PickerHoursByShift[number], plantationFieldId: number, ratedUnitsByField: RatedUnitsByField): Unit[] {
   const rated = ratedUnitsByField[plantationFieldId] ?? [];
-  return units.filter(u => u.goal > 0 && !rated.includes(u.unit)).map(u => u.unit);
+  const goalUnits = units.map(u => u.unit);
+  return unitsPresent(pickerHours.map(p => p.quantities)).filter(u => !rated.includes(u) && !goalUnits.includes(u));
 }
 
 // Colors a unit's goal/result line by its achievement, once its result is entered.
@@ -227,7 +230,7 @@ export function ShiftsTable({
         {filtered.map(row => {
           const isOpen = expanded === row.id;
           const units = unitsByShift[row.id] ?? [];
-          const unrated = unratedUnits(units, row.plantation_field_id, ratedUnitsByField);
+          const unrated = unratedUnits(units, pickerHoursByShift[row.id] ?? [], row.plantation_field_id, ratedUnitsByField);
           return (
             <article className="record-card" key={row.id} data-shift-id={row.id}>
               <div className="record-card-head">
@@ -276,7 +279,7 @@ export function ShiftsTable({
             {filtered.map(row => {
               const isOpen = expanded === row.id;
               const units = unitsByShift[row.id] ?? [];
-              const unrated = unratedUnits(units, row.plantation_field_id, ratedUnitsByField);
+              const unrated = unratedUnits(units, pickerHoursByShift[row.id] ?? [], row.plantation_field_id, ratedUnitsByField);
               return (
                 <Fragment key={row.id}>
                   <tr data-shift-id={row.id}>
