@@ -1,8 +1,8 @@
 import type Database from "better-sqlite3";
 import { generatePassword, hashPassword } from "@/lib/security";
-import { adminAvailabilityUpdateSchema, broadcastNotificationSchema, fieldUnitRatesSchema, notificationTargetSchema } from "@/lib/schemas";
+import { adminAvailabilityUpdateSchema, adminHousingUpdateSchema, broadcastNotificationSchema, fieldUnitRatesSchema, notificationTargetSchema } from "@/lib/schemas";
 import { pushToUsers } from "@/lib/push";
-import { jerusalemInstant } from "@/lib/dates";
+import { jerusalemDate, jerusalemInstant } from "@/lib/dates";
 
 export type ManagedEntity = "USER" | "FARM" | "PLANTATION_FIELD" | "VEHICLE";
 const tables: Record<ManagedEntity,string> = { USER:"users", FARM:"farms", PLANTATION_FIELD:"plantation_fields", VEHICLE:"vehicles" };
@@ -102,6 +102,32 @@ export class AdminService {
       for(const entry of input.entries){if(entry.status===null)clear.run(input.userId,entry.date);else upsert.run(input.userId,entry.date,entry.status);}
       this.db.prepare("INSERT INTO notifications(user_id,title,body) VALUES(?,?,?)").run(input.userId,title,body);
       this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)").run(actorId,"UPDATE","AVAILABILITY",input.userId,JSON.stringify({dates:input.entries.map(e=>e.date)}));
+    }).immediate();
+    await pushToUsers(this.db,[{userId:input.userId,title,body}]);
+  }
+
+  async setWorkerHousing(actorId:number, raw:unknown, now=new Date()):Promise<void> {
+    const input=adminHousingUpdateSchema.parse(raw);
+    const actor=this.db.prepare("SELECT role,active FROM users WHERE id=?").get(actorId) as {role:string;active:number}|undefined;
+    if(!actor?.active || actor.role!=="ADMIN") throw new Error("אין הרשאה");
+    const target=this.db.prepare("SELECT role,active FROM users WHERE id=?").get(input.userId) as {role:string;active:number}|undefined;
+    if(!target?.active || target.role!=="PICKER") throw new Error("עובד לא נמצא");
+    const today=jerusalemDate(now);
+    const seen=new Set<string>();
+    for(const entry of input.entries){
+      if(seen.has(entry.date)) throw new Error("תאריך כפול בבקשה");
+      seen.add(entry.date);
+      if(entry.date<today) throw new Error("ניתן לעדכן סידור שינה רק להיום ולימים הבאים");
+    }
+    const title="עדכון סידור שינה";
+    const body="מנהל/ת עדכן/ה את סידור השינה שלך. אפשר לבדוק ולערוך בעמוד \"מגורים\".";
+    this.db.transaction(()=>{
+      const upsert=this.db.prepare(`INSERT INTO housing_status(user_id,date,status) VALUES(?,?,?)
+        ON CONFLICT(user_id,date) DO UPDATE SET status=excluded.status`);
+      const clear=this.db.prepare("DELETE FROM housing_status WHERE user_id=? AND date=?");
+      for(const entry of input.entries){if(entry.status===null)clear.run(input.userId,entry.date);else upsert.run(input.userId,entry.date,entry.status);}
+      this.db.prepare("INSERT INTO notifications(user_id,title,body) VALUES(?,?,?)").run(input.userId,title,body);
+      this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)").run(actorId,"UPDATE","HOUSING",input.userId,JSON.stringify({dates:input.entries.map(e=>e.date)}));
     }).immediate();
     await pushToUsers(this.db,[{userId:input.userId,title,body}]);
   }

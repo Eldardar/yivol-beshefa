@@ -119,3 +119,23 @@ describe("הודעה מותאמת אישית ותזמון",()=>{
     await expect(new AdminService(db).sendOrScheduleNotification(x.p1,{title:"כותרת",body:"תוכן",userIds:[x.p2],sendAt:""})).rejects.toThrow("אין הרשאה");
   });
 });
+
+describe("עריכת מגורים על ידי מנהל", () => {
+  const now = new Date("2026-08-10T20:00:00+03:00");
+  it("מעדכן היום וימים עתידיים גם אחרי 18:00, שולח התראה ורושם ביקורת", async () => {
+    const x = setup();
+    db.prepare("INSERT INTO housing_status(user_id,date,status) VALUES(?,?,?)").run(x.p1, "2026-08-11", "AWAY");
+    await new AdminService(db).setWorkerHousing(x.admin, { userId: x.p1, entries: [{ date: "2026-08-10", status: "IN_VILLAGE" }, { date: "2026-08-11", status: null }] }, now);
+    expect(db.prepare("SELECT date,status FROM housing_status WHERE user_id=? ORDER BY date").all(x.p1)).toEqual([{ date: "2026-08-10", status: "IN_VILLAGE" }]);
+    expect(db.prepare("SELECT title FROM notifications WHERE user_id=?").get(x.p1)).toEqual({ title: "עדכון סידור שינה" });
+    expect(db.prepare("SELECT entity_type FROM audit_events WHERE actor_id=? AND entity_type='HOUSING'").get(x.admin)).toEqual({ entity_type: "HOUSING" });
+  });
+  it("חוסם תאריכי עבר, משתמש שאינו מנהל ויעד שאינו קוטף", async () => {
+    const x = setup();
+    const service = new AdminService(db);
+    await expect(service.setWorkerHousing(x.admin, { userId: x.p1, entries: [{ date: "2026-08-09", status: "AWAY" }] }, now)).rejects.toThrow(/היום ולימים הבאים/);
+    await expect(service.setWorkerHousing(x.p2, { userId: x.p1, entries: [{ date: "2026-08-12", status: "AWAY" }] }, now)).rejects.toThrow(/אין הרשאה/);
+    await expect(service.setWorkerHousing(x.admin, { userId: x.admin, entries: [{ date: "2026-08-12", status: "AWAY" }] }, now)).rejects.toThrow(/עובד לא נמצא/);
+    expect(db.prepare("SELECT COUNT(*) AS n FROM housing_status").get()).toEqual({ n: 0 });
+  });
+});

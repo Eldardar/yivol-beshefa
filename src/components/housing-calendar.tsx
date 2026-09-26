@@ -7,7 +7,7 @@ export type HousingDay = { date: string; day: number; weekday: number; isToday: 
 
 const WEEKDAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 const OPTIONS: { status: Status; label: string; cssKey: "available" | "maybe" | "unavailable" }[] = [
-  { status: "IN_VILLAGE", label: "ישן בכפר", cssKey: "available" },
+  { status: "IN_VILLAGE", label: "ישן בכפר 25 🪙", cssKey: "available" },
   { status: "MAYBE", label: "אולי", cssKey: "maybe" },
   { status: "AWAY", label: "חוגג את החיים במקום אחר", cssKey: "unavailable" }
 ];

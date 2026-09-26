@@ -1,12 +1,13 @@
 import { AppShell } from "@/components/nav";
 import { HousingAdminView, type HousingByWorker, type HousingDay, type HousingOverviewDay, type NamedWorker, type WorkerOption } from "@/components/housing-admin-view";
-import { db, requireAdmin } from "@/lib/server";
+import { csrfValue, db, requireAdmin } from "@/lib/server";
 import { jerusalemDate, monthRange } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminHousing({ searchParams }: { searchParams: Promise<{ y?: string; m?: string }> }) {
   const user = await requireAdmin();
+  const csrf = await csrfValue();
   const database = db();
   const query = await searchParams;
 
@@ -41,7 +42,7 @@ export default async function AdminHousing({ searchParams }: { searchParams: Pro
     const day = i + 1;
     const date = `${range.start.slice(0, 8)}${String(day).padStart(2, "0")}`;
     const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
-    return { date, day, weekday, isToday: date === today, status: null };
+    return { date, day, weekday, isToday: date === today, isPast: date < today, status: null };
   });
 
   const overview: HousingOverviewDay[] = days.map(d => {
@@ -61,8 +62,8 @@ export default async function AdminHousing({ searchParams }: { searchParams: Pro
   return (
     <AppShell user={user}>
       <h1>מגורים</h1>
-      <p className="muted">בחרו עובד/ת לצפייה בסידור השינה שלהם לאורך זמן, או צפו בתצוגה החודשית המרוכזת.</p>
-      <HousingAdminView workers={workers} year={year} month={month} label={label} days={days} overview={overview} housingByWorker={housingByWorker} />
+      <p className="muted">בחרו עובד/ת לצפייה ועריכה של סידור השינה שלהם (היום והלאה), או צפו בתצוגה החודשית המרוכזת.</p>
+      <HousingAdminView csrf={csrf} workers={workers} year={year} month={month} label={label} days={days} overview={overview} housingByWorker={housingByWorker} />
     </AppShell>
   );
 }

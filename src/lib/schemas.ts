@@ -51,6 +51,10 @@ export const housingStatusSchema = z.object({
 export const housingMonthSchema = z.object({
   entries: z.array(housingStatusSchema).min(1)
 }).strict();
+export const adminHousingUpdateSchema = z.object({
+  userId: id,
+  entries: z.array(housingStatusSchema).min(1)
+}).strict();
 
 const goalLineSchema = z.object({
   unit: unitSchema,
