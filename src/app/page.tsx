@@ -43,6 +43,11 @@ export default async function Home() {
       .map(g => ({ ...g, done: doneByUnit.get(g.unit) ?? 0 }));
     const monthLabel = new Intl.DateTimeFormat("he-IL", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${monthRange.start}T00:00:00Z`));
     const csrf = await csrfValue();
+    const fruitRecordsByPeriod = {
+      month: getTopResultsByFruit(database, today, monthRange),
+      year: getTopResultsByFruit(database, today, currentJerusalemYear())
+    };
+    const workerNames = database.prepare("SELECT id,name FROM users WHERE role='PICKER'").all() as Array<{ id: number; name: string }>;
     return (
       <AppShell user={user}>
         <section className="hero">
@@ -71,6 +76,7 @@ export default async function Home() {
           </article>
         </div>
         <AdminGoal monthLabel={monthLabel} progress={goalProgress} csrf={csrf} />
+        <FruitRecordsByPeriod byPeriod={fruitRecordsByPeriod} workers={workerNames} />
         <Link className="card" href="/admin/shifts">
           <h2>ניהול משמרות ←</h2>
           <p className="muted">יצירה, פרסום ודיווח כמויות</p>
@@ -137,6 +143,9 @@ export default async function Home() {
       )}
       <HeroGallery images={[{ src: "/worker-hero.png", alt: "" }, { src: "/worker-hero-2.png", alt: "" }, { src: "/worker-hero-3.png", alt: "" }]} />
       <FruitRecordsByPeriod byPeriod={fruitRecordsByPeriod} workers={workerNames} />
+      <div className="game-link">
+        <Link href="/game" className="btn secondary">למשחק</Link>
+      </div>
     </AppShell>
   );
 }

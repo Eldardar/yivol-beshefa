@@ -1143,3 +1143,46 @@ button.bottom-nav-link { border: 0; background: transparent; }
   .calendar--full .calendar-day { min-height: 90px; padding: 0.3rem; }
   .calendar-shift-list .tag { font-size: 0.62rem; padding: 0.15rem 0.35rem; }
 }
+
+/* ==========================================================================
+   Secret picker snake game (/game)
+   ========================================================================== */
+.game-link { display: flex; justify-content: center; margin-top: var(--space-6); }
+.snake-game { display: grid; gap: var(--space-3); justify-items: center; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.snake-scores { display: flex; gap: var(--space-6); font-size: 1.05rem; }
+/* Square board that fits the phone screen, leaving room for header, scores and the D-pad. */
+.snake-board {
+  position: relative;
+  width: min(100%, 520px, calc(100dvh - 300px));
+  min-width: 240px;
+  aspect-ratio: 1;
+  touch-action: none;
+  overscroll-behavior: contain;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 2px solid var(--brand-forest-700);
+}
+.snake-board canvas { display: block; width: 100%; height: 100%; }
+.snake-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  text-align: center;
+  background: rgba(250, 247, 236, 0.82);
+}
+.snake-overlay-title { font-size: 1.15rem; font-weight: 700; color: var(--brand-forest-800); }
+.snake-pad {
+  display: grid;
+  grid-template-areas: ". up ." "left . right" ". down .";
+  grid-template-columns: repeat(3, 64px);
+  grid-template-rows: repeat(3, 56px);
+  gap: var(--space-2);
+  touch-action: manipulation;
+}
+.snake-pad .btn { min-height: 0; padding: 0; font-size: 1.4rem; }
+/* The D-pad is for touch screens; keyboards use arrows / WASD. */
+@media (hover: hover) and (pointer: fine) { .snake-pad { display: none; } }
