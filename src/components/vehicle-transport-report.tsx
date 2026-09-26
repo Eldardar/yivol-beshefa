@@ -2,9 +2,9 @@
 import { useState } from "react";
 import { RangeTabs, RANGE_LABEL, type RangeKey } from "./range-tabs";
 import { ExportExcelButton } from "./export-excel-button";
+import { VehiclePicker, type VehicleOption } from "./vehicle-picker";
 import { formatHebrewDate } from "@/lib/dates";
 
-export type VehicleOption = { id: number; number: string; name: string; active: number };
 export type VehicleTripRow = {
   id: number;
   date: string;
@@ -60,17 +60,7 @@ export function VehicleTransportReport({
 
   return (
     <div className="stack">
-      <select
-        className="input"
-        aria-label="בחירת רכב"
-        value={selectedId ?? ""}
-        onChange={e => setSelectedId(e.target.value ? Number(e.target.value) : null)}
-      >
-        <option value="">כל הרכבים</option>
-        {vehicles.map(v => (
-          <option key={v.id} value={v.id}>{vehicleLabel(v)}{v.active ? "" : " · לא פעיל"}</option>
-        ))}
-      </select>
+      <VehiclePicker vehicles={vehicles} selected={selected} onSelect={vehicle => setSelectedId(vehicle?.id ?? null)} />
 
       <RangeTabs active={range} onChange={setRange} />
 
@@ -86,17 +76,17 @@ export function VehicleTransportReport({
             fileName={`דוח תחבורה - ${RANGE_LABEL[range]}`}
             sheets={() => [{
               name: "רכבים",
-              header: ["#", "רכב", "מספר רכב", "נסיעות", "ימי עבודה", "סך שעות משמרת", "סטטוס"],
+              header: ["#", "רכב", "מספר רכב", "נסיעות", "ימי עבודה", "החזר כספי", "סטטוס"],
               rows: ranked.map((v, i) => {
                 const s = summaries.get(v.id)!;
-                return [i + 1, v.name, v.number, s.trips, s.days, Math.round(s.hours * 100) / 100, v.active ? "פעיל" : "לא פעיל"];
+                return [i + 1, v.name, v.number, s.trips, s.days, null, v.active ? "פעיל" : "לא פעיל"];
               })
             }]}
           />
           <div className="table-wrap card">
             <table className="table">
               <thead>
-                <tr><th>#</th><th>רכב</th><th>נסיעות</th><th>ימי עבודה</th><th>סך שעות משמרת</th></tr>
+                <tr><th>#</th><th>רכב</th><th>נסיעות</th><th>ימי עבודה</th><th>החזר כספי</th></tr>
               </thead>
               <tbody>
                 {ranked.map((v, i) => {
@@ -110,7 +100,7 @@ export function VehicleTransportReport({
                       </td>
                       <td>{s.trips}</td>
                       <td>{s.days}</td>
-                      <td>{formatHours(s.hours)}</td>
+                      <td></td>
                     </tr>
                   );
                 })}

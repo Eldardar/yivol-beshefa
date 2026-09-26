@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/nav";
-import { VehicleTransportReport, type VehicleOption } from "@/components/vehicle-transport-report";
+import { VehicleTransportReport } from "@/components/vehicle-transport-report";
+import type { VehicleOption } from "@/components/vehicle-picker";
 import { db, requireAdmin } from "@/lib/server";
 import { getTripsByVehicle } from "@/lib/shifts-data";
 import { jerusalemDate, currentJerusalemMonth, currentJerusalemYear } from "@/lib/dates";
