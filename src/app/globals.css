@@ -1149,7 +1149,16 @@ button.bottom-nav-link { border: 0; background: transparent; }
    ========================================================================== */
 .game-link { display: flex; justify-content: center; margin-top: var(--space-6); }
 .snake-game { display: grid; gap: var(--space-3); justify-items: center; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-.snake-scores { display: flex; gap: var(--space-6); font-size: 1.05rem; }
+.snake-scores { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: var(--space-3) var(--space-6); font-size: 1.05rem; }
+.snake-highscores-btn { min-height: 0; padding: var(--space-1) var(--space-3); font-size: 0.95rem; }
+.snake-highscores { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+.snake-highscores li { display: grid; grid-template-columns: 2.25rem 1fr auto 3rem; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-radius: var(--radius-lg); }
+.snake-highscores li:nth-child(odd) { background: var(--neutral-100); }
+.snake-highscores li.is-mine { font-weight: 600; }
+.snake-highscores li.is-new { background: rgba(213, 155, 58, 0.25); font-weight: 700; }
+.snake-highscores-rank { text-align: center; font-size: 1.1rem; }
+.snake-highscores-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.snake-highscores strong { text-align: end; font-size: 1.1rem; }
 /* Square board that fits the phone screen, leaving room for header, scores and the D-pad. */
 .snake-board {
   position: relative;

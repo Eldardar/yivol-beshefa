@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { playRandomFunnySound } from "@/lib/funny-sounds";
+import { formatHebrewDate, jerusalemDate } from "@/lib/dates";
+import type { SnakeHighScore } from "@/lib/snake-scores";
+import { Modal } from "./modal";
 
 const GRID = 15;
 const TICK_MS = 150;
@@ -59,13 +62,57 @@ function writeBest(score: number) {
   bestListeners.forEach(l => l());
 }
 
-export function PickerSnake() {
+function scoreDate(createdAt: string) {
+  return formatHebrewDate(jerusalemDate(new Date(`${createdAt.replace(" ", "T")}Z`)));
+}
+
+function HighScoresModal({ scores, userId, lastId, onClose }: { scores: SnakeHighScore[]; userId: number; lastId: number | null; onClose: () => void }) {
+  return (
+    <Modal title="טבלת שיאים" onClose={onClose}>
+      {scores.length === 0 ? (
+        <p className="muted">עדיין אין שיאים — היו הראשונים!</p>
+      ) : (
+        <ol className="snake-highscores">
+          {scores.map((s, i) => (
+            <li key={s.id} className={s.id === lastId ? "is-new" : s.userId === userId ? "is-mine" : undefined}>
+              <span className="snake-highscores-rank">{i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}</span>
+              <span className="snake-highscores-name">{s.name}</span>
+              <span className="muted">{scoreDate(s.createdAt)}</span>
+              <strong>{s.score}</strong>
+            </li>
+          ))}
+        </ol>
+      )}
+    </Modal>
+  );
+}
+
+export function PickerSnake({ initialHighScores, userId, csrf }: { initialHighScores: SnakeHighScore[]; userId: number; csrf: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const game = useRef(initialState());
   const [status, setStatus] = useState<Status>("ready");
   const [score, setScore] = useState(0);
   const best = useSyncExternalStore(subscribeBest, readBest, () => 0);
   const touchStart = useRef<Point | null>(null);
+  const [highScores, setHighScores] = useState(initialHighScores);
+  const [lastScoreId, setLastScoreId] = useState<number | null>(null);
+  const [showHighScores, setShowHighScores] = useState(false);
+
+  // Records the finished game; if it made the top 10, opens the table with the new row highlighted.
+  const submitScore = useCallback(async (finalScore: number) => {
+    try {
+      const res = await fetch("/api/game/scores", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ score: finalScore, csrf })
+      });
+      if (!res.ok) return;
+      const data = await res.json() as { id: number; scores: SnakeHighScore[] };
+      setHighScores(data.scores);
+      setLastScoreId(data.id);
+      if (data.scores.some(s => s.id === data.id)) setShowHighScores(true);
+    } catch { /* offline — the game still works without the leaderboard */ }
+  }, [csrf]);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -137,6 +184,7 @@ export function PickerSnake() {
         playRandomFunnySound();
         const finalScore = g.snake.length - 3;
         if (finalScore > readBest()) writeBest(finalScore);
+        if (finalScore > 0) submitScore(finalScore);
         setStatus("over");
         return;
       }
@@ -152,7 +200,7 @@ export function PickerSnake() {
     };
     timer = setTimeout(tick, TICK_MS);
     return () => clearTimeout(timer);
-  }, [status, draw]);
+  }, [status, draw, submitScore]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -160,14 +208,14 @@ export function PickerSnake() {
       if (dir) {
         e.preventDefault();
         if (status === "playing") turn(dir);
-      } else if ((e.key === " " || e.key === "Enter") && status !== "playing") {
+      } else if ((e.key === " " || e.key === "Enter") && status !== "playing" && !showHighScores) {
         e.preventDefault();
         start();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [status, start, turn]);
+  }, [status, start, turn, showHighScores]);
 
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
@@ -190,6 +238,7 @@ export function PickerSnake() {
       <div className="snake-scores">
         <span>ניקוד: <strong>{score}</strong></span>
         <span>שיא: <strong>{best}</strong></span>
+        <button type="button" className="btn secondary snake-highscores-btn" onClick={() => setShowHighScores(true)}>🏆 טבלת שיאים</button>
       </div>
       <div className="snake-board" onTouchStart={onTouchStart} onTouchMove={onTouchMove}>
         <canvas ref={canvasRef} aria-label="לוח משחק הנחש" />
@@ -207,6 +256,7 @@ export function PickerSnake() {
         <button type="button" className="btn secondary" style={{ gridArea: "right" }} onPointerDown={e => { e.preventDefault(); turn("right"); }} aria-label="ימינה">▶</button>
         <button type="button" className="btn secondary" style={{ gridArea: "down" }} onPointerDown={e => { e.preventDefault(); turn("down"); }} aria-label="למטה">▼</button>
       </div>
+      {showHighScores && <HighScoresModal scores={highScores} userId={userId} lastId={lastScoreId} onClose={() => setShowHighScores(false)} />}
     </div>
   );
 }
