@@ -60,12 +60,12 @@ export default async function Home() {
             <div className="metric">{stats.activePickers}/{stats.totalPickers}</div>
             <span className="kpi-sublabel">{stats.totalPickers - stats.activePickers} נשברו</span>
           </article>
-          <article className="kpi-card">
+          <Link className="kpi-card" href="/admin/shifts">
             <span className="kpi-label">משמרות קרובות</span>
             <div className="metric">
               {stats.shifts} <span className="kpi-sublabel">({stats.shiftWorkers} עובדים)</span>
             </div>
-          </article>
+          </Link>
           <article className="kpi-card">
             <span className="kpi-label">חקלאים פעילים</span>
             <div className="metric">{stats.farms}</div>

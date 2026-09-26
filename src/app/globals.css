@@ -299,8 +299,8 @@ img, svg { display: block; max-width: 100%; }
 }
 @media (max-width: 599px) { .card { padding: var(--space-4); } }
 
-a.card { transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard); }
-a.card:hover, a.card:focus-visible { border-color: var(--brand-forest-600); box-shadow: var(--shadow-sm); }
+a.card, a.kpi-card { transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard); }
+a.card:hover, a.card:focus-visible, a.kpi-card:hover, a.kpi-card:focus-visible { border-color: var(--brand-forest-600); box-shadow: var(--shadow-sm); }
 .next-shift-card { text-align: center; border: 2px solid var(--brand-forest-700); box-shadow: var(--shadow-sm); }
 .next-shift-card p { font-weight: 700; color: var(--brand-forest-800); }
 
