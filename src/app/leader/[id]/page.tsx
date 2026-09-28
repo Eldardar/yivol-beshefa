@@ -51,11 +51,9 @@ export default async function Leader({ params }: { params: Promise<{ id: string 
           return (
             <div className="field" key={p.id}>
               <span>{p.name}</span>
-              {user.role === "ADMIN" && (
-                <span className="muted">
-                  {p.self_reported_at ? `דווח על ידי העובד/ת · ${formatHebrewDateTime(p.self_reported_at)}` : "העובד/ת טרם מילא/ה דיווח"}
-                </span>
-              )}
+              <span className="muted">
+                {p.self_reported_at ? `דווח על ידי העובד/ת · ${formatHebrewDateTime(p.self_reported_at)}` : "העובד/ת טרם מילא/ה דיווח"}
+              </span>
               <div className="time-pair">
                 <div className="field"><label htmlFor={`hours-start-${p.id}`}>שעת התחלה</label><input className="input" id={`hours-start-${p.id}`} aria-label={`שעת התחלה · ${p.name}`} type="time" name={`hoursStart_${p.id}`} required defaultValue={hours?.start_time ?? shift.start_time} /></div>
                 <div className="field"><label htmlFor={`hours-end-${p.id}`}>שעת סיום</label><input className="input" id={`hours-end-${p.id}`} aria-label={`שעת סיום · ${p.name}`} type="time" name={`hoursEnd_${p.id}`} required defaultValue={hours?.end_time ?? shift.end_time} /></div>
