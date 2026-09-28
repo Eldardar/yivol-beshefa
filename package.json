@@ -17,6 +17,7 @@
     "e2e": "playwright test"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
     "@hebcal/core": "^6.9.2",
     "@tailwindcss/postcss": "^4.3.3",
     "better-sqlite3": "^13.0.1",

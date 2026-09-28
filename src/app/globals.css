@@ -692,6 +692,7 @@ select.input { appearance: auto; }
   gap: var(--space-4);
   align-content: start;
 }
+.modal--wide { max-width: 880px; }
 .modal-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); }
 .modal-close {
   background: transparent;
@@ -1220,3 +1221,59 @@ button.bottom-nav-link { border: 0; background: transparent; }
 .password-rules ul { margin: 0; padding-inline-start: 1.25rem; display: grid; gap: 2px; }
 .password-rules .muted { margin: 0; font-size: 0.875rem; }
 
+/* הוצאות */
+.expense-add-options { display: grid; gap: var(--space-3); }
+.expense-add-option {
+  display: flex; align-items: center; gap: var(--space-4); width: 100%; text-align: start;
+  padding: var(--space-4); border: 1px solid var(--color-border-strong); border-radius: var(--radius-lg);
+  background: var(--color-surface); color: var(--color-text-primary); font: inherit; cursor: pointer;
+}
+.expense-add-option:hover:not(:disabled) { background: var(--neutral-100); }
+.expense-add-option:disabled { opacity: 0.55; cursor: not-allowed; }
+.expense-add-option svg { flex: none; color: var(--color-primary); }
+.expense-add-option strong { display: block; }
+.expense-add-option span span { display: block; font-size: 0.875rem; color: var(--color-text-secondary); }
+.expense-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+.expense-form-grid .field--wide { grid-column: 1 / -1; }
+@media (max-width: 599px) { .expense-form-grid { grid-template-columns: 1fr; } }
+.expense-notes { max-width: 18rem; white-space: pre-line; font-size: 0.8125rem; color: #7a5417; }
+.table tfoot td { font-weight: 700; border-top: 2px solid var(--color-border); border-bottom: 0; }
+.expense-dropzone {
+  display: grid; justify-items: center; gap: var(--space-2); text-align: center;
+  padding: var(--space-6) var(--space-4); border: 2px dashed var(--color-border-strong); border-radius: var(--radius-2xl);
+  background: var(--color-surface-sunk); color: var(--color-text-secondary); cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
+}
+.expense-dropzone svg { color: var(--color-primary); }
+.expense-dropzone strong { color: var(--color-text-primary); }
+.expense-dropzone:hover, .expense-dropzone:focus-visible, .expense-dropzone.is-dragging { border-color: var(--color-primary); background: var(--color-primary-surface); }
+.expense-dropzone:focus-visible { outline: none; }
+.expense-dropzone.is-dragging { border-style: solid; }
+.expense-dropzone-link { color: var(--color-primary); font-weight: 600; text-decoration: underline; }
+.expense-dropzone-hint { font-size: 0.8125rem; }
+.expenses-actions { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.expense-details { padding: var(--space-4) var(--space-5); background: var(--color-surface-sunk); }
+.expense-details-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: var(--space-3) var(--space-5); margin: 0; }
+.expense-details-grid dt { font-size: 0.8125rem; color: var(--color-text-secondary); }
+.expense-details-grid dd { margin: 0; font-weight: 500; white-space: pre-line; overflow-wrap: anywhere; }
+.expense-detail--wide { grid-column: 1 / -1; }
+.expense-failed-btn { color: #7a5417; border-color: var(--color-warning); }
+.expense-failed-btn svg { color: var(--color-warning); }
+.count-badge {
+  display: inline-grid; place-items: center; min-width: 1.5rem; height: 1.5rem; padding: 0 0.4rem;
+  border-radius: var(--radius-full); background: var(--color-warning); color: #fff; font-size: 0.8125rem; font-weight: 700; line-height: 1;
+}
+.expense-failed-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
+.expense-failed-list .expense-add-option svg { color: var(--color-warning); }
+.expense-failed-list .expense-notes { max-width: none; margin-top: var(--space-1); }
+.expense-failed-notes { white-space: pre-line; margin: 0; }
+.expense-failed-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: var(--space-5); align-items: start; }
+.expense-failed-layout .expense-form-grid { grid-template-columns: 1fr; }
+.expense-preview { width: 100%; height: min(70vh, 640px); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface-sunk); object-fit: contain; }
+@media (max-width: 767px) {
+  .expense-failed-layout { grid-template-columns: 1fr; }
+  .expense-preview { height: 50vh; }
+}
+.expense-failed-item { display: flex; align-items: center; gap: var(--space-2); }
+.expense-failed-item > .expense-add-option { flex: 1; min-width: 0; }
+.expense-row-actions { flex-wrap: nowrap; }
