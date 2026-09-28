@@ -323,7 +323,7 @@ export function getBestShiftCountsByWorker(database: Database.Database, today: s
 export type FruitRecord = { fruitType: string; userId: number; date: string; earnings: number; quantities: Array<{ unit: Unit; quantity: number }> };
 export type FruitTopResults = { fruitType: string; results: FruitRecord[] };
 
-// Per fruit type, the best single-shift worker results (by earnings, like the 👑); ties go to the earliest shift.
+// Per fruit type, the best single-shift worker results (by earnings, like the 👑), one per worker; ties go to the earliest shift.
 export function getTopResultsByFruit(database: Database.Database, today: string, range?: { start: string; end: string }, limit = 5): FruitTopResults[] {
   const rangeClause = range ? "AND s.date >= ? AND s.date < ?" : "";
   const params = range ? [today, range.start, range.end] : [today];
@@ -354,7 +354,10 @@ export function getTopResultsByFruit(database: Database.Database, today: string,
   return Object.entries(byFruit)
     .map(([fruitType, list]) => ({
       fruitType,
-      results: list.sort((a, b) => b.earnings - a.earnings || a.date.localeCompare(b.date)).slice(0, limit)
+      results: list
+        .sort((a, b) => b.earnings - a.earnings || a.date.localeCompare(b.date))
+        .filter((result, i, sorted) => sorted.findIndex(other => other.userId === result.userId) === i)
+        .slice(0, limit)
     }))
     .sort((a, b) => a.fruitType.localeCompare(b.fruitType, "he"));
 }
