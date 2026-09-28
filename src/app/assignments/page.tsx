@@ -84,7 +84,9 @@ export default async function Assignments() {
               {x.leader_id !== user.id && x.date <= today && (
                 x.reported
                   ? <span className="btn secondary" aria-disabled="true" title="כבר דיווחת על משמרת זו">דיווח תוצאות אישי</span>
-                  : <Link className="btn secondary" href={`/report/${x.id}`}>דיווח תוצאות אישי</Link>
+                  : jerusalemInstant(x.date, x.start_time) > now
+                    ? <span className="btn secondary" aria-disabled="true" title="הדיווח ייפתח בשעת תחילת המשמרת">דיווח תוצאות אישי</span>
+                    : <Link className="btn secondary" href={`/report/${x.id}`}>דיווח תוצאות אישי</Link>
               )}
               {jerusalemInstant(x.date, x.start_time) > now && (
                 <WorkerGoalButton csrf={csrf} shiftId={x.id} existingGoal={goalsByShift.get(x.id) ?? []} allowedUnits={allowedUnitsByShift.get(x.id)} />

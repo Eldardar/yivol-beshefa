@@ -87,6 +87,13 @@ describe("דיווח תוצאות עצמי של קוטף", () => {
     expect(()=>service.reportOwnQuantities(x.p2,x.shift,[{quantity:6,unit:"KG"},{quantity:1,unit:"CRATE_LARGE"}])).toThrow("כבר דיווחת");
     expect(db.prepare("SELECT quantity FROM quantities WHERE shift_id=? AND user_id=?").all(x.shift,x.p2)).toEqual([{quantity:4.5}]);
   });
+  it("שומר את מועד שליחת הדיווח העצמי של הקוטף",()=>{
+    const x=setup();const service=new ShiftService(db);db.prepare("UPDATE shifts SET status='PUBLISHED' WHERE id=?").run(x.shift);
+    expect(db.prepare("SELECT self_reported_at FROM shift_pickers WHERE shift_id=? AND user_id=?").get(x.shift,x.p2)).toEqual({self_reported_at:null});
+    service.reportOwnQuantities(x.p2,x.shift,[{quantity:1,unit:"KG"}]);
+    const row=db.prepare("SELECT self_reported_at FROM shift_pickers WHERE shift_id=? AND user_id=?").get(x.shift,x.p2) as {self_reported_at:string|null};
+    expect(row.self_reported_at).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+  });
   it("חוסם כמות שלילית או יחידת מידה כפולה בדיווח עצמי",()=>{
     const x=setup();const service=new ShiftService(db);db.prepare("UPDATE shifts SET status='PUBLISHED' WHERE id=?").run(x.shift);
     expect(()=>service.reportOwnQuantities(x.p2,x.shift,[{quantity:-1,unit:"KG"}])).toThrow("כמות");

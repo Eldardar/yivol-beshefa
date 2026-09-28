@@ -1,7 +1,7 @@
 "use client";
 import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
-import { formatHebrewDate, jerusalemInstant } from "@/lib/dates";
+import { formatHebrewDate, formatHebrewDateTime, jerusalemInstant } from "@/lib/dates";
 import { UNIT_LABEL, unitsPresent, type Unit } from "@/lib/units";
 import type { XlsxSheet } from "@/lib/xlsx";
 import { ExportExcelButton } from "./export-excel-button";
@@ -20,7 +20,7 @@ export type UnitInfo = { unit: Unit; goal: number; produced: number | null };
 export type UnitsByShift = Record<number, UnitInfo[]>;
 export type PickerNamesByShift = Record<number, string[]>;
 export type PickerIdsByShift = Record<number, number[]>;
-export type PickerHoursByShift = Record<number, Array<{ name: string; startTime: string | null; endTime: string | null; quantities: Array<{ unit: Unit; quantity: number }> }>>;
+export type PickerHoursByShift = Record<number, Array<{ name: string; startTime: string | null; endTime: string | null; selfReportedAt?: string | null; quantities: Array<{ unit: Unit; quantity: number }> }>>;
 export type VehiclesByShift = Record<number, Array<{ number: string; name: string }>>;
 export type VehicleIdsByShift = Record<number, number[]>;
 export type RatedUnitsByField = Record<number, Unit[]>;
@@ -99,13 +99,14 @@ function exportSheets(shifts: ShiftRow[], unitsByShift: UnitsByShift, pickerHour
     },
     {
       name: "קוטפים",
-      header: ["תאריך", "חקלאי", "גידול", "שם", "התחלה", "סיום", "שעות", ...pickerUnits.map(u => `כמות (${UNIT_LABEL[u]})`), "ש\"ח לשעה", "סה\"כ הכנסה"],
+      header: ["תאריך", "חקלאי", "גידול", "שם", "התחלה", "סיום", "שעות", "דיווח עצמי", ...pickerUnits.map(u => `כמות (${UNIT_LABEL[u]})`), "ש\"ח לשעה", "סה\"כ הכנסה"],
       rows: pickerRows.map(({ row, picker }) => {
         const hours = hoursBetween(picker.startTime, picker.endTime);
         const earnings = pickerEarnings(picker.quantities, unitRatesByField[row.plantation_field_id] ?? {});
         return [
           { date: row.date }, row.farm, row.fruit_type, picker.name, picker.startTime, picker.endTime,
           hours != null ? Math.round(hours * 100) / 100 : null,
+          picker.selfReportedAt ? formatHebrewDateTime(picker.selfReportedAt) : null,
           ...pickerUnits.map(u => picker.quantities.find(q => q.unit === u)?.quantity),
           earnings != null && hours ? { money: earnings / hours } : null,
           earnings != null ? { money: earnings } : null
@@ -425,7 +426,7 @@ function CompletedEditButton({
   );
 }
 
-function ShiftDetails({ units, pickerNames, totalPickers, pickerHours, unitRates, vehicles, notes, plannedStart, plannedEnd, teamLeaderDetails, completedEditButton }: { units: UnitInfo[]; pickerNames: string[]; totalPickers: number; pickerHours: Array<{ name: string; startTime: string | null; endTime: string | null; quantities: Array<{ unit: Unit; quantity: number }> }>; unitRates: Partial<Record<Unit, number>>; vehicles: Array<{ number: string; name: string }>; notes: string; plannedStart: string; plannedEnd: string; teamLeaderDetails: string; completedEditButton?: React.ReactNode }) {
+function ShiftDetails({ units, pickerNames, totalPickers, pickerHours, unitRates, vehicles, notes, plannedStart, plannedEnd, teamLeaderDetails, completedEditButton }: { units: UnitInfo[]; pickerNames: string[]; totalPickers: number; pickerHours: Array<{ name: string; startTime: string | null; endTime: string | null; selfReportedAt?: string | null; quantities: Array<{ unit: Unit; quantity: number }> }>; unitRates: Partial<Record<Unit, number>>; vehicles: Array<{ number: string; name: string }>; notes: string; plannedStart: string; plannedEnd: string; teamLeaderDetails: string; completedEditButton?: React.ReactNode }) {
   return (
     <div className="sub-tables">
       <div className="stack">
@@ -454,7 +455,7 @@ function ShiftDetails({ units, pickerNames, totalPickers, pickerHours, unitRates
           <div className="table-wrap">
             <table className="table">
               <thead>
-                <tr><th>#</th><th>שם</th><th>שעות</th><th>כמות תוצרת</th><th>ש&quot;ח לשעה</th><th>סה&quot;כ הכנסה</th></tr>
+                <tr><th>#</th><th>שם</th><th>שעות</th><th>דיווח עצמי</th><th>כמות תוצרת</th><th>ש&quot;ח לשעה</th><th>סה&quot;כ הכנסה</th></tr>
               </thead>
               <tbody>
                 {(() => {
@@ -472,6 +473,7 @@ function ShiftDetails({ units, pickerNames, totalPickers, pickerHours, unitRates
                         <td>{i + 1}</td>
                         <td>{p.name}</td>
                         <td>{p.startTime && p.endTime ? <span dir="ltr" className="ltr-field">{p.startTime}–{p.endTime}</span> : <span className="muted">טרם דווח</span>}</td>
+                        <td>{p.selfReportedAt ? <span title="מולא על ידי העובד">{formatHebrewDateTime(p.selfReportedAt)}</span> : <span className="muted">לא מולא</span>}</td>
                         <td>
                           {p.quantities.length === 0 ? "—" : p.quantities.map(q => (
                             <span key={q.unit} className="unit-line">
@@ -488,7 +490,7 @@ function ShiftDetails({ units, pickerNames, totalPickers, pickerHours, unitRates
               </tbody>
               <tfoot>
                 <tr className="totals-row">
-                  <td colSpan={3}>סה&quot;כ</td>
+                  <td colSpan={4}>סה&quot;כ</td>
                   <td>
                     {totalsByUnit(pickerHours).length === 0 ? "—" : totalsByUnit(pickerHours).map(t => (
                       <span key={t.unit} className="unit-line">

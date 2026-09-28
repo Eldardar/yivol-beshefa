@@ -94,6 +94,7 @@ export class ShiftService{
    const insert=this.db.prepare("INSERT INTO quantities(shift_id,user_id,quantity,unit,updated_by) VALUES(?,?,?,?,?)");for(const entry of entries)insert.run(shiftId,actorId,entry.quantity,entry.unit,actorId);
    if(hours)this.db.prepare("INSERT INTO shift_hours(shift_id,user_id,start_time,end_time,updated_by,updated_at) VALUES(?,?,?,?,?,CURRENT_TIMESTAMP) ON CONFLICT(shift_id,user_id) DO UPDATE SET start_time=excluded.start_time,end_time=excluded.end_time,updated_by=excluded.updated_by,updated_at=CURRENT_TIMESTAMP").run(shiftId,actorId,hours.startTime,hours.endTime,actorId);
    this.db.prepare("DELETE FROM shift_report_reminders WHERE shift_id=? AND user_id=?").run(shiftId,actorId);
+   this.db.prepare("UPDATE shift_pickers SET self_reported_at=CURRENT_TIMESTAMP WHERE shift_id=? AND user_id=?").run(shiftId,actorId);
    this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)").run(actorId,"SELF_REPORT","SHIFT",shiftId,JSON.stringify({count:entries.length}));
   })();
  }

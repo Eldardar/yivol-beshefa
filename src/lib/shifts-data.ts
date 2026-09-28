@@ -71,12 +71,12 @@ export function loadShiftsPageData(database: Database.Database, opts: { dateFrom
 
   const pickerRows = database
     .prepare(
-      `SELECT sp.shift_id,u.id user_id,u.name,sh.start_time,sh.end_time
+      `SELECT sp.shift_id,u.id user_id,u.name,sh.start_time,sh.end_time,sp.self_reported_at
        FROM shift_pickers sp JOIN users u ON u.id=sp.user_id
        LEFT JOIN shift_hours sh ON sh.shift_id=sp.shift_id AND sh.user_id=sp.user_id
        ORDER BY u.name`
     )
-    .all() as Array<{ shift_id: number; user_id: number; name: string; start_time: string | null; end_time: string | null }>;
+    .all() as Array<{ shift_id: number; user_id: number; name: string; start_time: string | null; end_time: string | null; self_reported_at: string | null }>;
   const quantityRows = database.prepare("SELECT shift_id,user_id,unit,quantity FROM quantities").all() as Array<{ shift_id: number; user_id: number; unit: Unit; quantity: number }>;
   const quantitiesByShiftUser = new Map<string, Array<{ unit: Unit; quantity: number }>>();
   for (const q of quantityRows) {
@@ -89,7 +89,7 @@ export function loadShiftsPageData(database: Database.Database, opts: { dateFrom
   for (const p of pickerRows) {
     (pickerNamesByShift[p.shift_id] ??= []).push(p.name);
     (pickerIdsByShift[p.shift_id] ??= []).push(p.user_id);
-    (pickerHoursByShift[p.shift_id] ??= []).push({ name: p.name, startTime: p.start_time, endTime: p.end_time, quantities: quantitiesByShiftUser.get(`${p.shift_id}_${p.user_id}`) ?? [] });
+    (pickerHoursByShift[p.shift_id] ??= []).push({ name: p.name, startTime: p.start_time, endTime: p.end_time, selfReportedAt: p.self_reported_at, quantities: quantitiesByShiftUser.get(`${p.shift_id}_${p.user_id}`) ?? [] });
   }
 
   const rateRows = database.prepare("SELECT field_id,unit,rate_nis FROM field_unit_rates").all() as Array<{ field_id: number; unit: Unit; rate_nis: number }>;
