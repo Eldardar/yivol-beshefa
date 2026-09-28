@@ -5,7 +5,7 @@ import { Modal } from "./modal";
 import { UNITS, UNIT_LABEL, type Unit } from "@/lib/units";
 
 export const LEADER_CONFLICT_MARKER = "שיבוץ כפול למוביל המשמרת";
-const LEADER_ERRORS = ["קוטף אינו זמין", "שיבוץ כפול", "קוטף אינו פעיל"];
+const LEADER_ERRORS = ["שיבוץ כפול למוביל המשמרת"];
 const FIELD_ERRORS = ["חלקת הגידול אינה פעילה"];
 
 export type Picker = { id: number; name: string };

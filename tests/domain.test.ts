@@ -39,7 +39,7 @@ describe("כללי שיבוץ", () => {
   it("חוסם שיבוץ כפול לקוטף ולרכב באותו מועד", () => {
     const x=setup(); const service=new SchedulingService(db);
     service.createShift(x.admin,{date:"2099-08-10",startTime:"06:00",endTime:"12:00",plantationFieldId:x.field,pickerIds:[x.p1],leaderId:x.p1,vehicleIds:[x.vehicle],goals:[{unit:"KG",goal:1}],notes:""});
-    expect(() => service.createShift(x.admin,{date:"2099-08-10",startTime:"06:00",endTime:"12:00",plantationFieldId:x.field,pickerIds:[x.p1],leaderId:x.p1,vehicleIds:[],goals:[{unit:"KG",goal:1}],notes:""})).toThrow("שיבוץ כפול");
+    expect(() => service.createShift(x.admin,{date:"2099-08-10",startTime:"06:00",endTime:"12:00",plantationFieldId:x.field,pickerIds:[x.p1],leaderId:x.p1,vehicleIds:[],goals:[{unit:"KG",goal:1}],notes:""})).toThrow("שיבוץ כפול למוביל המשמרת: קוטף א");
     expect(() => service.createShift(x.admin,{date:"2099-08-10",startTime:"06:00",endTime:"12:00",plantationFieldId:x.field,pickerIds:[x.p2],leaderId:x.p2,vehicleIds:[x.vehicle],goals:[{unit:"KG",goal:1}],notes:""})).toThrow("רכב כבר משובץ");
   });
   it("מאפשר לעקוף שיבוץ כפול של מוביל המשמרת עם אזהרה", () => {
@@ -48,6 +48,23 @@ describe("כללי שיבוץ", () => {
     expect(() => service.createShift(x.admin,{date:"2099-08-10",startTime:"06:00",endTime:"12:00",plantationFieldId:x.field,pickerIds:[x.p1,x.p2],leaderId:x.p1,vehicleIds:[],goals:[{unit:"KG",goal:1}],notes:""})).toThrow("שיבוץ כפול למוביל המשמרת");
     const result=service.createShift(x.admin,{date:"2099-08-10",startTime:"06:00",endTime:"12:00",plantationFieldId:x.field,pickerIds:[x.p1,x.p2],leaderId:x.p1,vehicleIds:[],goals:[{unit:"KG",goal:1}],notes:""},{allowLeaderConflict:true});
     expect(result.warnings.some(w=>w.includes("מוביל המשמרת"))).toBe(true);
+  });
+  it("מאפשר לערוך משמרת שנסגרה גם כשקוטף משובץ כבר אינו זמין",()=>{
+    const x=setup(); const service=new SchedulingService(db);
+    const base={date:"2099-08-10",startTime:"06:00",endTime:"12:00",plantationFieldId:x.field,pickerIds:[x.p1,x.p2],leaderId:x.p1,vehicleIds:[],personalGoalUnits:[] as never[],notes:""};
+    const {shiftId}=service.createShift(x.admin,{...base,goals:[{unit:"KG",goal:1}]});
+    db.prepare("UPDATE shifts SET status='COMPLETED' WHERE id=?").run(shiftId);
+    db.prepare("DELETE FROM availability WHERE user_id=?").run(x.p2);
+    expect(()=>service.updateShift(x.admin,shiftId,{...base,goals:[{unit:"KG",goal:5}]})).not.toThrow();
+  });
+  it("לא בודק מחדש זמינות של קוטפים משובצים כשהתאריך לא השתנה, ומציין את שם הקוטף החסר",()=>{
+    const x=setup(); const service=new SchedulingService(db);
+    const base={date:"2099-08-10",startTime:"06:00",endTime:"12:00",plantationFieldId:x.field,leaderId:x.p1,vehicleIds:[],goals:[{unit:"KG" as const,goal:1}],personalGoalUnits:[] as never[],notes:""};
+    const {shiftId}=service.createShift(x.admin,{...base,pickerIds:[x.p1]});
+    db.prepare("DELETE FROM availability WHERE user_id=?").run(x.p1);
+    expect(()=>service.updateShift(x.admin,shiftId,{...base,pickerIds:[x.p1],notes:"עודכן"})).not.toThrow();
+    db.prepare("DELETE FROM availability WHERE user_id=?").run(x.p2);
+    expect(()=>service.updateShift(x.admin,shiftId,{...base,pickerIds:[x.p1,x.p2]})).toThrow("קוטף אינו זמין: קוטף ב");
   });
   it("שומר ומעדכן את יחידות המידה הזמינות ליעד אישי", () => {
     const x=setup(); const service=new SchedulingService(db);
