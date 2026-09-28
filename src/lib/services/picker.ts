@@ -71,10 +71,18 @@ export class PickerService{
    if(!housingEditable(entry.date,now)) throw new Error("ניתן לעדכן את סידור השינה של היום הנוכחי עד השעה 18:00 בלבד");
   }
   this.db.transaction(()=>{
-   const upsert=this.db.prepare(`INSERT INTO housing_status(user_id,date,status) VALUES(?,?,?)
-     ON CONFLICT(user_id,date) DO UPDATE SET status=excluded.status`);
+   const bookable=this.db.prepare(`SELECT 1 FROM village_sleeping_options o JOIN villages v ON v.id=o.village_id
+     JOIN village_available_months m ON m.village_id=v.id WHERE o.id=? AND v.active=1 AND m.month=?`);
+   const upsert=this.db.prepare(`INSERT INTO housing_status(user_id,date,status,sleeping_option_id) VALUES(?,?,?,?)
+     ON CONFLICT(user_id,date) DO UPDATE SET status=excluded.status,sleeping_option_id=excluded.sleeping_option_id`);
    const clear=this.db.prepare("DELETE FROM housing_status WHERE user_id=? AND date=?");
-   for(const entry of input.entries){if(entry.status===null)clear.run(actorId,entry.date);else upsert.run(actorId,entry.date,entry.status);}
+   for(const entry of input.entries){
+    if(entry.status===null){clear.run(actorId,entry.date);continue;}
+    // A sleeping option is only kept for days the worker may sleep in the village.
+    const optionId=entry.status==="AWAY"?null:entry.sleepingOptionId??null;
+    if(optionId!==null&&!bookable.get(optionId,Number(entry.date.slice(5,7)))) throw new Error("אפשרות הלינה אינה זמינה בחודש זה");
+    upsert.run(actorId,entry.date,entry.status,optionId);
+   }
   }).immediate();
  }
  addJournalEntry(actorId:number,raw:unknown):void{

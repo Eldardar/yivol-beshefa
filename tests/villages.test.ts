@@ -3,6 +3,7 @@ import Database from "better-sqlite3";
 import { createTestDb } from "@/lib/db";
 import { AdminService } from "@/lib/services/admin";
 import { VillageService } from "@/lib/services/villages";
+import { PickerService } from "@/lib/services/picker";
 
 let db: Database.Database;
 beforeEach(() => { db = createTestDb(); });
@@ -55,5 +56,41 @@ describe("כפרים", () => {
     admin.deleteEntity(x.admin, "VILLAGE", id);
     expect(db.prepare("SELECT count(*) count FROM village_sleeping_options").get()).toEqual({ count: 0 });
     expect(db.prepare("SELECT count(*) count FROM village_available_months").get()).toEqual({ count: 0 });
+  });
+});
+
+describe("שמירת לינה בכפר ע\"י עובד", () => {
+  const now = new Date("2026-10-01T08:00:00Z");
+  function booked() {
+    const x = setup();
+    const village = new VillageService(db).save(x.admin, null, base);
+    const [tent, caravan] = db.prepare("SELECT id FROM village_sleeping_options WHERE village_id=? ORDER BY id").all(village) as Array<{ id: number }>;
+    return { ...x, village, tent: tent!.id, caravan: caravan!.id };
+  }
+  const saved = (userId: number) => db.prepare("SELECT date,status,sleeping_option_id FROM housing_status WHERE user_id=? ORDER BY date").all(userId);
+
+  it("שומר את אפשרות הלינה עם 'ישן בכפר' ו'אולי', ומנקה אותה ב'במקום אחר'", () => {
+    const x = booked();
+    const service = new PickerService(db);
+    service.setHousingStatus(x.picker, { entries: [{ date: "2026-10-05", status: "IN_VILLAGE", sleepingOptionId: x.tent }, { date: "2026-10-06", status: "MAYBE", sleepingOptionId: x.caravan }] }, now);
+    expect(saved(x.picker)).toEqual([{ date: "2026-10-05", status: "IN_VILLAGE", sleeping_option_id: x.tent }, { date: "2026-10-06", status: "MAYBE", sleeping_option_id: x.caravan }]);
+    service.setHousingStatus(x.picker, { entries: [{ date: "2026-10-05", status: "AWAY", sleepingOptionId: x.tent }] }, now);
+    expect(saved(x.picker)[0]).toEqual({ date: "2026-10-05", status: "AWAY", sleeping_option_id: null });
+  });
+
+  it("דוחה אפשרות לינה בחודש סגור או בכפר בארכיון", () => {
+    const x = booked();
+    const service = new PickerService(db);
+    expect(() => service.setHousingStatus(x.picker, { entries: [{ date: "2026-11-05", status: "IN_VILLAGE", sleepingOptionId: x.tent }] }, now)).toThrow("אינה זמינה");
+    new AdminService(db).setActive(x.admin, "VILLAGE", x.village, false);
+    expect(() => service.setHousingStatus(x.picker, { entries: [{ date: "2026-10-05", status: "IN_VILLAGE", sleepingOptionId: x.tent }] }, now)).toThrow("אינה זמינה");
+    expect(saved(x.picker)).toEqual([]);
+  });
+
+  it("מחיקת אפשרות לינה משאירה את היום עם סטטוס בלי אפשרות", () => {
+    const x = booked();
+    new PickerService(db).setHousingStatus(x.picker, { entries: [{ date: "2026-10-05", status: "IN_VILLAGE", sleepingOptionId: x.tent }] }, now);
+    new VillageService(db).save(x.admin, x.village, { ...base, sleepingOptions: [{ id: String(x.caravan), name: "קרוואן", description: "", costPerDay: "120" }] });
+    expect(saved(x.picker)).toEqual([{ date: "2026-10-05", status: "IN_VILLAGE", sleeping_option_id: null }]);
   });
 });

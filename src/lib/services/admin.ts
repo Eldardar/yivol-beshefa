@@ -137,7 +137,7 @@ export class AdminService {
     const body="מנהל/ת עדכן/ה את סידור השינה שלך. אפשר לבדוק ולערוך בעמוד \"מגורים\".";
     this.db.transaction(()=>{
       const upsert=this.db.prepare(`INSERT INTO housing_status(user_id,date,status) VALUES(?,?,?)
-        ON CONFLICT(user_id,date) DO UPDATE SET status=excluded.status`);
+        ON CONFLICT(user_id,date) DO UPDATE SET status=excluded.status,sleeping_option_id=CASE WHEN excluded.status='AWAY' THEN NULL ELSE housing_status.sleeping_option_id END`);
       const clear=this.db.prepare("DELETE FROM housing_status WHERE user_id=? AND date=?");
       for(const entry of input.entries){if(entry.status===null)clear.run(input.userId,entry.date);else upsert.run(input.userId,entry.date,entry.status);}
       this.db.prepare("INSERT INTO notifications(user_id,title,body) VALUES(?,?,?)").run(input.userId,title,body);

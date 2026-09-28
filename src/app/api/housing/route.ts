@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     if (issue) throw new Error(issue.message);
     const body = await req.json() as Record<string, unknown>;
     auth.assertCsrf(token, String(body.csrf ?? ""));
-    const entry = housingStatusSchema.parse({ date: body.date, status: body.status ?? null });
+    const entry = housingStatusSchema.parse({ date: body.date, status: body.status ?? null, sleepingOptionId: body.sleepingOptionId ?? null });
     new PickerService(database).setHousingStatus(user.id, { entries: [entry] });
     return NextResponse.json({ ok: true }, { headers: noStoreHeaders });
   } catch (error) {

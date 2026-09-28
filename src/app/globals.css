@@ -1203,3 +1203,14 @@ button.bottom-nav-link { border: 0; background: transparent; }
 .village-option { display: grid; gap: var(--space-2); padding-bottom: var(--space-3); border-bottom: 1px dashed var(--color-border); }
 .village-option-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 9rem) 44px; gap: var(--space-2); align-items: center; }
 .village-option-list { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-2); }
+.housing-choice-group { border: 0; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr)); gap: var(--space-2); min-width: 0; }
+.housing-choice-group legend { font-weight: 600; margin-bottom: var(--space-2); }
+.housing-choice { display: flex; align-items: flex-start; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); cursor: pointer; }
+.housing-choice.is-selected { border-color: var(--color-primary); box-shadow: inset 0 0 0 1px var(--color-primary); }
+.housing-choice input[type="radio"] { width: 1.15rem; height: 1.15rem; margin-top: 0.15rem; accent-color: var(--color-primary); flex: none; }
+.housing-choice-body { display: grid; gap: 0.15rem; min-width: 0; }
+.calendar-day-booking { font-size: 0.72rem; color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.housing-cost-lines { display: grid; gap: var(--space-2); margin: 0; }
+.housing-cost-lines > div { display: flex; justify-content: space-between; gap: var(--space-3); }
+.housing-cost-lines dd { margin: 0; font-variant-numeric: tabular-nums; }
+.housing-cost-total { border-top: 1px solid var(--color-border); padding-top: var(--space-2); font-weight: 700; }

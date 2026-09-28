@@ -49,7 +49,8 @@ export const adminAvailabilityUpdateSchema = z.object({
 
 export const housingStatusSchema = z.object({
   date: isoDate,
-  status: z.enum(["IN_VILLAGE", "MAYBE", "AWAY"]).nullable()
+  status: z.enum(["IN_VILLAGE", "MAYBE", "AWAY"]).nullable(),
+  sleepingOptionId: id.nullable().optional()
 }).strict();
 export const housingMonthSchema = z.object({
   entries: z.array(housingStatusSchema).min(1)
