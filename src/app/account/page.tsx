@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/nav";
+import { PasswordRules } from "@/components/password-rules";
 import { csrfValue, db, requireUser } from "@/lib/server";
 import { UserIcon } from "@/components/icons";
 import { PickerService } from "@/lib/services/picker";
@@ -62,15 +63,15 @@ export default async function Account({ searchParams }: { searchParams: Promise<
             <label htmlFor="currentPassword">סיסמה נוכחית</label>
             <input className="input" id="currentPassword" type="password" name="currentPassword" autoComplete="current-password" required maxLength={128} />
           </div>
+          <PasswordRules />
           <div className="field">
             <label htmlFor="password">סיסמה חדשה</label>
-            <input className="input" id="password" type="password" name="password" autoComplete="new-password" minLength={8} maxLength={128} required />
+            <input className="input" id="password" type="password" name="password" aria-describedby="password-rules" autoComplete="new-password" minLength={8} maxLength={128} required />
           </div>
           <div className="field">
             <label htmlFor="confirmation">אימות סיסמה</label>
             <input className="input" id="confirmation" type="password" name="confirmation" autoComplete="new-password" minLength={8} maxLength={128} required />
           </div>
-          <p className="muted">לפחות 8 תווים, כולל אות גדולה, אות קטנה, ספרה ותו מיוחד.</p>
           <button className="btn" type="submit">עדכון סיסמה</button>
         </form>
       </section>

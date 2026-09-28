@@ -5,6 +5,11 @@ import { XIcon, PlusIcon } from "./icons";
 
 export const REPORT_UNITS = UNITS.filter((u) => u !== "KG");
 
+// Units a shift's end-of-shift report may use: the units the admin set as the shift's goal, in canonical order.
+export function shiftReportUnits(goalUnits: Unit[]): readonly Unit[] {
+  return goalUnits.length > 0 ? UNITS.filter((u) => goalUnits.includes(u)) : REPORT_UNITS;
+}
+
 type Line = { key: number; value: number | string; unit: Unit | "" };
 let nextKey = 0;
 const makeLine = (value: number | string = "", unit: Unit | "" = ""): Line => ({ key: nextKey++, value, unit });

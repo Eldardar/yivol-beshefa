@@ -38,11 +38,26 @@ describe("מחזור משמרת ודיווח", () => {
 
   it("מאפשר לקוטף לדווח מספר יחידות מידה באותה משמרת", () => {
     const x = setup(); const service = new ShiftService(db); db.prepare("UPDATE shifts SET status='PUBLISHED' WHERE id=?").run(x.shift);
+    db.prepare("INSERT INTO shift_goals(shift_id,unit,goal) VALUES(?,?,?)").run(x.shift, "CRATE_LARGE", 5);
     service.saveQuantities(x.p1, x.shift, [{ userId: x.p1, quantity: 3, unit: "KG" }, { userId: x.p1, quantity: 2, unit: "CRATE_LARGE" }, { userId: x.p2, quantity: 1, unit: "KG" }]);
     expect(service.totals(x.admin, x.shift).sort((a,b)=>a.unit.localeCompare(b.unit))).toEqual([
-      { unit: "CRATE_LARGE", produced: 2, goal: 0 }, { unit: "KG", produced: 4, goal: 10.5 }
+      { unit: "CRATE_LARGE", produced: 2, goal: 5 }, { unit: "KG", produced: 4, goal: 10.5 }
     ]);
     expect(() => service.saveQuantities(x.p1, x.shift, [{ userId: x.p1, quantity: 1, unit: "KG" }, { userId: x.p1, quantity: 2, unit: "KG" }, { userId: x.p2, quantity: 1, unit: "KG" }])).toThrow("יחידת מידה כפולה");
+  });
+
+  it("מגביל את הדיווח ליחידות המידה של יעד המשמרת", () => {
+    const x = setup(); const service = new ShiftService(db); db.prepare("UPDATE shifts SET status='PUBLISHED' WHERE id=?").run(x.shift);
+    expect(() => service.saveQuantities(x.p1, x.shift, [{ userId: x.p1, quantity: 2, unit: "BUCKET" }, { userId: x.p2, quantity: 1, unit: "KG" }])).toThrow("יחידות המידה של יעד המשמרת");
+    expect(() => service.reportOwnQuantities(x.p2, x.shift, [{ quantity: 2, unit: "BUCKET" }], undefined, new Date("2026-08-10T12:00:00Z"))).toThrow("יחידות המידה של יעד המשמרת");
+  });
+
+  it("מאפשר יעד ודיווח בשעות שכר", () => {
+    const x = setup(); const service = new ShiftService(db); db.prepare("UPDATE shifts SET status='PUBLISHED' WHERE id=?").run(x.shift);
+    db.prepare("DELETE FROM shift_goals WHERE shift_id=?").run(x.shift);
+    db.prepare("INSERT INTO shift_goals(shift_id,unit,goal) VALUES(?,?,?)").run(x.shift, "HOURS", 12);
+    service.saveQuantities(x.p1, x.shift, [{ userId: x.p1, quantity: 6, unit: "HOURS" }, { userId: x.p2, quantity: 5.5, unit: "HOURS" }]);
+    expect(service.totals(x.admin, x.shift)).toEqual([{ unit: "HOURS", produced: 11.5, goal: 12 }]);
   });
 
   it("דוחה כמות עבור מי שאינו משובץ, דוח חלקי וכמות שלילית", () => {

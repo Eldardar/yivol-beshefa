@@ -1214,3 +1214,9 @@ button.bottom-nav-link { border: 0; background: transparent; }
 .housing-cost-lines > div { display: flex; justify-content: space-between; gap: var(--space-3); }
 .housing-cost-lines dd { margin: 0; font-variant-numeric: tabular-nums; }
 .housing-cost-total { border-top: 1px solid var(--color-border); padding-top: var(--space-2); font-weight: 700; }
+
+.password-rules { display: grid; gap: var(--space-2); padding: var(--space-3) var(--space-4); border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface-muted); font-size: 0.9375rem; }
+.password-rules-title { margin: 0; font-weight: 600; }
+.password-rules ul { margin: 0; padding-inline-start: 1.25rem; display: grid; gap: 2px; }
+.password-rules .muted { margin: 0; font-size: 0.875rem; }
+

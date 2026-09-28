@@ -1,4 +1,4 @@
-export const UNITS = ["KG", "DOLAV", "CRATE_SMALL", "CRATE_LARGE", "BUCKET", "BAG", "OTHER"] as const;
+export const UNITS = ["KG", "DOLAV", "CRATE_SMALL", "CRATE_LARGE", "BUCKET", "BAG", "HOURS", "OTHER"] as const;
 export type Unit = (typeof UNITS)[number];
 export const UNIT_LABEL: Record<Unit, string> = {
   KG: "ק\"ג",
@@ -7,6 +7,7 @@ export const UNIT_LABEL: Record<Unit, string> = {
   CRATE_LARGE: "ארגז(ים) גדול",
   BUCKET: "דלי(ים)",
   BAG: "תרמיל(ים)",
+  HOURS: "שע(ו)ת שכר",
   OTHER: "אחר"
 };
 

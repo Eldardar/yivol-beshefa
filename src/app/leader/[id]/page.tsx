@@ -4,7 +4,7 @@ import { AppShell } from "@/components/nav";
 import { csrfValue, db, requireUser } from "@/lib/server";
 import { formatHebrewDate, formatHebrewDateTime, jerusalemDate } from "@/lib/dates";
 import type { Unit } from "@/lib/units";
-import { UnitLines } from "@/components/unit-lines";
+import { UnitLines, shiftReportUnits } from "@/components/unit-lines";
 import { ArrowRightIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +26,7 @@ export default async function Leader({ params }: { params: Promise<{ id: string 
     arr.push({ value: q.quantity, unit: q.unit });
     linesByUser.set(q.user_id, arr);
   }
+  const reportUnits = shiftReportUnits((db().prepare("SELECT unit FROM shift_goals WHERE shift_id=?").all(id) as Array<{ unit: Unit }>).map(g => g.unit));
   const hoursRows = db().prepare("SELECT user_id,start_time,end_time FROM shift_hours WHERE shift_id=?").all(id) as Array<{ user_id: number; start_time: string; end_time: string }>;
   const hoursByUser = new Map<number, { start_time: string; end_time: string }>();
   for (const h of hoursRows) hoursByUser.set(h.user_id, h);
@@ -60,7 +61,7 @@ export default async function Leader({ params }: { params: Promise<{ id: string 
               </div>
               <div className="field">
                 <span>תוצאה (הכמות שהושגה בפועל)</span>
-                <UnitLines valueName={`qty_${p.id}`} unitName={`unit_${p.id}`} initial={linesByUser.get(p.id) ?? []} addLabel={`הוספת שורת דיווח נוספת עבור ${p.name}`} valueLabel={`כמות · ${p.name}`} unitLabel={`יחידת מידה · ${p.name}`} />
+                <UnitLines valueName={`qty_${p.id}`} unitName={`unit_${p.id}`} initial={linesByUser.get(p.id) ?? []} addLabel={`הוספת שורת דיווח נוספת עבור ${p.name}`} valueLabel={`כמות · ${p.name}`} unitLabel={`יחידת מידה · ${p.name}`} units={reportUnits} />
               </div>
             </div>
           );

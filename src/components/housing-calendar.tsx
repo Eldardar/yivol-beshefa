@@ -103,6 +103,7 @@ export function HousingCalendar({ csrf, year, month, label, days, villages }: { 
 
   function chooseVillage(id: number) {
     setVillageId(id);
+    setError("");
     const options = villages.find(v => v.id === id)?.options ?? [];
     setOptionId(options.length === 1 ? options[0]!.id : null);
   }
@@ -137,7 +138,7 @@ export function HousingCalendar({ csrf, year, month, label, days, villages }: { 
 
   return (
     <div className="stack">
-      <VillagePicker villages={villages} villageId={villageId} optionId={optionId} onVillage={chooseVillage} onOption={setOptionId} />
+      <VillagePicker villages={villages} villageId={villageId} optionId={optionId} onVillage={chooseVillage} onOption={id => { setOptionId(id); setError(""); }} />
       <section className="calendar-month">
         <CalendarMonthNav year={year} month={month} basePath="/housing" />
         {error && <p className="alert" role="alert">{error}</p>}

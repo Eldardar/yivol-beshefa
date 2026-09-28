@@ -2,8 +2,8 @@ import { notFound } from "next/navigation";
 import { AppShell } from "@/components/nav";
 import { csrfValue, db, requireUser } from "@/lib/server";
 import { formatHebrewDate, jerusalemInstant } from "@/lib/dates";
-import type { Unit } from "@/lib/units";
-import { UnitLines } from "@/components/unit-lines";
+import { UNIT_LABEL, type Unit } from "@/lib/units";
+import { UnitLines, shiftReportUnits } from "@/components/unit-lines";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +26,7 @@ export default async function ReportOwnResults({ params }: { params: Promise<{ i
 
   const csrf = await csrfValue();
   const quantities = db().prepare("SELECT quantity,unit FROM quantities WHERE shift_id=? AND user_id=?").all(id, user.id) as Array<{ quantity: number; unit: Unit }>;
+  const goalUnits = (db().prepare("SELECT unit FROM shift_goals WHERE shift_id=?").all(id) as Array<{ unit: Unit }>).map(g => g.unit);
   const hours = db().prepare("SELECT start_time,end_time FROM shift_hours WHERE shift_id=? AND user_id=?").get(id, user.id) as { start_time: string; end_time: string } | undefined;
 
   if (alreadyReported) {
@@ -36,7 +37,7 @@ export default async function ReportOwnResults({ params }: { params: Promise<{ i
           <p className="muted">{shift.farm} · {shift.crop}</p>
           <p>כבר דיווחת על משמרת זו. לא ניתן לעדכן דיווח שנשלח.</p>
           {hours && <p className="muted">שעות בפועל: <span dir="ltr" className="ltr-field">{hours.start_time}–{hours.end_time}</span></p>}
-          {quantities.map((q, i) => <p key={i} className="muted">{q.quantity} {q.unit}</p>)}
+          {quantities.map((q, i) => <p key={i} className="muted">{q.quantity} {UNIT_LABEL[q.unit]}</p>)}
         </div>
       </AppShell>
     );
@@ -75,6 +76,7 @@ export default async function ReportOwnResults({ params }: { params: Promise<{ i
             addLabel="הוספת שורת דיווח נוספת"
             valueLabel="כמות"
             unitLabel="יחידת מידה"
+            units={shiftReportUnits(goalUnits)}
           />
         </div>
         <button className="btn">שמירת הדיווח</button>
