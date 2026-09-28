@@ -1,0 +1,4 @@
+CREATE TABLE IF NOT EXISTS shift_admin_report_summaries (
+ shift_id INTEGER PRIMARY KEY REFERENCES shifts(id),
+ sent_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
