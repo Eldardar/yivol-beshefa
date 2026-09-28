@@ -6,6 +6,7 @@ import { AuthService } from "@/lib/services/auth";
 import { AdminService, type ManagedEntity } from "@/lib/services/admin";
 import { PickerService } from "@/lib/services/picker";
 import { SchedulingService } from "@/lib/services/scheduling";
+import { VillageService } from "@/lib/services/villages";
 import { ShiftService } from "@/lib/services/shifts";
 import { farmSchema, plantationFieldSchema, shiftReportSchema, shiftResultSchema, shiftSchema, unitSchema, userUpdateSchema, vehicleSchema, workerGoalSchema, workerHoursSchema } from "@/lib/schemas";
 import type { Unit } from "@/lib/units";
@@ -14,12 +15,13 @@ import { requestBodyIssue, requestUrl } from "@/lib/http";
 export const runtime="nodejs";
 const positiveId=z.coerce.number().int().positive();
 const activeSchema=z.enum(["0","1"]);
-const entitySchema=z.enum(["USER","FARM","PLANTATION_FIELD","VEHICLE"]);
+const entitySchema=z.enum(["USER","FARM","PLANTATION_FIELD","VEHICLE","VILLAGE"]);
 
 function destination(action:string,form:FormData):string {
-  if(action==="setActive"||action==="delete"){const entity=form.get("entity");if(entity==="USER")return "/admin/users?saved=1";if(entity==="VEHICLE")return "/admin/transport?saved=1";return "/admin/resources?saved=1";}
+  if(action==="setActive"||action==="delete"){const entity=form.get("entity");if(entity==="USER")return "/admin/users?saved=1";if(entity==="VEHICLE")return "/admin/transport?saved=1";if(entity==="VILLAGE")return "/admin/villages?saved=1";return "/admin/resources?saved=1";}
   if(action==="userUpdate")return "/admin/users?saved=1";
   if(action.startsWith("vehicle"))return "/admin/transport?saved=1";
+  if(action.startsWith("village"))return "/admin/villages?saved=1";
   if(action.startsWith("farm")||action.startsWith("plantationField"))return "/admin/resources?saved=1";
   if(action==="quantities")return `/admin/shifts?saved=1&shift=${Number(form.get("shiftId"))||""}`;
   if(action.startsWith("shift"))return "/admin/shifts?saved=1";
@@ -67,6 +69,11 @@ export async function POST(req:Request){
       const vehicleId=positiveId.parse(form.get("vehicleId"));
       const input=vehicleSchema.parse({number:form.get("number"),name:form.get("name"),notes:form.get("notes")??""});
       database.transaction(()=>{const result=database.prepare("UPDATE vehicles SET number=?,name=?,notes=? WHERE id=?").run(input.number,input.name,input.notes,vehicleId);if(result.changes!==1)throw new Error("הרכב לא נמצא");database.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(user.id,"UPDATE","VEHICLE",vehicleId);})();
+    }else if(action==="villageCreate"||action==="villageUpdate"){
+      const villageId=action==="villageUpdate"?positiveId.parse(form.get("villageId")):null;
+      const optionIds=form.getAll("optionId");const optionNames=form.getAll("optionName");const optionDescriptions=form.getAll("optionDescription");const optionCosts=form.getAll("optionCost");
+      const sleepingOptions=optionNames.map((name,i)=>({id:optionIds[i]??"",name,description:optionDescriptions[i]??"",costPerDay:optionCosts[i]}));
+      new VillageService(database).save(user.id,villageId,{name:form.get("name"),description:form.get("description")??"",location:form.get("location")??"",sleepingOptions,availableMonths:form.getAll("months")});
     }else if(action==="userUpdate"){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
       const targetId=positiveId.parse(form.get("userId"));

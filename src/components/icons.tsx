@@ -325,3 +325,16 @@ export function DownloadIcon(props: IconProps) {
     </Svg>
   );
 }
+
+export function TentIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M3.5 20 12 5l8.5 15" />
+      <path d="M2.5 20h19" />
+      <path d="M12 12.5 9 20" />
+      <path d="M12 12.5 15 20" />
+      <path d="M10.5 7.5 9 4.5" />
+      <path d="M13.5 7.5 15 4.5" />
+    </Svg>
+  );
+}

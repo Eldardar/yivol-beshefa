@@ -72,3 +72,4 @@ export function shiftMonthKey(key:string,delta:number):string{
  const target=new Date(Date.UTC(year,month-1+delta,1));
  return `${target.getUTCFullYear()}-${String(target.getUTCMonth()+1).padStart(2,"0")}`;
 }
+export const HEBREW_MONTHS=["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"] as const;

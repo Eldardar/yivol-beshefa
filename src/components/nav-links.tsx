@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { ComponentType } from "react";
-import { HomeIcon, CalendarIcon, CalendarDaysIcon, ClipboardListIcon, HistoryIcon, UsersIcon, SproutIcon, TruckIcon, BarChartIcon, ChevronDownIcon, BookOpenIcon, HouseIcon } from "./icons";
+import { HomeIcon, CalendarIcon, CalendarDaysIcon, ClipboardListIcon, HistoryIcon, UsersIcon, SproutIcon, TruckIcon, BarChartIcon, ChevronDownIcon, BookOpenIcon, HouseIcon, TentIcon } from "./icons";
 
 export type NavChild = { href: string; label: string; icon: ComponentType<{ size?: number; className?: string }> };
 export type NavItem = { href: string; label: string; icon: ComponentType<{ size?: number; className?: string }>; children?: NavChild[] };
@@ -22,6 +22,7 @@ const ADMIN_NAV: NavItem[] = [
   { href: "/admin/users", label: "עובדים", icon: UsersIcon },
   { href: "/admin/resources", label: "חקלאים", icon: SproutIcon },
   { href: "/admin/transport", label: "תחבורה", icon: TruckIcon },
+  { href: "/admin/villages", label: "כפרים", icon: TentIcon },
   { href: "/calendar", label: "לוח חודשי", icon: CalendarDaysIcon },
   {
     href: "/admin/shifts",
@@ -41,6 +42,7 @@ const ADMIN_NAV: NavItem[] = [
       { href: "/admin/reports/employee-performance", label: "דוח עובדים", icon: UsersIcon },
       { href: "/admin/reports/harvest", label: "דוח נתוני קטיף", icon: SproutIcon },
       { href: "/admin/reports/transport", label: "דוח תחבורה", icon: TruckIcon },
+      { href: "/admin/reports/housing", label: "דוח מגורים", icon: HouseIcon },
     ],
   },
 ];

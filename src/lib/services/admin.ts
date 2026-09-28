@@ -5,8 +5,8 @@ import { pushToUsers } from "@/lib/push";
 import { jerusalemInstant } from "@/lib/dates";
 import type { Unit } from "@/lib/units";
 
-export type ManagedEntity = "USER" | "FARM" | "PLANTATION_FIELD" | "VEHICLE";
-const tables: Record<ManagedEntity,string> = { USER:"users", FARM:"farms", PLANTATION_FIELD:"plantation_fields", VEHICLE:"vehicles" };
+export type ManagedEntity = "USER" | "FARM" | "PLANTATION_FIELD" | "VEHICLE" | "VILLAGE";
+const tables: Record<ManagedEntity,string> = { USER:"users", FARM:"farms", PLANTATION_FIELD:"plantation_fields", VEHICLE:"vehicles", VILLAGE:"villages" };
 
 export class AdminService {
   constructor(private readonly db: Database.Database) {}
@@ -18,7 +18,7 @@ export class AdminService {
     if(entity==="USER" && actorId===entityId && !active) throw new Error("לא ניתן להעביר את עצמך לארכיון");
     const table=tables[entity];
     this.db.transaction(()=>{
-      if(!active){
+      if(!active&&entity!=="VILLAGE"){
         const operational=entity==="USER"
           ?this.db.prepare(`SELECT 1 FROM shifts s LEFT JOIN shift_pickers sp ON sp.shift_id=s.id WHERE s.status IN ('DRAFT','PUBLISHED') AND (s.leader_id=? OR sp.user_id=?) LIMIT 1`).get(entityId,entityId)
           :entity==="FARM"

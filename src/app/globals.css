@@ -1195,3 +1195,11 @@ button.bottom-nav-link { border: 0; background: transparent; }
 .snake-pad .btn { min-height: 0; padding: 0; font-size: 1.4rem; }
 /* The D-pad is for touch screens; keyboards use arrows / WASD. */
 @media (hover: hover) and (pointer: fine) { .snake-pad { display: none; } }
+
+/* Villages */
+.village-fieldset { border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-3); display: grid; gap: var(--space-3); min-width: 0; }
+.village-fieldset legend { padding: 0 var(--space-2); font-weight: 600; }
+.village-months { display: grid; grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr)); gap: 0 var(--space-3); }
+.village-option { display: grid; gap: var(--space-2); padding-bottom: var(--space-3); border-bottom: 1px dashed var(--color-border); }
+.village-option-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 9rem) 44px; gap: var(--space-2); align-items: center; }
+.village-option-list { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-2); }

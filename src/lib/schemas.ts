@@ -100,3 +100,5 @@ export const plantationFieldSchema=z.object({farmId:id,name:text(150),fruitType:
 export const vehicleSchema=z.object({number:text(50),name:text(150),notes:z.string().trim().max(2000).default("")}).strict();
 const fieldUnitRateSchema=z.object({unit:unitSchema,rateNis:z.coerce.number().finite().positive()}).strict();
 export const fieldUnitRatesSchema=z.object({rates:z.array(fieldUnitRateSchema).refine(items=>new Set(items.map(x=>x.unit)).size===items.length,"כל יחידת מידה יכולה להופיע פעם אחת")}).strict();
+const villageSleepingOptionSchema=z.object({id:z.union([z.literal(""),id]).optional().default("").transform(v=>v===""?null:v),name:text(150),description:z.string().trim().max(2000).default(""),costPerDay:z.coerce.number().finite().nonnegative("העלות ליום אינה יכולה להיות שלילית").max(1_000_000)}).strict();
+export const villageSchema=z.object({name:text(150),description:z.string().trim().max(2000).default(""),location:z.string().trim().max(300).default(""),sleepingOptions:z.array(villageSleepingOptionSchema).max(50),availableMonths:z.array(z.coerce.number().int().min(1).max(12)).max(12).transform(months=>[...new Set(months)].sort((a,b)=>a-b))}).strict();
