@@ -1,10 +1,11 @@
 "use client";
 import { Fragment, useState } from "react";
-import { ChevronDownIcon, EyeIcon } from "./icons";
+import { useRouter } from "next/navigation";
+import { CheckIcon, ChevronDownIcon, EyeIcon, XIcon } from "./icons";
 import { DeleteExpenseButton, EditExpenseButton } from "./expense-actions";
 import { formatHebrewDate } from "@/lib/dates";
 import { formatMoney } from "@/lib/format";
-import { EXPENSE_FIELDS, EXPENSE_SOURCE_LABEL, type ExpenseFieldKey, type ExpenseRow } from "@/lib/expenses";
+import { EDITABLE_FIELDS, EXPENSE_FIELDS, EXPENSE_SOURCE_LABEL, type ExpenseFieldKey, type ExpenseRow } from "@/lib/expenses";
 
 const MONEY_FIELDS = new Set<ExpenseFieldKey>(["amount_before_vat", "vat", "total_ils"]);
 // הקישור והשם של הקובץ מוצגים ככפתור צפייה, לא כטקסט
@@ -51,9 +52,154 @@ function ExpenseDetails({ row }: { row: ExpenseRow }) {
   );
 }
 
+type ExpensesView = "compact" | "full";
+const VIEWS: { key: ExpensesView; label: string }[] = [
+  { key: "compact", label: "תצוגה מקוצרת" },
+  { key: "full", label: "טבלה מלאה" }
+];
+const FULL_FIELDS = EXPENSE_FIELDS.filter(field => !HIDDEN_DETAIL_FIELDS.has(field.key));
+const TOTAL_INDEX = FULL_FIELDS.findIndex(field => field.key === "total_ils");
+
+function sumTotal(rows: ExpenseRow[]) {
+  return rows.reduce((sum, row) => sum + (typeof row.total_ils === "number" ? row.total_ils : 0), 0);
+}
+
+function ViewToggle({ active, onChange }: { active: ExpensesView; onChange: (view: ExpensesView) => void }) {
+  return (
+    <div className="view-toggle" role="radiogroup" aria-label="תצוגת הטבלה">
+      {VIEWS.map(view => (
+        <button key={view.key} type="button" role="radio" aria-checked={view.key === active} className={`view-toggle-option${view.key === active ? " is-active" : ""}`} onClick={() => onChange(view.key)}>
+          {view.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function ExpensesTable({ csrf, rows }: { csrf: string; rows: ExpenseRow[] }) {
+  const [view, setView] = useState<ExpensesView>("compact");
+
+  return (
+    <div className="expenses-table">
+      <ViewToggle active={view} onChange={setView} />
+      {view === "full" ? <FullExpensesTable csrf={csrf} rows={rows} /> : <CompactExpensesTable csrf={csrf} rows={rows} />}
+    </div>
+  );
+}
+
+const EDITABLE_KEYS = new Set<ExpenseFieldKey>(EDITABLE_FIELDS.map(field => field.key));
+type ExpenseField = (typeof EXPENSE_FIELDS)[number];
+type EditingCell = { id: number; key: ExpenseFieldKey };
+
+// עריכה בתוך התא: שומרת את כל השדות הניתנים לעריכה של השורה, כשרק השדה הזה שונה
+function EditableCell({ csrf, row, field, onDone }: { csrf: string; row: ExpenseRow; field: ExpenseField; onDone: () => void }) {
+  const router = useRouter();
+  const initial = row[field.key] == null ? "" : String(row[field.key]);
+  const [value, setValue] = useState(initial);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function save() {
+    if (value === initial) return onDone();
+    if (field.key === "invoice_date" && !value) return setError("חובה למלא תאריך");
+    setSaving(true);
+    setError("");
+    const values = Object.fromEntries(EDITABLE_FIELDS.map(f => [f.key, f.key === field.key ? value : row[f.key] == null ? "" : String(row[f.key])]));
+    try {
+      const res = await fetch("/api/admin/expenses", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ csrf, id: row.id, values }) });
+      const data = await res.json() as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "השמירה נכשלה");
+      onDone();
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "השמירה נכשלה");
+      setSaving(false);
+    }
+  }
+
+  function onKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Escape") onDone();
+    // בשדה טקסט ארוך Enter יורד שורה, ושמירה היא Ctrl/⌘+Enter
+    if (e.key === "Enter" && (field.kind !== "longtext" || e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      save();
+    }
+  }
+
+  const common = { className: "input", value, autoFocus: true, disabled: saving, "aria-label": field.label, onKeyDown, onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setValue(e.target.value) };
+  return (
+    <div className="cell-editor">
+      <div className="cell-editor-row">
+        {field.kind === "longtext" ? (
+          <textarea {...common} rows={3} maxLength={5000} />
+        ) : (
+          <input {...common} type={field.kind === "date" ? "date" : field.kind === "number" ? "number" : "text"} step={field.kind === "number" ? "any" : undefined} maxLength={field.kind === "text" ? 500 : undefined} />
+        )}
+        <button type="button" className="icon-btn cell-editor-save" aria-label="אישור" title="אישור" disabled={saving} onClick={save}><CheckIcon size={18} /></button>
+        <button type="button" className="icon-btn cell-editor-cancel" aria-label="ביטול" title="ביטול" disabled={saving} onClick={onDone}><XIcon size={18} /></button>
+      </div>
+      {error && <p className="cell-editor-error" role="alert">{error}</p>}
+    </div>
+  );
+}
+
+function FullExpensesTable({ csrf, rows }: { csrf: string; rows: ExpenseRow[] }) {
+  const columns = FULL_FIELDS.length + 5;
+  const [editing, setEditing] = useState<EditingCell | null>(null);
+  return (
+    <div className="table-wrap card expenses-full-wrap">
+      <table className="table expenses-full-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            {FULL_FIELDS.map(field => <th key={field.key}>{field.label}</th>)}
+            <th>מקור</th><th>קובץ</th><th>פעולות</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 && (
+            <tr><td colSpan={columns} className="muted">אין הוצאות בחודש זה</td></tr>
+          )}
+          {rows.map((row, i) => (
+            <tr key={row.id}>
+              <td>{i + 1}</td>
+              {FULL_FIELDS.map(field => {
+                const editable = EDITABLE_KEYS.has(field.key);
+                if (editing?.id === row.id && editing.key === field.key) {
+                  return <td key={field.key} className="expenses-cell--editing"><EditableCell csrf={csrf} row={row} field={field} onDone={() => setEditing(null)} /></td>;
+                }
+                const empty = row[field.key] == null || row[field.key] === "";
+                const className = [field.kind === "longtext" ? "expenses-cell--long" : "", editable ? "expenses-cell--editable" : "", empty ? "muted" : ""].filter(Boolean).join(" ") || undefined;
+                return (
+                  <td key={field.key} className={className} title={editable ? "לחיצה כפולה לעריכה" : undefined} onDoubleClick={editable ? () => setEditing({ id: row.id, key: field.key }) : undefined}>
+                    {display(row, field.key, field.kind)}
+                  </td>
+                );
+              })}
+              <td>{EXPENSE_SOURCE_LABEL[row.source]}</td>
+              <td><FileLink row={row} /></td>
+              <td>
+                <div className="actions-cell expense-row-actions">
+                  <EditExpenseButton csrf={csrf} row={row} />
+                  <DeleteExpenseButton csrf={csrf} row={row} />
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        {rows.length > 0 && (
+          <tfoot>
+            <tr><td colSpan={TOTAL_INDEX + 1}>סה״כ</td><td>{formatMoney(sumTotal(rows))}</td><td colSpan={columns - TOTAL_INDEX - 2} /></tr>
+          </tfoot>
+        )}
+      </table>
+    </div>
+  );
+}
+
+function CompactExpensesTable({ csrf, rows }: { csrf: string; rows: ExpenseRow[] }) {
   const [expanded, setExpanded] = useState<number | null>(null);
-  const total = rows.reduce((sum, row) => sum + (typeof row.total_ils === "number" ? row.total_ils : 0), 0);
+  const total = sumTotal(rows);
 
   return (
     <div className="table-wrap card">
