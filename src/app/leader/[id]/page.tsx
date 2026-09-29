@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import { AppShell } from "@/components/nav";
 import { csrfValue, db, requireUser } from "@/lib/server";
 import { formatHebrewDate, formatHebrewDateTime, jerusalemDate } from "@/lib/dates";
-import type { Unit } from "@/lib/units";
-import { UnitLines, shiftReportUnits } from "@/components/unit-lines";
+import { shiftReportUnits, type Unit } from "@/lib/units";
+import { UnitLines } from "@/components/unit-lines";
 import { ArrowRightIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";

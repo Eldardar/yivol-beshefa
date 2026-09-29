@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { UnitLines, REPORT_UNITS } from "./unit-lines";
+import { UnitLines } from "./unit-lines";
 import { Modal } from "./modal";
-import { UNITS, UNIT_LABEL, type Unit } from "@/lib/units";
+import { REPORT_UNITS, UNITS, UNIT_LABEL, type Unit } from "@/lib/units";
 
 export const LEADER_CONFLICT_MARKER = "שיבוץ כפול למוביל המשמרת";
 const LEADER_ERRORS = ["שיבוץ כפול למוביל המשמרת"];

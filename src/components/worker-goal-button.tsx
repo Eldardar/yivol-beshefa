@@ -1,8 +1,8 @@
 "use client";
 import { useState } from "react";
 import { Modal } from "./modal";
-import { UnitLines, REPORT_UNITS } from "./unit-lines";
-import type { Unit } from "@/lib/units";
+import { UnitLines } from "./unit-lines";
+import { REPORT_UNITS, type Unit } from "@/lib/units";
 
 export function WorkerGoalButton({ csrf, shiftId, existingGoal, allowedUnits }: { csrf: string; shiftId: number; existingGoal: Array<{ value: number; unit: Unit }>; allowedUnits?: Unit[] }) {
   const [open, setOpen] = useState(false);
