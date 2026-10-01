@@ -62,13 +62,13 @@ export async function POST(req:Request){
       database.transaction(()=>{const result=database.prepare("UPDATE plantation_fields SET name=?,fruit_type=?,fruit_subtype=?,size=?,location=?,details=? WHERE id=? AND farm_id=?").run(input.name,input.fruitType,input.fruitSubtype,input.size,input.location,input.details,fieldId,input.farmId);if(result.changes!==1)throw new Error("החלקה לא נמצאה");database.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(user.id,"UPDATE","PLANTATION_FIELD",fieldId);})();
     }else if(action==="vehicleCreate"){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
-      const input=vehicleSchema.parse({number:form.get("number"),name:form.get("name"),notes:form.get("notes")??""});
-      database.transaction(()=>{const result=database.prepare("INSERT INTO vehicles(number,name,notes) VALUES(?,?,?)").run(input.number,input.name,input.notes);database.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(user.id,"CREATE","VEHICLE",Number(result.lastInsertRowid));})();
+      const input=vehicleSchema.parse({number:form.get("number"),name:form.get("name"),fuelConsumption:form.get("fuelConsumption")??"",notes:form.get("notes")??""});
+      database.transaction(()=>{const result=database.prepare("INSERT INTO vehicles(number,name,fuel_consumption,notes) VALUES(?,?,?,?)").run(input.number,input.name,input.fuelConsumption,input.notes);database.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(user.id,"CREATE","VEHICLE",Number(result.lastInsertRowid));})();
     }else if(action==="vehicleUpdate"){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
       const vehicleId=positiveId.parse(form.get("vehicleId"));
-      const input=vehicleSchema.parse({number:form.get("number"),name:form.get("name"),notes:form.get("notes")??""});
-      database.transaction(()=>{const result=database.prepare("UPDATE vehicles SET number=?,name=?,notes=? WHERE id=?").run(input.number,input.name,input.notes,vehicleId);if(result.changes!==1)throw new Error("הרכב לא נמצא");database.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(user.id,"UPDATE","VEHICLE",vehicleId);})();
+      const input=vehicleSchema.parse({number:form.get("number"),name:form.get("name"),fuelConsumption:form.get("fuelConsumption")??"",notes:form.get("notes")??""});
+      database.transaction(()=>{const result=database.prepare("UPDATE vehicles SET number=?,name=?,fuel_consumption=?,notes=? WHERE id=?").run(input.number,input.name,input.fuelConsumption,input.notes,vehicleId);if(result.changes!==1)throw new Error("הרכב לא נמצא");database.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(user.id,"UPDATE","VEHICLE",vehicleId);})();
     }else if(action==="villageCreate"||action==="villageUpdate"){
       const villageId=action==="villageUpdate"?positiveId.parse(form.get("villageId")):null;
       const optionIds=form.getAll("optionId");const optionNames=form.getAll("optionName");const optionDescriptions=form.getAll("optionDescription");const optionCosts=form.getAll("optionCost");

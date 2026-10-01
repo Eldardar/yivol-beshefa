@@ -5,7 +5,7 @@ import { EditVehicleButton } from "./edit-vehicle-button";
 import { ActiveSwitch } from "./active-switch";
 import { ShowArchivedToggle } from "./show-archived-toggle";
 
-export type VehicleRow = { id: number; number: string; name: string; notes: string; active: number };
+export type VehicleRow = { id: number; number: string; name: string; fuelConsumption: number | null; notes: string; active: number };
 
 export function VehiclesTable({ vehicles, csrf }: { vehicles: VehicleRow[]; csrf: string }) {
   const [search, setSearch] = useState("");
