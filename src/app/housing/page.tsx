@@ -1,12 +1,12 @@
 import { AppShell } from "@/components/nav";
-import { HousingCalendar, type HousingDay, type BookableVillage, type BookedOption } from "@/components/housing-calendar";
+import { HousingCalendar, type HousingDay, type BookedOption } from "@/components/housing-calendar";
 import { csrfValue, db, requireUser } from "@/lib/server";
 import { housingEditable, jerusalemDate } from "@/lib/dates";
+import { bookableVillages } from "@/lib/housing";
 
 export const dynamic = "force-dynamic";
 
 type HousingRow = { date: string; status: "IN_VILLAGE" | "MAYBE" | "AWAY"; option_id: number | null; option_name: string | null; village_name: string | null; cost_per_day: number | null };
-type OptionRow = { village_id: number; village_name: string; location: string; description: string; option_id: number; option_name: string; option_description: string; cost_per_day: number };
 
 export default async function Housing({ searchParams }: { searchParams: Promise<{ y?: string; m?: string }> }) {
   const user = await requireUser();
@@ -31,15 +31,7 @@ export default async function Housing({ searchParams }: { searchParams: Promise<
     WHERE h.user_id=? AND h.date>=? AND h.date<?`).all(user.id, monthStart, monthEnd) as HousingRow[];
   const map = new Map(rows.map(r => [r.date, r]));
 
-  const optionRows = database.prepare(`SELECT v.id village_id,v.name village_name,v.location,v.description,o.id option_id,o.name option_name,o.description option_description,o.cost_per_day
-    FROM villages v JOIN village_available_months m ON m.village_id=v.id AND m.month=? JOIN village_sleeping_options o ON o.village_id=v.id
-    WHERE v.active=1 ORDER BY v.name,v.id,o.cost_per_day,o.id`).all(month) as OptionRow[];
-  const villages: BookableVillage[] = [];
-  for (const row of optionRows) {
-    let village = villages.find(v => v.id === row.village_id);
-    if (!village) villages.push(village = { id: row.village_id, name: row.village_name, location: row.location, description: row.description, options: [] });
-    village.options.push({ id: row.option_id, name: row.option_name, description: row.option_description, costPerDay: row.cost_per_day });
-  }
+  const villages = bookableVillages(database, month);
 
   const days: HousingDay[] = Array.from({ length: daysInMonth }, (_, i) => {
     const day = i + 1;

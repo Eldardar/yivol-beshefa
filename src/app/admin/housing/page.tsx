@@ -2,6 +2,7 @@ import { AppShell } from "@/components/nav";
 import { HousingAdminView, type HousingByWorker, type HousingDay, type HousingOverviewDay, type NamedWorker, type WorkerOption } from "@/components/housing-admin-view";
 import { csrfValue, db, requireAdmin } from "@/lib/server";
 import { jerusalemDate, monthRange } from "@/lib/dates";
+import { bookableVillages } from "@/lib/housing";
 
 export const dynamic = "force-dynamic";
 
@@ -24,10 +25,12 @@ export default async function AdminHousing({ searchParams }: { searchParams: Pro
 
   const rows = database
     .prepare(
-      `SELECT h.date,h.user_id,h.status FROM housing_status h JOIN users u ON u.id=h.user_id
+      `SELECT h.date,h.user_id,h.status,o.id option_id,o.name option_name,v.name village_name,o.cost_per_day
+       FROM housing_status h JOIN users u ON u.id=h.user_id
+       LEFT JOIN village_sleeping_options o ON o.id=h.sleeping_option_id LEFT JOIN villages v ON v.id=o.village_id
        WHERE u.role='PICKER' AND u.active=1 AND h.date>=? AND h.date<?`
     )
-    .all(range.start, range.end) as Array<{ date: string; user_id: number; status: "IN_VILLAGE" | "MAYBE" | "AWAY" }>;
+    .all(range.start, range.end) as Array<{ date: string; user_id: number; status: "IN_VILLAGE" | "MAYBE" | "AWAY"; option_id: number | null; option_name: string | null; village_name: string | null; cost_per_day: number | null }>;
 
   const statusByDateUser = new Map<string, Map<number, "IN_VILLAGE" | "MAYBE" | "AWAY">>();
   const housingByWorker: HousingByWorker = {};
@@ -35,14 +38,16 @@ export default async function AdminHousing({ searchParams }: { searchParams: Pro
     const byUser = statusByDateUser.get(row.date) ?? new Map();
     byUser.set(row.user_id, row.status);
     statusByDateUser.set(row.date, byUser);
-    (housingByWorker[row.user_id] ??= {})[row.date] = row.status;
+    const option = row.option_id != null ? { id: row.option_id, name: row.option_name!, villageName: row.village_name!, costPerDay: row.cost_per_day! } : null;
+    (housingByWorker[row.user_id] ??= {})[row.date] = { status: row.status, option };
   }
+  const villages = bookableVillages(database, month);
 
   const days: HousingDay[] = Array.from({ length: daysInMonth }, (_, i) => {
     const day = i + 1;
     const date = `${range.start.slice(0, 8)}${String(day).padStart(2, "0")}`;
     const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
-    return { date, day, weekday, isToday: date === today, isPast: date < today, status: null };
+    return { date, day, weekday, isToday: date === today, isPast: date < today };
   });
 
   const overview: HousingOverviewDay[] = days.map(d => {
@@ -61,9 +66,9 @@ export default async function AdminHousing({ searchParams }: { searchParams: Pro
 
   return (
     <AppShell user={user}>
-      <h1>מגורים</h1>
-      <p className="muted">בחרו עובד/ת לצפייה ועריכה של סידור השינה שלהם (היום והלאה), או צפו בתצוגה החודשית המרוכזת.</p>
-      <HousingAdminView csrf={csrf} workers={workers} year={year} month={month} label={label} days={days} overview={overview} housingByWorker={housingByWorker} />
+      <h1>ניהול שיבוצי מגורים</h1>
+      <p className="muted">בחרו עובד/ת כדי לשבץ אותם לכפר ולאפשרות לינה בכל יום, או צפו בתצוגה החודשית המרוכזת.</p>
+      <HousingAdminView csrf={csrf} workers={workers} year={year} month={month} label={label} days={days} overview={overview} housingByWorker={housingByWorker} villages={villages} />
     </AppShell>
   );
 }

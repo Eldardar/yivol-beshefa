@@ -134,6 +134,20 @@ describe("עריכת מגורים על ידי מנהל", () => {
     await new AdminService(db).setWorkerHousing(x.admin, { userId: x.p1, entries: [{ date: "2026-08-01", status: "AWAY" }] });
     expect(db.prepare("SELECT date,status FROM housing_status WHERE user_id=?").all(x.p1)).toEqual([{ date: "2026-08-01", status: "AWAY" }]);
   });
+  it("משבץ עובד לאפשרות לינה בכפר ושומר שיבוץ קיים כשלא נשלחה אפשרות", async () => {
+    const x = setup();
+    const village = Number(db.prepare("INSERT INTO villages(name,description,location) VALUES(?,?,?)").run("כפר", "", "").lastInsertRowid);
+    const option = Number(db.prepare("INSERT INTO village_sleeping_options(village_id,name,description,cost_per_day) VALUES(?,?,?,?)").run(village, "אוהל", "", 40).lastInsertRowid);
+    db.prepare("INSERT INTO village_available_months(village_id,month) VALUES(?,?)").run(village, 8);
+    const service = new AdminService(db);
+    await service.setWorkerHousing(x.admin, { userId: x.p1, entries: [{ date: "2026-08-10", status: "IN_VILLAGE", sleepingOptionId: option }, { date: "2026-08-11", status: "MAYBE", sleepingOptionId: option }] });
+    await service.setWorkerHousing(x.admin, { userId: x.p1, entries: [{ date: "2026-08-10", status: "MAYBE" }, { date: "2026-08-11", status: "AWAY", sleepingOptionId: option }] });
+    expect(db.prepare("SELECT date,status,sleeping_option_id FROM housing_status WHERE user_id=? ORDER BY date").all(x.p1)).toEqual([
+      { date: "2026-08-10", status: "MAYBE", sleeping_option_id: option },
+      { date: "2026-08-11", status: "AWAY", sleeping_option_id: null }
+    ]);
+    await expect(service.setWorkerHousing(x.admin, { userId: x.p1, entries: [{ date: "2026-09-01", status: "IN_VILLAGE", sleepingOptionId: option }] })).rejects.toThrow(/אינה זמינה/);
+  });
   it("חוסם משתמש שאינו מנהל ויעד שאינו קוטף", async () => {
     const x = setup();
     const service = new AdminService(db);

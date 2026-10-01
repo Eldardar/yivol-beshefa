@@ -145,10 +145,21 @@ export class AdminService {
     const title="עדכון סידור שינה";
     const body="מנהל/ת עדכן/ה את סידור השינה שלך. אפשר לבדוק ולערוך בעמוד \"מגורים\".";
     this.db.transaction(()=>{
-      const upsert=this.db.prepare(`INSERT INTO housing_status(user_id,date,status) VALUES(?,?,?)
+      const bookable=this.db.prepare(`SELECT 1 FROM village_sleeping_options o JOIN villages v ON v.id=o.village_id
+        JOIN village_available_months m ON m.village_id=v.id WHERE o.id=? AND v.active=1 AND m.month=?`);
+      // Without sleepingOptionId the worker's existing booking is kept (cleared for AWAY).
+      const keepOption=this.db.prepare(`INSERT INTO housing_status(user_id,date,status) VALUES(?,?,?)
         ON CONFLICT(user_id,date) DO UPDATE SET status=excluded.status,sleeping_option_id=CASE WHEN excluded.status='AWAY' THEN NULL ELSE housing_status.sleeping_option_id END`);
+      const setOption=this.db.prepare(`INSERT INTO housing_status(user_id,date,status,sleeping_option_id) VALUES(?,?,?,?)
+        ON CONFLICT(user_id,date) DO UPDATE SET status=excluded.status,sleeping_option_id=excluded.sleeping_option_id`);
       const clear=this.db.prepare("DELETE FROM housing_status WHERE user_id=? AND date=?");
-      for(const entry of input.entries){if(entry.status===null)clear.run(input.userId,entry.date);else upsert.run(input.userId,entry.date,entry.status);}
+      for(const entry of input.entries){
+        if(entry.status===null){clear.run(input.userId,entry.date);continue;}
+        if(entry.sleepingOptionId===undefined){keepOption.run(input.userId,entry.date,entry.status);continue;}
+        const optionId=entry.status==="AWAY"?null:entry.sleepingOptionId;
+        if(optionId!==null&&!bookable.get(optionId,Number(entry.date.slice(5,7)))) throw new Error("אפשרות הלינה אינה זמינה בחודש זה");
+        setOption.run(input.userId,entry.date,entry.status,optionId);
+      }
       this.db.prepare("INSERT INTO notifications(user_id,title,body) VALUES(?,?,?)").run(input.userId,title,body);
       this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)").run(actorId,"UPDATE","HOUSING",input.userId,JSON.stringify({dates:input.entries.map(e=>e.date)}));
     }).immediate();

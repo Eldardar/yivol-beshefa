@@ -3,11 +3,11 @@ import { useState } from "react";
 import { CalendarMonthNav } from "./calendar-month-nav";
 import { formatMoney } from "@/lib/format";
 
-type Status = "IN_VILLAGE" | "MAYBE" | "AWAY";
+export type Status = "IN_VILLAGE" | "MAYBE" | "AWAY";
 export type BookedOption = { id: number; name: string; villageName: string; costPerDay: number };
 export type BookableVillage = { id: number; name: string; location: string; description: string; options: { id: number; name: string; description: string; costPerDay: number }[] };
 export type HousingDay = { date: string; day: number; weekday: number; isToday: boolean; locked: boolean; status: Status | null; option: BookedOption | null };
-type Entry = { status: Status | null; option: BookedOption | null };
+export type HousingEntry = { status: Status | null; option: BookedOption | null };
 
 // Nightly cost for days saved before workers picked a village + sleeping option.
 const LEGACY_NIGHT_COST = 25;
@@ -18,10 +18,10 @@ const OPTIONS: { status: Status; cssKey: "available" | "maybe" | "unavailable" }
   { status: "AWAY", cssKey: "unavailable" }
 ];
 const STATUS_CSS_KEY = Object.fromEntries(OPTIONS.map(o => [o.status, o.cssKey])) as Record<Status, "available" | "maybe" | "unavailable">;
-const sleepsInVillage = (status: Status | null) => status === "IN_VILLAGE" || status === "MAYBE";
-const nightCost = (entry: Entry) => entry.option?.costPerDay ?? LEGACY_NIGHT_COST;
+export const sleepsInVillage = (status: Status | null) => status === "IN_VILLAGE" || status === "MAYBE";
+export const nightCost = (entry: HousingEntry) => entry.option?.costPerDay ?? LEGACY_NIGHT_COST;
 
-function statusLabel(status: Status, cost: number | null) {
+export function statusLabel(status: Status, cost: number | null) {
   if (status === "IN_VILLAGE") return cost === null ? "ישן בכפר" : `ישן בכפר ${cost} 🪙`;
   if (status === "MAYBE") return "אולי";
   return "חוגג את החיים במקום אחר";
@@ -39,7 +39,7 @@ async function saveDay(csrf: string, date: string, status: Status | null, sleepi
   }
 }
 
-function initialOptionId(days: HousingDay[], villages: BookableVillage[]): number | null {
+export function initialOptionId(days: HousingDay[], villages: BookableVillage[]): number | null {
   const bookable = new Set(villages.flatMap(v => v.options.map(o => o.id)));
   const booked = [...days].reverse().find(d => d.option && bookable.has(d.option.id));
   if (booked) return booked.option!.id;
@@ -47,11 +47,11 @@ function initialOptionId(days: HousingDay[], villages: BookableVillage[]): numbe
   return null;
 }
 
-function VillagePicker({ villages, villageId, optionId, onVillage, onOption }: { villages: BookableVillage[]; villageId: number | null; optionId: number | null; onVillage: (id: number) => void; onOption: (id: number) => void }) {
+export function VillagePicker({ villages, villageId, optionId, onVillage, onOption, title = "היכן ישנים החודש?" }: { villages: BookableVillage[]; villageId: number | null; optionId: number | null; onVillage: (id: number) => void; onOption: (id: number) => void; title?: string }) {
   const village = villages.find(v => v.id === villageId) ?? null;
   return (
     <section className="card stack housing-village-picker">
-      <h2>היכן ישנים החודש?</h2>
+      <h2>{title}</h2>
       {villages.length === 0 ? (
         <p className="muted">אין כפרים פתוחים להזמנה בחודש זה.</p>
       ) : (
@@ -90,7 +90,7 @@ function VillagePicker({ villages, villageId, optionId, onVillage, onOption }: {
 }
 
 export function HousingCalendar({ csrf, year, month, label, days, villages }: { csrf: string; year: number; month: number; label: string; days: HousingDay[]; villages: BookableVillage[] }) {
-  const [entries, setEntries] = useState<Record<string, Entry>>(() => Object.fromEntries(days.map(d => [d.date, { status: d.status, option: d.option }])));
+  const [entries, setEntries] = useState<Record<string, HousingEntry>>(() => Object.fromEntries(days.map(d => [d.date, { status: d.status, option: d.option }])));
   const [pending, setPending] = useState<Record<string, boolean>>({});
   const [error, setError] = useState("");
   const [optionId, setOptionId] = useState<number | null>(() => initialOptionId(days, villages));
@@ -108,7 +108,7 @@ export function HousingCalendar({ csrf, year, month, label, days, villages }: { 
     setOptionId(options.length === 1 ? options[0]!.id : null);
   }
 
-  function apply(date: string, next: Entry) {
+  function apply(date: string, next: HousingEntry) {
     const previous = entries[date] ?? { status: null, option: null };
     if (previous.status === next.status && previous.option?.id === next.option?.id) return;
     setEntries(s => ({ ...s, [date]: next }));

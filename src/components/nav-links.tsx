@@ -32,7 +32,7 @@ const ADMIN_NAV: NavItem[] = [
     children: [
       { href: "/admin/shifts", label: "ניהול משמרות", icon: ClipboardListIcon },
       { href: "/admin/shifts/availability", label: "זמינות עובדים", icon: CalendarIcon },
-      { href: "/admin/housing", label: "מגורים", icon: HouseIcon },
+      { href: "/admin/housing", label: "ניהול שיבוצי מגורים", icon: HouseIcon },
     ],
   },
   {

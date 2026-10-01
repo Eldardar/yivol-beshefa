@@ -94,3 +94,56 @@ describe("שמירת לינה בכפר ע\"י עובד", () => {
     expect(saved(x.picker)).toEqual([{ date: "2026-10-05", status: "IN_VILLAGE", sleeping_option_id: null }]);
   });
 });
+
+describe("דוח מגורים", () => {
+  it("סופר לילות ועלות לכל עובד/ת בטווח הנבחר", async () => {
+    const { getHousingReport } = await import("@/lib/housing-report");
+    const x = setup();
+    const other = Number(db.prepare("INSERT INTO users(name,email,phone,role,password_hash) VALUES(?,?,?,?,?)").run("קוטפת", "picker2@example.com", "0500000002", "PICKER", "x").lastInsertRowid);
+    const id = new VillageService(db).save(x.admin, null, base);
+    const [tent, caravan] = db.prepare("SELECT id FROM village_sleeping_options WHERE village_id=? ORDER BY id").all(id) as Array<{ id: number }>;
+    const insert = db.prepare("INSERT INTO housing_status(user_id,date,status,sleeping_option_id) VALUES(?,?,?,?)");
+    insert.run(x.picker, "2026-10-01", "IN_VILLAGE", tent!.id);
+    insert.run(x.picker, "2026-10-02", "IN_VILLAGE", caravan!.id);
+    insert.run(x.picker, "2026-10-03", "IN_VILLAGE", null);
+    insert.run(x.picker, "2026-10-04", "MAYBE", tent!.id);
+    insert.run(x.picker, "2026-11-01", "IN_VILLAGE", caravan!.id);
+    insert.run(other, "2026-10-05", "AWAY", null);
+
+    expect(getHousingReport(db, { start: "2026-10-01", end: "2026-11-01" })).toEqual([
+      { user_id: x.picker, name: "קוטף", active: 1, nights: 3, cost: 170, unpriced_nights: 1 }
+    ]);
+    expect(getHousingReport(db, {})).toEqual([
+      { user_id: x.picker, name: "קוטף", active: 1, nights: 4, cost: 290, unpriced_nights: 1 }
+    ]);
+  });
+
+  it("מפענח את תקופת הדוח מפרמטרי ה-URL", async () => {
+    const { resolveHousingReportPeriod } = await import("@/lib/housing-report");
+    expect(resolveHousingReportPeriod({}, "2026-10-01")).toMatchObject({ view: "all", range: {} });
+    expect(resolveHousingReportPeriod({ view: "monthly", y: "2026", m: "2" }, "2026-10-01")).toMatchObject({ range: { start: "2026-02-01", end: "2026-03-01" }, label: "פברואר 2026" });
+    expect(resolveHousingReportPeriod({ view: "yearly", y: "2025" }, "2026-10-01")).toMatchObject({ range: { start: "2025-01-01", end: "2026-01-01" }, label: "2025" });
+    expect(resolveHousingReportPeriod({ view: "yearly", y: "bad" }, "2026-10-01")).toMatchObject({ year: 2026 });
+  });
+});
+
+describe("פירוט לילות בדוח מגורים", () => {
+  it("מחזיר את הלילות של כל עובד/ת בטווח עם מיקום, אפשרות לינה ועלות", async () => {
+    const { getHousingNights } = await import("@/lib/housing-report");
+    const x = setup();
+    const id = new VillageService(db).save(x.admin, null, base);
+    const [tent] = db.prepare("SELECT id FROM village_sleeping_options WHERE village_id=? ORDER BY id").all(id) as Array<{ id: number }>;
+    const insert = db.prepare("INSERT INTO housing_status(user_id,date,status,sleeping_option_id) VALUES(?,?,?,?)");
+    insert.run(x.picker, "2026-10-02", "IN_VILLAGE", null);
+    insert.run(x.picker, "2026-10-01", "IN_VILLAGE", tent!.id);
+    insert.run(x.picker, "2026-10-03", "MAYBE", tent!.id);
+    insert.run(x.picker, "2026-11-01", "IN_VILLAGE", tent!.id);
+
+    expect(getHousingNights(db, { start: "2026-10-01", end: "2026-11-01" })).toEqual({
+      [x.picker]: [
+        { date: "2026-10-01", village: "כפר א", sleeping_option: "אוהל", cost: 50 },
+        { date: "2026-10-02", village: null, sleeping_option: null, cost: null }
+      ]
+    });
+  });
+});
