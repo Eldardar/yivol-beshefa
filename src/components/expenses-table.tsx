@@ -3,9 +3,9 @@ import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckIcon, ChevronDownIcon, EyeIcon, XIcon } from "./icons";
 import { DeleteExpenseButton, EditExpenseButton } from "./expense-actions";
-import { formatHebrewDate } from "@/lib/dates";
+import { formatHebrewDate, formatHebrewDateTime } from "@/lib/dates";
 import { formatMoney } from "@/lib/format";
-import { EDITABLE_FIELDS, EXPENSE_FIELDS, EXPENSE_SOURCE_LABEL, type ExpenseFieldKey, type ExpenseRow } from "@/lib/expenses";
+import { EDITABLE_FIELDS, EXPENSE_FIELDS, EXPENSE_SOURCE_LABEL, EXPENSE_TIMESTAMPS, type ExpenseFieldKey, type ExpenseRow } from "@/lib/expenses";
 
 const MONEY_FIELDS = new Set<ExpenseFieldKey>(["amount_before_vat", "vat", "total_ils"]);
 // הקישור והשם של הקובץ מוצגים ככפתור צפייה, לא כטקסט
@@ -18,6 +18,11 @@ function display(row: ExpenseRow, key: ExpenseFieldKey, kind: string): string {
   if (kind === "date" && typeof value === "string") return formatHebrewDate(value);
   if (MONEY_FIELDS.has(key) && typeof value === "number") return formatMoney(value);
   return String(value);
+}
+
+function timestamp(row: ExpenseRow, key: (typeof EXPENSE_TIMESTAMPS)[number]["key"]): string {
+  const value = row[key];
+  return value ? formatHebrewDateTime(value) : "—";
 }
 
 function FileLink({ row }: { row: ExpenseRow }) {
@@ -47,6 +52,12 @@ function ExpenseDetails({ row }: { row: ExpenseRow }) {
           <dt>קובץ</dt>
           <dd><FileLink row={row} /></dd>
         </div>
+        {EXPENSE_TIMESTAMPS.map(field => (
+          <div key={field.key}>
+            <dt>{field.label}</dt>
+            <dd className={row[field.key] ? undefined : "muted"}>{timestamp(row, field.key)}</dd>
+          </div>
+        ))}
       </dl>
     </div>
   );
@@ -144,7 +155,7 @@ function EditableCell({ csrf, row, field, onDone }: { csrf: string; row: Expense
 }
 
 function FullExpensesTable({ csrf, rows }: { csrf: string; rows: ExpenseRow[] }) {
-  const columns = FULL_FIELDS.length + 5;
+  const columns = FULL_FIELDS.length + EXPENSE_TIMESTAMPS.length + 5;
   const [editing, setEditing] = useState<EditingCell | null>(null);
   return (
     <div className="table-wrap card expenses-full-wrap">
@@ -153,7 +164,9 @@ function FullExpensesTable({ csrf, rows }: { csrf: string; rows: ExpenseRow[] })
           <tr>
             <th>#</th>
             {FULL_FIELDS.map(field => <th key={field.key}>{field.label}</th>)}
-            <th>מקור</th><th>קובץ</th><th>פעולות</th>
+            <th>מקור</th><th>קובץ</th>
+            {EXPENSE_TIMESTAMPS.map(field => <th key={field.key}>{field.label}</th>)}
+            <th>פעולות</th>
           </tr>
         </thead>
         <tbody>
@@ -178,6 +191,7 @@ function FullExpensesTable({ csrf, rows }: { csrf: string; rows: ExpenseRow[] })
               })}
               <td>{EXPENSE_SOURCE_LABEL[row.source]}</td>
               <td><FileLink row={row} /></td>
+              {EXPENSE_TIMESTAMPS.map(field => <td key={field.key} className={row[field.key] ? undefined : "muted"}>{timestamp(row, field.key)}</td>)}
               <td>
                 <div className="actions-cell expense-row-actions">
                   <EditExpenseButton csrf={csrf} row={row} />

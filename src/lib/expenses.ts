@@ -46,6 +46,12 @@ export type ExpenseFieldKey = (typeof EXPENSE_FIELDS)[number]["key"];
 export type ExpenseValues = Partial<Record<ExpenseFieldKey, string | number | null>>;
 export type ExpenseSource = "MANUAL" | "CAMERA" | "UPLOAD";
 
+// מועדי יצירה ועדכון — נשמרים אוטומטית ב-UTC
+export const EXPENSE_TIMESTAMPS = [
+  { key: "created_at", label: "מועד יצירה" },
+  { key: "updated_at", label: "מועד עדכון אחרון" },
+] as const;
+
 export const EXPENSE_SOURCE_LABEL: Record<ExpenseSource, string> = { MANUAL: "ידני", CAMERA: "צילום", UPLOAD: "קובץ" };
 
 // סוגי קבצים ש-Claude יודע לקרוא: תמונות ו-PDF
@@ -53,7 +59,7 @@ export const EXPENSE_FILE_TYPES = ["image/jpeg", "image/png", "image/gif", "imag
 export type ExpenseFileType = (typeof EXPENSE_FILE_TYPES)[number];
 export const MAX_EXPENSE_FILE_BYTES = 20 * 1024 * 1024;
 
-export type ExpenseRow = { id: number; source: ExpenseSource; has_file: number; file_mime: string | null; created_at: string } & Record<ExpenseFieldKey, string | number | null>;
+export type ExpenseRow = { id: number; source: ExpenseSource; has_file: number; file_mime: string | null; created_at: string; updated_at: string | null } & Record<ExpenseFieldKey, string | number | null>;
 
 // שדות שהמערכת ממלאת בעצמה (עיבוד וקובץ) ואינם נערכים ידנית
 export const PLATFORM_FIELDS: ReadonlySet<ExpenseFieldKey> = new Set<ExpenseFieldKey>(["processing_date", "new_file_name", "file_link"]);

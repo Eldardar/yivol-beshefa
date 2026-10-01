@@ -1,6 +1,7 @@
 "use client";
 import { ExcelDownloadButton } from "./export-excel-button";
-import { EXPENSE_FIELDS, EXPENSE_SOURCE_LABEL, type ExpenseFieldKey, type ExpenseRow } from "@/lib/expenses";
+import { formatHebrewDateTime } from "@/lib/dates";
+import { EXPENSE_FIELDS, EXPENSE_SOURCE_LABEL, EXPENSE_TIMESTAMPS, type ExpenseFieldKey, type ExpenseRow } from "@/lib/expenses";
 import type { XlsxCell, XlsxSheet } from "@/lib/xlsx";
 
 const MONEY_FIELDS = new Set<ExpenseFieldKey>(["amount_before_vat", "vat", "total_ils"]);
@@ -24,9 +25,9 @@ function expenseSheets(rows: ExpenseRow[], sheetName: string): XlsxSheet[] {
   });
   return [{
     name: sheetName,
-    header: [...EXPENSE_FIELDS.map(field => field.label), "מקור"],
-    rows: rows.map(row => [...EXPENSE_FIELDS.map(field => cell(row, field.key, field.kind)), EXPENSE_SOURCE_LABEL[row.source]]),
-    footer: [...footer, null],
+    header: [...EXPENSE_FIELDS.map(field => field.label), "מקור", ...EXPENSE_TIMESTAMPS.map(field => field.label)],
+    rows: rows.map(row => [...EXPENSE_FIELDS.map(field => cell(row, field.key, field.kind)), EXPENSE_SOURCE_LABEL[row.source], ...EXPENSE_TIMESTAMPS.map(field => (row[field.key] ? formatHebrewDateTime(row[field.key] as string) : null))]),
+    footer: [...footer, null, ...EXPENSE_TIMESTAMPS.map(() => null)],
   }];
 }
 

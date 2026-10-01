@@ -70,6 +70,16 @@ describe("הוצאות שנכשלו בחילוץ", () => {
     expect(service.listForMonth(2026, 7)[0]).toMatchObject({ id, supplier_name: "ספק מלא", total_ils: 50, tax_year: 2026, file_link: `/api/admin/expenses/${id}/file` });
   });
 
+  it("שומרת מועד יצירה ומעדכנת את מועד העדכון האחרון", () => {
+    const service = new ExpenseService(db, dir);
+    const id = service.create(admin, "MANUAL", { invoice_date: "2026-07-20" });
+    db.prepare("UPDATE expenses SET created_at='2026-01-01 08:00:00',updated_at='2026-01-01 08:00:00' WHERE id=?").run(id);
+    service.update(admin, id, { invoice_date: "2026-07-20", supplier_name: "ספק" });
+    const row = service.list().find(r => r.id === id)!;
+    expect(row.created_at).toBe("2026-01-01 08:00:00");
+    expect(row.updated_at! > row.created_at).toBe(true);
+  });
+
   it("עדכון הוצאה שאינה קיימת נכשל", () => {
     expect(() => new ExpenseService(db, dir).update(admin, 999, { invoice_date: "2026-07-20" })).toThrow("ההוצאה לא נמצאה");
   });

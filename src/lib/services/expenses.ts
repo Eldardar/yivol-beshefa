@@ -17,7 +17,7 @@ const valuesSchema = z.object(
   )
 ) as z.ZodType<ExpenseValues>;
 
-const ROW_COLUMNS = `id,source,file_path IS NOT NULL has_file,file_mime,created_at,${EXPENSE_FIELDS.map(field => field.key).join(",")}`;
+const ROW_COLUMNS = `id,source,file_path IS NOT NULL has_file,file_mime,created_at,updated_at,${EXPENSE_FIELDS.map(field => field.key).join(",")}`;
 
 const EXTENSIONS: Record<ExpenseFileType, string> = { "image/jpeg": "jpg", "image/png": "png", "image/gif": "gif", "image/webp": "webp", "application/pdf": "pdf" };
 
@@ -44,7 +44,7 @@ export class ExpenseService {
     const keys = EXPENSE_FIELDS.map(field => field.key);
     return this.db.transaction(() => {
       const result = this.db
-        .prepare(`INSERT INTO expenses(source,created_by,extraction_failed,${keys.join(",")}) VALUES(?,?,?,${keys.map(() => "?").join(",")})`)
+        .prepare(`INSERT INTO expenses(source,created_by,extraction_failed,updated_at,${keys.join(",")}) VALUES(?,?,?,CURRENT_TIMESTAMP,${keys.map(() => "?").join(",")})`)
         .run(source, actorId, options.extractionFailed ? 1 : 0, ...keys.map(key => values[key] ?? null));
       const id = Number(result.lastInsertRowid);
       if (file) {
@@ -67,7 +67,7 @@ export class ExpenseService {
     const keys = EDITABLE_FIELDS.map(field => field.key);
     this.db.transaction(() => {
       const result = this.db
-        .prepare(`UPDATE expenses SET ${keys.map(key => `${key}=?`).join(",")},extraction_failed=0 WHERE id=?`)
+        .prepare(`UPDATE expenses SET ${keys.map(key => `${key}=?`).join(",")},extraction_failed=0,updated_at=CURRENT_TIMESTAMP WHERE id=?`)
         .run(...keys.map(key => values[key] ?? null), id);
       if (result.changes !== 1) throw new Error("ההוצאה לא נמצאה");
       this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(actorId, "UPDATE", "EXPENSE", id);
