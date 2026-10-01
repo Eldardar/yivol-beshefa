@@ -9,7 +9,7 @@ const transitions:Record<string,Set<string>>={DRAFT:new Set(["PUBLISHED","CANCEL
 
 export class ShiftService{
  constructor(private readonly db:Database.Database){}
- private reportUnits(shiftId:number):Unit[]{return (this.db.prepare("SELECT unit FROM shift_goals WHERE shift_id=?").all(shiftId) as Array<{unit:Unit}>).map(g=>g.unit);}
+ private reportUnits(shiftId:number):Unit[]{return (this.db.prepare("SELECT unit FROM shift_goal_units WHERE shift_id=?").all(shiftId) as Array<{unit:Unit}>).map(g=>g.unit);}
  private actor(actorId:number){return this.db.prepare("SELECT id,role,active FROM users WHERE id=?").get(actorId) as {id:number;role:string;active:number}|undefined;}
  transition(actorId:number,shiftId:number,target:"DRAFT"|"PUBLISHED"|"COMPLETED"|"CANCELLED",options?:{allowLeaderConflict?:boolean;results?:Array<{unit:Unit;result:number}>}):string[]{
   const actor=this.actor(actorId);if(!actor?.active||actor.role!=="ADMIN")throw new Error("אין הרשאה");
@@ -62,7 +62,7 @@ export class ShiftService{
   const allowedUnits=this.reportUnits(shiftId);
   const seen=new Map<number,Set<Unit>>();
   for(const entry of entries){
-   if(allowedUnits.length>0&&!allowedUnits.includes(entry.unit))throw new Error("ניתן לדווח רק ביחידות המידה של יעד המשמרת");
+   if(allowedUnits.length>0&&!allowedUnits.includes(entry.unit))throw new Error("ניתן לדווח רק ביחידות המידה שהוגדרו ליעד אישי במשמרת זו");
    if(!Number.isInteger(entry.userId)||!Number.isFinite(entry.quantity)||entry.quantity<0||entry.quantity>1_000_000)throw new Error("כמות אינה תקינה");
    if(!assigned.includes(entry.userId))throw new Error("הקוטף אינו משובץ");
    const units=seen.get(entry.userId)??new Set<Unit>();if(units.has(entry.unit))throw new Error("יחידת מידה כפולה עבור אותו קוטף");units.add(entry.unit);seen.set(entry.userId,units);
@@ -90,7 +90,7 @@ export class ShiftService{
   const allowedUnits=this.reportUnits(shiftId);
   const units=new Set<Unit>();
   for(const entry of entries){
-   if(allowedUnits.length>0&&!allowedUnits.includes(entry.unit))throw new Error("ניתן לדווח רק ביחידות המידה של יעד המשמרת");
+   if(allowedUnits.length>0&&!allowedUnits.includes(entry.unit))throw new Error("ניתן לדווח רק ביחידות המידה שהוגדרו ליעד אישי במשמרת זו");
    if(!Number.isFinite(entry.quantity)||entry.quantity<0||entry.quantity>1_000_000)throw new Error("כמות אינה תקינה");
    if(units.has(entry.unit))throw new Error("יחידת מידה כפולה");units.add(entry.unit);
   }

@@ -26,7 +26,7 @@ export default async function Leader({ params }: { params: Promise<{ id: string 
     arr.push({ value: q.quantity, unit: q.unit });
     linesByUser.set(q.user_id, arr);
   }
-  const reportUnits = shiftReportUnits((db().prepare("SELECT unit FROM shift_goals WHERE shift_id=?").all(id) as Array<{ unit: Unit }>).map(g => g.unit));
+  const reportUnits = shiftReportUnits((db().prepare("SELECT unit FROM shift_goal_units WHERE shift_id=?").all(id) as Array<{ unit: Unit }>).map(g => g.unit));
   const hoursRows = db().prepare("SELECT user_id,start_time,end_time FROM shift_hours WHERE shift_id=?").all(id) as Array<{ user_id: number; start_time: string; end_time: string }>;
   const hoursByUser = new Map<number, { start_time: string; end_time: string }>();
   for (const h of hoursRows) hoursByUser.set(h.user_id, h);

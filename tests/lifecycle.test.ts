@@ -46,10 +46,13 @@ describe("מחזור משמרת ודיווח", () => {
     expect(() => service.saveQuantities(x.p1, x.shift, [{ userId: x.p1, quantity: 1, unit: "KG" }, { userId: x.p1, quantity: 2, unit: "KG" }, { userId: x.p2, quantity: 1, unit: "KG" }])).toThrow("יחידת מידה כפולה");
   });
 
-  it("מגביל את הדיווח ליחידות המידה של יעד המשמרת", () => {
+  it("מגביל את הדיווח ליחידות המידה של היעד האישי", () => {
     const x = setup(); const service = new ShiftService(db); db.prepare("UPDATE shifts SET status='PUBLISHED' WHERE id=?").run(x.shift);
-    expect(() => service.saveQuantities(x.p1, x.shift, [{ userId: x.p1, quantity: 2, unit: "BUCKET" }, { userId: x.p2, quantity: 1, unit: "KG" }])).toThrow("יחידות המידה של יעד המשמרת");
-    expect(() => service.reportOwnQuantities(x.p2, x.shift, [{ quantity: 2, unit: "BUCKET" }], undefined, new Date("2026-08-10T12:00:00Z"))).toThrow("יחידות המידה של יעד המשמרת");
+    db.prepare("INSERT INTO shift_goal_units(shift_id,unit) VALUES(?,?)").run(x.shift, "CRATE_SMALL");
+    expect(() => service.saveQuantities(x.p1, x.shift, [{ userId: x.p1, quantity: 2, unit: "KG" }, { userId: x.p2, quantity: 1, unit: "CRATE_SMALL" }])).toThrow("יחידות המידה שהוגדרו ליעד אישי");
+    expect(() => service.reportOwnQuantities(x.p2, x.shift, [{ quantity: 2, unit: "BUCKET" }], undefined, new Date("2026-08-10T12:00:00Z"))).toThrow("יחידות המידה שהוגדרו ליעד אישי");
+    service.reportOwnQuantities(x.p2, x.shift, [{ quantity: 3, unit: "CRATE_SMALL" }], undefined, new Date("2026-08-10T12:00:00Z"));
+    expect(db.prepare("SELECT quantity,unit FROM quantities WHERE shift_id=? AND user_id=?").all(x.shift, x.p2)).toEqual([{ quantity: 3, unit: "CRATE_SMALL" }]);
   });
 
   it("מאפשר יעד ודיווח בשעות שכר", () => {

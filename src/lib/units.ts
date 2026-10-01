@@ -13,7 +13,7 @@ export const UNIT_LABEL: Record<Unit, string> = {
 
 export const REPORT_UNITS = UNITS.filter((u) => u !== "KG");
 
-// Units a shift's end-of-shift report may use: the units the admin set as the shift's goal, in canonical order.
+// Units a shift's end-of-shift report may use: the units the admin allowed for pickers' personal goals, in canonical order.
 export function shiftReportUnits(goalUnits: Unit[]): readonly Unit[] {
   return goalUnits.length > 0 ? UNITS.filter((u) => goalUnits.includes(u)) : REPORT_UNITS;
 }
