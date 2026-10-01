@@ -85,17 +85,19 @@ export class ExpenseService {
     if (file) fs.rmSync(file.path, { force: true });
   }
 
-  // הוצאה משויכת לחודש לפי תאריך העסקה, ובהיעדרו לפי מועד ההוספה. כל השדות — לפירוט המורחב ולייצוא.
-  // הוצאות שהחילוץ שלהן נכשל ממתינות ברשימה נפרדת עד להשלמתן
+  // הוצאה משויכת לתקופה לפי תאריך העסקה, ובהיעדרו לפי מועד ההוספה. כל השדות — לפירוט המורחב ולייצוא.
+  // הוצאות שהחילוץ שלהן נכשל ממתינות ברשימה נפרדת עד להשלמתן. טווח חסר = ללא הגבלה (end אינו כלול)
+  list(range: { start?: string; end?: string } = {}): ExpenseRow[] {
+    const day = "COALESCE(invoice_date,substr(created_at,1,10))";
+    const where = ["extraction_failed=0"];
+    const params: string[] = [];
+    if (range.start) { where.push(`${day}>=?`); params.push(range.start); }
+    if (range.end) { where.push(`${day}<?`); params.push(range.end); }
+    return this.db.prepare(`SELECT ${ROW_COLUMNS} FROM expenses WHERE ${where.join(" AND ")} ORDER BY ${day},id`).all(...params) as ExpenseRow[];
+  }
+
   listForMonth(year: number, month: number): ExpenseRow[] {
-    const range = monthRange(year, month);
-    return this.db
-      .prepare(
-        `SELECT ${ROW_COLUMNS} FROM expenses
-         WHERE extraction_failed=0 AND COALESCE(invoice_date,substr(created_at,1,10))>=? AND COALESCE(invoice_date,substr(created_at,1,10))<?
-         ORDER BY COALESCE(invoice_date,substr(created_at,1,10)),id`
-      )
-      .all(range.start, range.end) as ExpenseRow[];
+    return this.list(monthRange(year, month));
   }
 
   listFailed(): ExpenseRow[] {

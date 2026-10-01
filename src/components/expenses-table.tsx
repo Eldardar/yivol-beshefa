@@ -158,7 +158,7 @@ function FullExpensesTable({ csrf, rows }: { csrf: string; rows: ExpenseRow[] })
         </thead>
         <tbody>
           {rows.length === 0 && (
-            <tr><td colSpan={columns} className="muted">אין הוצאות בחודש זה</td></tr>
+            <tr><td colSpan={columns} className="muted">אין הוצאות בתקופה זו</td></tr>
           )}
           {rows.map((row, i) => (
             <tr key={row.id}>
@@ -209,7 +209,7 @@ function CompactExpensesTable({ csrf, rows }: { csrf: string; rows: ExpenseRow[]
         </thead>
         <tbody>
           {rows.length === 0 && (
-            <tr><td colSpan={COLUMNS} className="muted">אין הוצאות בחודש זה</td></tr>
+            <tr><td colSpan={COLUMNS} className="muted">אין הוצאות בתקופה זו</td></tr>
           )}
           {rows.map((row, i) => {
             const isOpen = expanded === row.id;

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type Database from "better-sqlite3";
 import { createTestDb } from "@/lib/db";
 import { ExpenseService } from "@/lib/services/expenses";
+import { resolveExpensePeriod } from "@/lib/expenses";
 
 let db: Database.Database;
 let dir: string;
@@ -83,5 +84,31 @@ describe("מחיקת הוצאות", () => {
     expect(fs.existsSync(filePath)).toBe(false);
     expect(service.listFailed()).toEqual([]);
     expect(() => service.delete(admin, id)).toThrow("ההוצאה לא נמצאה");
+  });
+
+  it("מסנן לפי טווח תאריכים, וללא טווח מחזיר את כל ההוצאות", () => {
+    const service = new ExpenseService(db, dir);
+    const a = service.create(admin, "MANUAL", { invoice_date: "2025-12-31" });
+    const b = service.create(admin, "MANUAL", { invoice_date: "2026-03-10" });
+    const c = service.create(admin, "MANUAL", { invoice_date: "2026-03-11" });
+    expect(service.list().map(r => r.id)).toEqual([a, b, c]);
+    expect(service.list(resolveExpensePeriod({ view: "year", y: "2026" }, "2026-10-01").range).map(r => r.id)).toEqual([b, c]);
+    expect(service.list(resolveExpensePeriod({ view: "custom", from: "2025-12-31", to: "2026-03-10" }, "2026-10-01").range).map(r => r.id)).toEqual([a, b]);
+  });
+});
+
+describe("תקופת תצוגת ההוצאות", () => {
+  const today = "2026-10-01";
+  it("ברירת המחדל היא כל הזמנים", () => {
+    expect(resolveExpensePeriod({}, today)).toMatchObject({ view: "all", range: {}, label: "כל הזמנים" });
+    expect(resolveExpensePeriod({ view: "bogus" }, today).view).toBe("all");
+  });
+  it("חודשי ושנתי", () => {
+    expect(resolveExpensePeriod({ view: "month", y: "2026", m: "12" }, today)).toMatchObject({ range: { start: "2026-12-01", end: "2027-01-01" }, label: "דצמבר 2026", fileLabel: "12-2026" });
+    expect(resolveExpensePeriod({ view: "year" }, today)).toMatchObject({ year: 2026, range: { start: "2026-01-01", end: "2027-01-01" } });
+  });
+  it("טווח מותאם כולל את יום הסיום, מחליף סדר הפוך ומתעלם מתאריכים לא תקינים", () => {
+    expect(resolveExpensePeriod({ view: "custom", from: "2026-02-28", to: "2026-01-15" }, today)).toMatchObject({ from: "2026-01-15", to: "2026-02-28", range: { start: "2026-01-15", end: "2026-03-01" }, label: "15-01-2026 עד 28-02-2026" });
+    expect(resolveExpensePeriod({ view: "custom", from: "2026-02-30", to: "x" }, today)).toMatchObject({ from: "2026-10-01", to: "2026-10-01" });
   });
 });

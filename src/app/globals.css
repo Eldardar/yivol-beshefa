@@ -1252,7 +1252,8 @@ button.bottom-nav-link { border: 0; background: transparent; }
 .expense-dropzone.is-dragging { border-style: solid; }
 .expense-dropzone-link { color: var(--color-primary); font-weight: 600; text-decoration: underline; }
 .expense-dropzone-hint { font-size: 0.8125rem; }
-.expenses-actions { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.expenses-actions { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin-inline-start: auto; }
+.expenses-range-form { display: flex; align-items: end; gap: var(--space-3); flex-wrap: wrap; }
 .expense-details { padding: var(--space-4) var(--space-5); background: var(--color-surface-sunk); }
 .expense-details-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: var(--space-3) var(--space-5); margin: 0; }
 .expense-details-grid dt { font-size: 0.8125rem; color: var(--color-text-secondary); }
