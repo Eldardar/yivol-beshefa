@@ -33,15 +33,24 @@ export default async function Home() {
       farms: (database.prepare("SELECT count(*) n FROM farms WHERE active=1").get() as { n: number }).n,
       journalToday: (database.prepare("SELECT count(*) n FROM journal_entries WHERE created_at>=? AND created_at<?").get(dayStartUtc, dayEndUtc) as { n: number }).n,
     };
-    // Monthly goal progress counts shifts' final results, the same totals as the harvest report.
-    const monthRange = currentJerusalemMonth();
+    // Goal progress counts shifts' final results within the goal's dates, the same totals as the harvest report.
+    const goal = new AdminService(database).goal(user.id);
     const doneByUnit = new Map<string, number>();
-    for (const amounts of Object.values(getPickedAmountsByFruitType(database, today, monthRange)))
-      for (const a of amounts) doneByUnit.set(a.unit, (doneByUnit.get(a.unit) ?? 0) + a.quantity);
-    const goalProgress = new AdminService(database).monthlyGoal(user.id, today.slice(0, 7))
+    if (goal) {
+      const [ey, em, ed] = goal.endDate.split("-").map(Number) as [number, number, number];
+      const range = { start: goal.startDate, end: new Date(Date.UTC(ey, em - 1, ed + 1)).toISOString().slice(0, 10) };
+      for (const amounts of Object.values(getPickedAmountsByFruitType(database, today, range)))
+        for (const a of amounts) doneByUnit.set(a.unit, (doneByUnit.get(a.unit) ?? 0) + a.quantity);
+    }
+    const goalProgress = (goal?.goals ?? [])
       .sort((a, b) => UNITS.indexOf(a.unit) - UNITS.indexOf(b.unit))
       .map(g => ({ ...g, done: doneByUnit.get(g.unit) ?? 0 }));
-    const monthLabel = new Intl.DateTimeFormat("he-IL", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${monthRange.start}T00:00:00Z`));
+    // A new goal defaults to the current month.
+    const monthRange = currentJerusalemMonth();
+    const [my, mm] = monthRange.end.split("-").map(Number) as [number, number];
+    const goalDates = goal
+      ? { startDate: goal.startDate, endDate: goal.endDate }
+      : { startDate: monthRange.start, endDate: new Date(Date.UTC(my, mm - 1, 0)).toISOString().slice(0, 10) };
     const csrf = await csrfValue();
     const fruitRecordsByPeriod = {
       month: getTopResultsByFruit(database, today, monthRange),
@@ -75,7 +84,7 @@ export default async function Home() {
             <div className="metric">{stats.journalToday}</div>
           </article>
         </div>
-        <AdminGoal monthLabel={monthLabel} progress={goalProgress} csrf={csrf} />
+        <AdminGoal {...goalDates} today={today} progress={goalProgress} csrf={csrf} />
         <FruitRecordsByPeriod byPeriod={fruitRecordsByPeriod} workers={workerNames} />
         <div className="game-link">
           <Link href="/game" className="btn secondary">למשחק</Link>

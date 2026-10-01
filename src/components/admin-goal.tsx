@@ -3,28 +3,29 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { UnitLines } from "./unit-lines";
 import { UNITS, UNIT_LABEL, type Unit } from "@/lib/units";
+import { formatHebrewShortDate } from "@/lib/dates";
 
-export type MonthlyGoalProgress = { unit: Unit; goal: number; done: number };
+export type GoalProgress = { unit: Unit; goal: number; done: number };
 
 const formatQty = (value: number) => value.toLocaleString("he-IL", { maximumFractionDigits: 2 });
 
-export function AdminGoal({ monthLabel, progress, csrf }: { monthLabel: string; progress: MonthlyGoalProgress[]; csrf: string }) {
+export function AdminGoal({ startDate, endDate, today, progress, csrf }: { startDate: string; endDate: string; today: string; progress: GoalProgress[]; csrf: string }) {
   const router = useRouter();
   const [editing, setEditing] = useState(progress.length === 0);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function save(goals: Array<{ unit: string; goal: string }>) {
+  async function save(payload: { startDate: string; endDate: string; goals: Array<{ unit: string; goal: string }> } | { clear: true }) {
     setBusy(true); setError("");
     try {
       const res = await fetch("/api/admin/goal", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ goals, csrf })
+        body: JSON.stringify({ ...payload, csrf })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "השמירה נכשלה");
-      setEditing(goals.length === 0);
+      setEditing("clear" in payload);
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "השמירה נכשלה");
@@ -38,14 +39,24 @@ export function AdminGoal({ monthLabel, progress, csrf }: { monthLabel: string; 
     const form = new FormData(e.currentTarget);
     const values = form.getAll("goalQty").map(String);
     const units = form.getAll("goalUnit").map(String);
-    save(values.map((goal, i) => ({ unit: units[i] ?? "", goal })));
+    save({ startDate: String(form.get("startDate")), endDate: String(form.get("endDate")), goals: values.map((goal, i) => ({ unit: units[i] ?? "", goal })) });
   }
 
   return (
     <section className="card stack">
-      <h2>היעד החודשי שלי · {monthLabel}</h2>
+      <h2>היעד שלי{progress.length > 0 && ` · ${formatHebrewShortDate(startDate)}–${formatHebrewShortDate(endDate)}`}</h2>
       {editing ? (
         <form className="stack" onSubmit={handleSubmit}>
+          <div className="goal-dates">
+            <label className="field">
+              <span>מתאריך</span>
+              <input className="input" type="date" name="startDate" defaultValue={startDate} required />
+            </label>
+            <label className="field">
+              <span>עד תאריך</span>
+              <input className="input" type="date" name="endDate" defaultValue={endDate} required />
+            </label>
+          </div>
           <UnitLines
             valueName="goalQty"
             unitName="goalUnit"
@@ -63,6 +74,8 @@ export function AdminGoal({ monthLabel, progress, csrf }: { monthLabel: string; 
         </form>
       ) : (
         <>
+          {today < startDate && <p className="muted">{`היעד יתחיל ב־${formatHebrewShortDate(startDate)}`}</p>}
+          {today > endDate && <p className="muted">{`תקופת היעד הסתיימה ב־${formatHebrewShortDate(endDate)}`}</p>}
           <ul className="stack goal-progress-list">
             {progress.map(p => {
               const left = Math.max(p.goal - p.done, 0);
@@ -71,7 +84,7 @@ export function AdminGoal({ monthLabel, progress, csrf }: { monthLabel: string; 
               return (
                 <li key={p.unit} className="goal-progress">
                   <strong>
-                    {left > 0 ? `נותרו ${formatQty(left)} ${UNIT_LABEL[p.unit]} החודש` : `היעד של ${UNIT_LABEL[p.unit]} הושג 🎉`}
+                    {left > 0 ? `נותרו ${formatQty(left)} ${UNIT_LABEL[p.unit]} עד ${formatHebrewShortDate(endDate)}` : `היעד של ${UNIT_LABEL[p.unit]} הושג 🎉`}
                   </strong>
                   <div className="progress-track" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={Math.max(100, percent)}>
                     <div className={reached ? "progress-fill progress-fill--gold" : "progress-fill"} style={{ width: `${Math.min(100, percent)}%` }} />
@@ -84,7 +97,7 @@ export function AdminGoal({ monthLabel, progress, csrf }: { monthLabel: string; 
           {error && <p className="alert" role="alert">{error}</p>}
           <div className="actions">
             <button type="button" className="btn secondary" onClick={() => setEditing(true)}>עריכת יעד</button>
-            <button type="button" className="btn secondary" disabled={busy} onClick={() => save([])}>ניקוי יעד</button>
+            <button type="button" className="btn secondary" disabled={busy} onClick={() => save({ clear: true })}>ניקוי יעד</button>
           </div>
         </>
       )}

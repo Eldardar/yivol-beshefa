@@ -5,7 +5,6 @@ import { db } from "@/lib/server";
 import { AuthService } from "@/lib/services/auth";
 import { AdminService } from "@/lib/services/admin";
 import { requestBodyIssue } from "@/lib/http";
-import { jerusalemDate } from "@/lib/dates";
 
 export const runtime = "nodejs";
 const noStoreHeaders = { "Cache-Control": "no-store" };
@@ -23,7 +22,9 @@ export async function POST(req: Request) {
     if (issue) throw new Error(issue.message);
     const body = await req.json() as Record<string, unknown>;
     auth.assertCsrf(token, String(body.csrf ?? ""));
-    new AdminService(database).setMonthlyGoal(user.id, jerusalemDate().slice(0, 7), { goals: body.goals });
+    const admin = new AdminService(database);
+    if (body.clear === true) admin.clearGoal(user.id);
+    else admin.setGoal(user.id, { startDate: body.startDate, endDate: body.endDate, goals: body.goals });
     return NextResponse.json({ ok: true }, { headers: noStoreHeaders });
   } catch (error) {
     const message = error instanceof z.ZodError
