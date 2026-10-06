@@ -154,11 +154,12 @@ function WorkerAvailabilityCalendar({
               {WEEKDAYS.map(weekday => <div className="calendar-head" key={weekday} role="columnheader">{weekday}</div>)}
               {Array.from({ length: leadingPad }, (_, i) => <div className="calendar-pad" key={`pad-${i}`} aria-hidden="true" />)}
               {monthDays.map(d => {
-                const status = d.isPast ? (map[d.date] ?? null) : (draft[d.date] ?? null);
+                // Past days stay dimmed but remain editable for admins (e.g. backfilling a newly added worker).
+                const status = draft[d.date] ?? null;
                 const statusClass = status ? ` calendar-day--${status.toLowerCase()}` : "";
                 const pastClass = d.isPast ? " calendar-day--past" : "";
                 return (
-                  <div className={`calendar-day${statusClass}${pastClass}${d.isToday ? " calendar-day--today" : ""}`} key={d.date} role="gridcell" aria-disabled={d.isPast}>
+                  <div className={`calendar-day${statusClass}${pastClass}${d.isToday ? " calendar-day--today" : ""}`} key={d.date} role="gridcell">
                     <span className="calendar-day-number">{d.day}</span>
                     <div className="status-options" role="radiogroup" aria-label={`זמינות ל-${d.day} ב${month.label}`}>
                       {OPTIONS.map(opt => (
@@ -168,7 +169,7 @@ function WorkerAvailabilityCalendar({
                           className={`status-option ${opt.className}${status === opt.status ? " is-selected" : ""}`}
                           role="radio"
                           aria-checked={status === opt.status}
-                          disabled={busy || d.isPast}
+                          disabled={busy}
                           onClick={() => toggle(d.date, opt.status)}
                         >
                           {opt.label}
