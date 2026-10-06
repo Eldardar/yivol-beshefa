@@ -1,4 +1,6 @@
-export type EditablePlantationField = { id: number; name: string; fruit_type: string; fruit_subtype: string; size: number | null; location: string; details: string };
+import { CoordinatesField } from "./location-value";
+
+export type EditablePlantationField = { id: number; name: string; fruit_type: string; fruit_subtype: string; size: number | null; location: string; latitude: number | null; longitude: number | null; details: string };
 
 export function PlantationFieldForm({ csrf, farmId, farmName, field }: { csrf: string; farmId: number; farmName?: string; field?: EditablePlantationField }) {
   return (
@@ -18,7 +20,8 @@ export function PlantationFieldForm({ csrf, farmId, farmName, field }: { csrf: s
       <div className="field"><label>סוג פרי<input className="input" name="fruitType" required maxLength={150} defaultValue={field?.fruit_type} /></label></div>
       <div className="field"><label>תת-סוג<input className="input" name="fruitSubtype" required maxLength={150} defaultValue={field?.fruit_subtype} /></label></div>
       <div className="field"><label>גודל (דונם)<input className="input" name="size" type="number" min="0" step="any" defaultValue={field?.size ?? undefined} /></label></div>
-      <div className="field"><label>מיקום<input className="input" name="location" maxLength={300} defaultValue={field?.location} /></label></div>
+      <div className="field"><label>מיקום (קישור גוגל מפות)<input className="input" name="location" maxLength={300} dir="auto" placeholder="https://maps.app.goo.gl/..." defaultValue={field?.location} /></label></div>
+      <CoordinatesField latitude={field?.latitude ?? null} longitude={field?.longitude ?? null} />
       <div className="field"><label>פרטים<textarea className="input" name="details" maxLength={2000} defaultValue={field?.details} /></label></div>
       <button className="btn">{field ? "שמירת שינויים" : "הוספת חלקה"}</button>
     </form>

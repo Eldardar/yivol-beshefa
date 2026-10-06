@@ -1,11 +1,14 @@
 import { AppShell } from "@/components/nav";
-import { CalendarView, type CalendarDay, type CalendarShift, type CalendarPicker } from "@/components/calendar-view";
+import { CalendarView, type CalendarDay, type CalendarEvent, type CalendarHousing, type CalendarShift, type CalendarPicker } from "@/components/calendar-view";
 import type { UnitRatesByField } from "@/components/shifts-table";
-import { db, requireAdmin } from "@/lib/server";
+import { csrfValue, db, requireUser } from "@/lib/server";
+import type { SessionUser } from "@/lib/services/auth";
+import { AdminEventService } from "@/lib/services/admin-events";
 import { jerusalemDate } from "@/lib/dates";
 import { getHolidays } from "@/lib/holidays";
 import type { Unit } from "@/lib/units";
 import { buildUnitPricingByField } from "@/lib/pricing";
+import { workerShiftsBetween, workerVillageNightsBetween } from "@/lib/worker-calendar";
 
 export const dynamic = "force-dynamic";
 
@@ -24,10 +27,9 @@ type ShiftRow = {
   plantation_field_id: number;
 };
 
-export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ y?: string; m?: string }> }) {
-  const user = await requireAdmin();
-  const query = await searchParams;
+type MonthQuery = { y?: string; m?: string; saved?: string; error?: string };
 
+function resolveMonth(query: MonthQuery) {
   const today = jerusalemDate();
   const todayYear = Number(today.slice(0, 4));
   const todayMonth = Number(today.slice(5, 7));
@@ -38,7 +40,105 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const monthEnd = new Date(Date.UTC(year, month, 1)).toISOString().slice(0, 10);
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const label = new Intl.DateTimeFormat("he-IL", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${monthStart}T12:00:00Z`));
+  return { today, year, month, monthStart, monthEnd, daysInMonth, label };
+}
 
+function holidaysByDayOf(year: number, month: number) {
+  const holidaysByDay = new Map<number, { name: string; religion: "jewish" | "christian" | "muslim" }[]>();
+  for (const h of getHolidays(year, month)) {
+    const day = Number(h.date.slice(8, 10));
+    const list = holidaysByDay.get(day);
+    if (list) list.push({ name: h.name, religion: h.religion }); else holidaysByDay.set(day, [{ name: h.name, religion: h.religion }]);
+  }
+  return holidaysByDay;
+}
+
+function dayMeta(monthStart: string, day: number, today: string) {
+  const date = `${monthStart.slice(0, 8)}${String(day).padStart(2, "0")}`;
+  return { date, day, weekday: new Date(`${date}T12:00:00Z`).getUTCDay(), isToday: date === today };
+}
+
+export default async function CalendarPage({ searchParams }: { searchParams: Promise<MonthQuery> }) {
+  const user = await requireUser();
+  const csrf = await csrfValue();
+  const query = await searchParams;
+  return user.role === "ADMIN" ? <AdminCalendar user={user} csrf={csrf} query={query} /> : <WorkerCalendar user={user} csrf={csrf} query={query} />;
+}
+
+/** A worker's own published shifts, nights in a village, holidays and the events published to everyone. */
+function WorkerCalendar({ user, csrf, query }: { user: SessionUser; csrf: string; query: MonthQuery }) {
+  const { today, year, month, monthStart, monthEnd, daysInMonth, label } = resolveMonth(query);
+  const database = db();
+  const shifts = workerShiftsBetween(database, user.id, monthStart, monthEnd);
+
+  const shiftIds = shifts.map(s => s.id);
+  const pickersByShift = new Map<number, CalendarPicker[]>();
+  const vehiclesByShift = new Map<number, { number: string; name: string }[]>();
+  if (shiftIds.length > 0) {
+    const placeholders = shiftIds.map(() => "?").join(",");
+    const pickerRows = database
+      .prepare(`SELECT sp.shift_id,u.name FROM shift_pickers sp JOIN users u ON u.id=sp.user_id WHERE sp.shift_id IN (${placeholders}) ORDER BY u.name`)
+      .all(...shiftIds) as { shift_id: number; name: string }[];
+    for (const p of pickerRows) {
+      // Workers see who they work with, not other workers' hours or output.
+      const picker: CalendarPicker = { name: p.name, startTime: null, endTime: null, quantities: [] };
+      const list = pickersByShift.get(p.shift_id);
+      if (list) list.push(picker); else pickersByShift.set(p.shift_id, [picker]);
+    }
+    const vehicleRows = database
+      .prepare(`SELECT sv.shift_id,v.number,v.name FROM shift_vehicles sv JOIN vehicles v ON v.id=sv.vehicle_id WHERE sv.shift_id IN (${placeholders}) ORDER BY v.number`)
+      .all(...shiftIds) as { shift_id: number; number: string; name: string }[];
+    for (const v of vehicleRows) {
+      const list = vehiclesByShift.get(v.shift_id);
+      if (list) list.push({ number: v.number, name: v.name }); else vehiclesByShift.set(v.shift_id, [{ number: v.number, name: v.name }]);
+    }
+  }
+
+  const shiftsByDate = new Map<string, CalendarShift[]>();
+  for (const s of shifts) {
+    const shift: CalendarShift = {
+      id: s.id,
+      startTime: s.start_time,
+      endTime: s.end_time,
+      farm: s.farm,
+      address: s.address,
+      navigationLink: s.navigation_link,
+      fruitType: s.fruit_type,
+      fruitSubtype: s.fruit_subtype,
+      leader: s.leader,
+      notes: s.notes,
+      plantationFieldId: s.plantation_field_id,
+      pickers: pickersByShift.get(s.id) ?? [],
+      vehicles: vehiclesByShift.get(s.id) ?? []
+    };
+    const list = shiftsByDate.get(s.date);
+    if (list) list.push(shift); else shiftsByDate.set(s.date, [shift]);
+  }
+
+  const housingByDate = new Map<string, CalendarHousing>(
+    workerVillageNightsBetween(database, user.id, monthStart, monthEnd).map(h => [h.date, { status: h.status, village: h.village, option: h.option }])
+  );
+  const holidaysByDay = holidaysByDayOf(year, month);
+  const events = new AdminEventService(database).visibleBetween(user.id, monthStart, monthEnd).map((e): CalendarEvent => ({
+    id: e.id, name: e.name, startDate: e.start_date, endDate: e.end_date, isPublished: e.is_published === 1, details: e.details, creator: e.creator, isMine: false
+  }));
+
+  const days: CalendarDay[] = Array.from({ length: daysInMonth }, (_, i) => {
+    const meta = dayMeta(monthStart, i + 1, today);
+    return { ...meta, shifts: shiftsByDate.get(meta.date) ?? [], birthdays: [], holidays: holidaysByDay.get(meta.day) ?? [], events: events.filter(e => e.startDate <= meta.date && e.endDate >= meta.date), housing: housingByDate.get(meta.date) ?? null };
+  });
+
+  return (
+    <AppShell user={user}>
+      <h1>לוח חודשי</h1>
+      <p className="muted">המשמרות שלך, הלינות בכפר, החגים והאירועים לחודש {label}. יש ללחוץ על משמרת או אירוע לצפייה בפרטים.</p>
+      <CalendarView year={year} month={month} label={label} days={days} unitRatesByField={{}} csrf={csrf} variant="worker" />
+    </AppShell>
+  );
+}
+
+function AdminCalendar({ user, csrf, query }: { user: SessionUser; csrf: string; query: MonthQuery }) {
+  const { today, year, month, monthStart, monthEnd, daysInMonth, label } = resolveMonth(query);
   const database = db();
   const shifts = database
     .prepare(
@@ -98,12 +198,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
     if (list) list.push(b.name); else birthdaysByDay.set(day, [b.name]);
   }
 
-  const holidaysByDay = new Map<number, { name: string; religion: "jewish" | "christian" | "muslim" }[]>();
-  for (const h of getHolidays(year, month)) {
-    const day = Number(h.date.slice(8, 10));
-    const list = holidaysByDay.get(day);
-    if (list) list.push({ name: h.name, religion: h.religion }); else holidaysByDay.set(day, [{ name: h.name, religion: h.religion }]);
-  }
+  const holidaysByDay = holidaysByDayOf(year, month);
 
   const shiftsByDate = new Map<string, CalendarShift[]>();
   for (const s of shifts) {
@@ -126,18 +221,22 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
     if (list) list.push(shift); else shiftsByDate.set(s.date, [shift]);
   }
 
+  const events = new AdminEventService(database).visibleBetween(user.id, monthStart, monthEnd).map((e): CalendarEvent => ({
+    id: e.id, name: e.name, startDate: e.start_date, endDate: e.end_date, isPublished: e.is_published === 1, details: e.details, creator: e.creator, isMine: e.created_by === user.id
+  }));
+
   const days: CalendarDay[] = Array.from({ length: daysInMonth }, (_, i) => {
-    const day = i + 1;
-    const date = `${monthStart.slice(0, 8)}${String(day).padStart(2, "0")}`;
-    const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
-    return { date, day, weekday, isToday: date === today, shifts: shiftsByDate.get(date) ?? [], birthdays: birthdaysByDay.get(day) ?? [], holidays: holidaysByDay.get(day) ?? [] };
+    const meta = dayMeta(monthStart, i + 1, today);
+    return { ...meta, shifts: shiftsByDate.get(meta.date) ?? [], birthdays: birthdaysByDay.get(meta.day) ?? [], holidays: holidaysByDay.get(meta.day) ?? [], events: events.filter(e => e.startDate <= meta.date && e.endDate >= meta.date) };
   });
 
   return (
     <AppShell user={user}>
       <h1>לוח חודשי</h1>
-      <p className="muted">כל המשמרות שפורסמו לחודש {label}. יש ללחוץ על משמרת לצפייה בפרטים.</p>
-      <CalendarView year={year} month={month} label={label} days={days} unitRatesByField={unitRatesByField} />
+      <p className="muted">כל המשמרות שפורסמו לחודש {label}. יש ללחוץ על משמרת לצפייה בפרטים, או על יום ריק בתא ליצירת אירוע.</p>
+      {query.saved && <p className="alert" role="status">הפעולה הושלמה</p>}
+      {query.error && <p className="alert" role="alert">{query.error}</p>}
+      <CalendarView year={year} month={month} label={label} days={days} unitRatesByField={unitRatesByField} csrf={csrf} />
     </AppShell>
   );
 }

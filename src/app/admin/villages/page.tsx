@@ -5,13 +5,13 @@ import { csrfValue, db, requireAdmin } from "@/lib/server";
 
 export const dynamic = "force-dynamic";
 
-export default async function Villages({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string }> }) {
+export default async function Villages({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string; warning?: string }> }) {
   const user = await requireAdmin();
   const csrf = await csrfValue();
-  const { saved, error } = await searchParams;
+  const { saved, error, warning } = await searchParams;
   const database = db();
 
-  const rows = database.prepare("SELECT id,name,description,location,active FROM villages ORDER BY active DESC,name").all() as Array<Omit<VillageRow, "sleepingOptions" | "months">>;
+  const rows = database.prepare("SELECT id,name,description,location,latitude,longitude,active FROM villages ORDER BY active DESC,name").all() as Array<Omit<VillageRow, "sleepingOptions" | "months">>;
   const options = database.prepare("SELECT id,village_id,name,description,cost_per_day FROM village_sleeping_options ORDER BY id").all() as Array<EditableSleepingOption & { village_id: number }>;
   const months = database.prepare("SELECT village_id,month FROM village_available_months ORDER BY month").all() as Array<{ village_id: number; month: number }>;
 
@@ -26,6 +26,7 @@ export default async function Villages({ searchParams }: { searchParams: Promise
       <h1>ניהול כפרים</h1>
       {saved && <p className="alert" role="status">הפעולה הושלמה</p>}
       {error && <p className="alert" role="alert">{error}</p>}
+      {warning && <p className="alert" role="alert">אזהרה: {warning}</p>}
       <section className="card">
         <VillagesTable villages={villages} csrf={csrf} />
       </section>

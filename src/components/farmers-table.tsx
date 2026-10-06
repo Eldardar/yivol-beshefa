@@ -4,6 +4,7 @@ import { AddFarmerButton } from "./add-farmer-button";
 import { EditFarmerButton } from "./edit-farmer-button";
 import { AddPlantationFieldButton } from "./add-plantation-field-button";
 import { EditPlantationFieldButton } from "./edit-plantation-field-button";
+import { LocationValue } from "./location-value";
 import { FieldFinancialsButton } from "./field-financials-button";
 import { ActiveSwitch } from "./active-switch";
 import { ShowArchivedToggle } from "./show-archived-toggle";
@@ -11,7 +12,7 @@ import { ChevronDownIcon } from "./icons";
 import { DeleteRecordButton } from "./delete-record-button";
 
 export type FarmRow = { id: number; name: string; contact_person: string; phone: string; address: string; navigation_link: string | null; notes: string; active: number };
-export type PlantationFieldRow = { id: number; farm_id: number; name: string; fruit_type: string; fruit_subtype: string; size: number | null; location: string; details: string; active: number };
+export type PlantationFieldRow = { id: number; farm_id: number; name: string; fruit_type: string; fruit_subtype: string; size: number | null; location: string; latitude: number | null; longitude: number | null; details: string; active: number };
 export type PlantationFieldsByFarm = Record<number, PlantationFieldRow[]>;
 
 export function FarmersTable({ farms, plantationFieldsByFarm, csrf }: { farms: FarmRow[]; plantationFieldsByFarm: PlantationFieldsByFarm; csrf: string }) {
@@ -148,7 +149,7 @@ function PlantationFieldsList({ fields, farmId, farmName, csrf, showArchived }: 
                   <td>{f.fruit_type}</td>
                   <td>{f.fruit_subtype}</td>
                   <td>{f.size ?? "—"}</td>
-                  <td>{f.location || "—"}</td>
+                  <td><LocationValue location={f.location} latitude={f.latitude} longitude={f.longitude} /></td>
                   <td><ActiveSwitch csrf={csrf} entity="PLANTATION_FIELD" id={f.id} active={Boolean(f.active)} /></td>
                   <td>
                     <div className="actions-cell">

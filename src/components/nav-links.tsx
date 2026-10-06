@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { ComponentType } from "react";
-import { HomeIcon, CalendarIcon, CalendarDaysIcon, ClipboardListIcon, HistoryIcon, UsersIcon, SproutIcon, TruckIcon, BarChartIcon, ChevronDownIcon, BookOpenIcon, HouseIcon, TentIcon, DollarIcon } from "./icons";
+import { HomeIcon, CalendarIcon, CalendarDaysIcon, ClipboardListIcon, HistoryIcon, UsersIcon, SproutIcon, TruckIcon, BarChartIcon, ChevronDownIcon, BookOpenIcon, HouseIcon, TentIcon, DollarIcon, ShoppingBagIcon } from "./icons";
 
 export type NavChild = { href: string; label: string; icon: ComponentType<{ size?: number; className?: string }> };
 export type NavItem = { href: string; label: string; icon: ComponentType<{ size?: number; className?: string }>; children?: NavChild[] };
@@ -14,8 +14,10 @@ const PICKER_NAV: NavItem[] = [
   { href: "/availability", label: "זמינות", icon: CalendarIcon },
   { href: "/housing", label: "מגורים", icon: HouseIcon },
   { href: "/assignments", label: "שיבוצים", icon: ClipboardListIcon },
+  { href: "/calendar", label: "לוח חודשי", icon: CalendarDaysIcon },
   { href: "/history", label: "היסטוריה", icon: HistoryIcon },
   { href: "/journal", label: "יומן אישי", icon: BookOpenIcon },
+  { href: "/store", label: "חנות", icon: ShoppingBagIcon },
 ];
 
 const ADMIN_NAV: NavItem[] = [
@@ -24,6 +26,7 @@ const ADMIN_NAV: NavItem[] = [
   { href: "/admin/transport", label: "תחבורה", icon: TruckIcon },
   { href: "/admin/villages", label: "כפרים", icon: TentIcon },
   { href: "/admin/expenses", label: "הוצאות", icon: DollarIcon },
+  { href: "/store", label: "חנות", icon: ShoppingBagIcon },
   { href: "/calendar", label: "לוח חודשי", icon: CalendarDaysIcon },
   {
     href: "/admin/shifts",

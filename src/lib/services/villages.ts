@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
 import { villageSchema } from "@/lib/schemas";
+import type { Coordinates } from "@/lib/geo";
 
 export type VillageInput = { name: unknown; description: unknown; location: unknown; sleepingOptions: unknown; availableMonths: unknown };
 
@@ -7,16 +8,16 @@ export class VillageService {
   constructor(private readonly db: Database.Database) {}
 
   /** Creates a village (villageId null) or updates it, syncing its sleeping options and available months. */
-  save(actorId:number, villageId:number|null, raw:VillageInput):number {
+  save(actorId:number, villageId:number|null, raw:VillageInput, coordinates:Coordinates|null=null):number {
     const actor=this.db.prepare("SELECT role,active FROM users WHERE id=?").get(actorId) as {role:string;active:number}|undefined;
     if(!actor?.active || actor.role!=="ADMIN") throw new Error("אין הרשאה");
     const input=villageSchema.parse(raw);
     return this.db.transaction(()=>{
       let id:number;
       if(villageId===null){
-        id=Number(this.db.prepare("INSERT INTO villages(name,description,location) VALUES(?,?,?)").run(input.name,input.description,input.location).lastInsertRowid);
+        id=Number(this.db.prepare("INSERT INTO villages(name,description,location,latitude,longitude) VALUES(?,?,?,?,?)").run(input.name,input.description,input.location,coordinates?.latitude??null,coordinates?.longitude??null).lastInsertRowid);
       }else{
-        const result=this.db.prepare("UPDATE villages SET name=?,description=?,location=? WHERE id=?").run(input.name,input.description,input.location,villageId);
+        const result=this.db.prepare("UPDATE villages SET name=?,description=?,location=?,latitude=?,longitude=? WHERE id=?").run(input.name,input.description,input.location,coordinates?.latitude??null,coordinates?.longitude??null,villageId);
         if(result.changes!==1) throw new Error("הכפר לא נמצא");
         id=villageId;
       }

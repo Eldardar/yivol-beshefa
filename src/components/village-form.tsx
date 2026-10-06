@@ -2,9 +2,10 @@
 import { useState } from "react";
 import { HEBREW_MONTHS } from "@/lib/dates";
 import { PlusIcon, XIcon } from "./icons";
+import { CoordinatesField } from "./location-value";
 
 export type EditableSleepingOption = { id: number; name: string; description: string; cost_per_day: number };
-export type EditableVillage = { id: number; name: string; description: string; location: string; sleepingOptions: EditableSleepingOption[]; months: number[] };
+export type EditableVillage = { id: number; name: string; description: string; location: string; latitude: number | null; longitude: number | null; sleepingOptions: EditableSleepingOption[]; months: number[] };
 
 type OptionLine = { key: number; id: number | null; name: string; description: string; cost: string };
 let nextKey = 0;
@@ -21,7 +22,8 @@ export function VillageForm({ csrf, village }: { csrf: string; village?: Editabl
       <input type="hidden" name="action" value={village ? "villageUpdate" : "villageCreate"} />
       {village && <input type="hidden" name="villageId" value={village.id} />}
       <div className="field"><label>שם הכפר<input className="input" name="name" required maxLength={150} defaultValue={village?.name} /></label></div>
-      <div className="field"><label>מיקום<input className="input" name="location" maxLength={300} defaultValue={village?.location} /></label></div>
+      <div className="field"><label>מיקום (קישור גוגל מפות)<input className="input" name="location" maxLength={300} dir="auto" placeholder="https://maps.app.goo.gl/..." defaultValue={village?.location} /></label></div>
+      <CoordinatesField latitude={village?.latitude ?? null} longitude={village?.longitude ?? null} />
       <div className="field"><label>תיאור<textarea className="input" name="description" maxLength={2000} defaultValue={village?.description} /></label></div>
 
       <fieldset className="field village-fieldset">

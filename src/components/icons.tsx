@@ -364,3 +364,12 @@ export function EyeIcon(props: IconProps) {
     </Svg>
   );
 }
+
+export function ShoppingBagIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M5 8h14l-1 12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 8Z" />
+      <path d="M9 10V6.5a3 3 0 0 1 6 0V10" />
+    </Svg>
+  );
+}

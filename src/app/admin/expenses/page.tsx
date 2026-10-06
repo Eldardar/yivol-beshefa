@@ -1,7 +1,7 @@
 import { AppShell } from "@/components/nav";
 import { AddExpenseButton } from "@/components/add-expense-button";
 import { ExpensesExportButton } from "@/components/expenses-export-button";
-import { ExpensesPeriodControl, ExpensesPeriodTabs } from "@/components/expenses-period";
+import { PeriodControl, PeriodTabs } from "@/components/period-nav";
 import { ExpensesTable } from "@/components/expenses-table";
 import { FailedExtractionsButton } from "@/components/failed-extractions-button";
 import { csrfValue, db, requireAdmin } from "@/lib/server";
@@ -29,9 +29,9 @@ export default async function Expenses({ searchParams }: { searchParams: Promise
       <h1>הוצאות</h1>
       {saved > 0 && <p className="alert" role="status">{saved === 1 ? "ההוצאה נשמרה" : `נשמרו ${saved} הוצאות`}</p>}
       {failedNow > 0 && failed.length > 0 && <p className="alert">{failedNow === 1 ? "קובץ אחד לא חולץ במלואו ועבר" : `${failedNow} קבצים לא חולצו במלואם ועברו`} ל״נכשלו בחילוץ״ להשלמה ידנית</p>}
-      <ExpensesPeriodTabs period={period} />
+      <PeriodTabs period={period} basePath="/admin/expenses" label="תקופת ההוצאות" />
       <div className="table-toolbar">
-        <ExpensesPeriodControl period={period} />
+        <PeriodControl period={period} basePath="/admin/expenses" />
         <div className="expenses-actions">
           <FailedExtractionsButton csrf={csrf} rows={failed} />
           {rows.length > 0 && <ExpensesExportButton rows={rows} label={period.label} fileLabel={period.fileLabel} />}

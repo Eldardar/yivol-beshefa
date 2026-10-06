@@ -7,6 +7,7 @@ import { EditVillageButton } from "./edit-village-button";
 import { ActiveSwitch } from "./active-switch";
 import { ShowArchivedToggle } from "./show-archived-toggle";
 import { DeleteRecordButton } from "./delete-record-button";
+import { LocationValue } from "./location-value";
 import type { EditableVillage } from "./village-form";
 
 export type VillageRow = EditableVillage & { active: number };
@@ -57,7 +58,7 @@ export function VillagesTable({ villages, csrf }: { villages: VillageRow[]; csrf
             <div className="record-card-head">
               <div className="record-card-body">
                 <span className="record-card-name">{row.name}</span>
-                {row.location && <div className="record-card-meta">{row.location}</div>}
+                {row.location && <div className="record-card-meta"><LocationValue location={row.location} latitude={row.latitude} longitude={row.longitude} /></div>}
                 <div className="record-card-meta">{monthsLabel(row.months)}</div>
                 {row.description && <p className="muted">{row.description}</p>}
                 <SleepingOptions village={row} />
@@ -84,7 +85,7 @@ export function VillagesTable({ villages, csrf }: { villages: VillageRow[]; csrf
                   <strong>{row.name}</strong>
                   {row.description && <div className="muted">{row.description}</div>}
                 </td>
-                <td>{row.location}</td>
+                <td><LocationValue location={row.location} latitude={row.latitude} longitude={row.longitude} /></td>
                 <td>{monthsLabel(row.months)}</td>
                 <td><SleepingOptions village={row} /></td>
                 <td><ActiveSwitch csrf={csrf} entity="VILLAGE" id={row.id} active={Boolean(row.active)} /></td>

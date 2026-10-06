@@ -7,18 +7,27 @@ import { AdminService, type ManagedEntity } from "@/lib/services/admin";
 import { PickerService } from "@/lib/services/picker";
 import { SchedulingService } from "@/lib/services/scheduling";
 import { VillageService } from "@/lib/services/villages";
+import { AdminEventService } from "@/lib/services/admin-events";
 import { ShiftService } from "@/lib/services/shifts";
 import { farmSchema, plantationFieldSchema, shiftReportSchema, shiftResultSchema, shiftSchema, unitSchema, userUpdateSchema, vehicleSchema, workerGoalSchema, workerHoursSchema } from "@/lib/schemas";
 import type { Unit } from "@/lib/units";
 import { requestBodyIssue, requestUrl } from "@/lib/http";
+import { isMapsLink, locationCoordinates, type Coordinates } from "@/lib/geo";
 
 export const runtime="nodejs";
 const positiveId=z.coerce.number().int().positive();
+const UNRESOLVED_LOCATION_WARNING="לא ניתן היה לחלץ קואורדינטות מקישור המיקום";
+type StoredLocation={location:string;latitude:number|null;longitude:number|null};
 const activeSchema=z.enum(["0","1"]);
 const entitySchema=z.enum(["USER","FARM","PLANTATION_FIELD","VEHICLE","VILLAGE"]);
 
+function locationWarning(location:string,coordinates:Coordinates|null):string {
+  return isMapsLink(location)&&!coordinates?UNRESOLVED_LOCATION_WARNING:"";
+}
+
 function destination(action:string,form:FormData):string {
   if(action==="setActive"||action==="delete"){const entity=form.get("entity");if(entity==="USER")return "/admin/users?saved=1";if(entity==="VEHICLE")return "/admin/transport?saved=1";if(entity==="VILLAGE")return "/admin/villages?saved=1";return "/admin/resources?saved=1";}
+  if(action.startsWith("adminEvent")){const match=/^(\d{4})-(\d{2})-\d{2}$/.exec(String(form.get("startDate")??""));return match?`/calendar?saved=1&y=${match[1]}&m=${Number(match[2])}`:"/calendar?saved=1";}
   if(action==="userUpdate")return "/admin/users?saved=1";
   if(action.startsWith("vehicle"))return "/admin/transport?saved=1";
   if(action.startsWith("village"))return "/admin/villages?saved=1";
@@ -54,12 +63,15 @@ export async function POST(req:Request){
     }else if(action==="plantationFieldCreate"){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
       const input=plantationFieldSchema.parse({farmId:form.get("farmId"),name:form.get("name"),fruitType:form.get("fruitType"),fruitSubtype:form.get("fruitSubtype"),size:form.get("size")??"",location:form.get("location")??"",details:form.get("details")??""});
-      database.transaction(()=>{const farm=database.prepare("SELECT active FROM farms WHERE id=?").get(input.farmId) as {active:number}|undefined;if(!farm?.active)throw new Error("החקלאי אינו פעיל");const result=database.prepare("INSERT INTO plantation_fields(farm_id,name,fruit_type,fruit_subtype,size,location,details) VALUES(?,?,?,?,?,?,?)").run(input.farmId,input.name,input.fruitType,input.fruitSubtype,input.size,input.location,input.details);database.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(user.id,"CREATE","PLANTATION_FIELD",Number(result.lastInsertRowid));})();
+      const coordinates=await locationCoordinates(undefined,input.location);warning=locationWarning(input.location,coordinates);
+      database.transaction(()=>{const farm=database.prepare("SELECT active FROM farms WHERE id=?").get(input.farmId) as {active:number}|undefined;if(!farm?.active)throw new Error("החקלאי אינו פעיל");const result=database.prepare("INSERT INTO plantation_fields(farm_id,name,fruit_type,fruit_subtype,size,location,latitude,longitude,details) VALUES(?,?,?,?,?,?,?,?,?)").run(input.farmId,input.name,input.fruitType,input.fruitSubtype,input.size,input.location,coordinates?.latitude??null,coordinates?.longitude??null,input.details);database.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(user.id,"CREATE","PLANTATION_FIELD",Number(result.lastInsertRowid));})();
     }else if(action==="plantationFieldUpdate"){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
       const fieldId=positiveId.parse(form.get("fieldId"));
       const input=plantationFieldSchema.parse({farmId:form.get("farmId"),name:form.get("name"),fruitType:form.get("fruitType"),fruitSubtype:form.get("fruitSubtype"),size:form.get("size")??"",location:form.get("location")??"",details:form.get("details")??""});
-      database.transaction(()=>{const result=database.prepare("UPDATE plantation_fields SET name=?,fruit_type=?,fruit_subtype=?,size=?,location=?,details=? WHERE id=? AND farm_id=?").run(input.name,input.fruitType,input.fruitSubtype,input.size,input.location,input.details,fieldId,input.farmId);if(result.changes!==1)throw new Error("החלקה לא נמצאה");database.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(user.id,"UPDATE","PLANTATION_FIELD",fieldId);})();
+      const previous=database.prepare("SELECT location,latitude,longitude FROM plantation_fields WHERE id=? AND farm_id=?").get(fieldId,input.farmId) as StoredLocation|undefined;
+      const coordinates=await locationCoordinates(previous,input.location);warning=locationWarning(input.location,coordinates);
+      database.transaction(()=>{const result=database.prepare("UPDATE plantation_fields SET name=?,fruit_type=?,fruit_subtype=?,size=?,location=?,latitude=?,longitude=?,details=? WHERE id=? AND farm_id=?").run(input.name,input.fruitType,input.fruitSubtype,input.size,input.location,coordinates?.latitude??null,coordinates?.longitude??null,input.details,fieldId,input.farmId);if(result.changes!==1)throw new Error("החלקה לא נמצאה");database.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(user.id,"UPDATE","PLANTATION_FIELD",fieldId);})();
     }else if(action==="vehicleCreate"){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
       const input=vehicleSchema.parse({number:form.get("number"),name:form.get("name"),fuelConsumption:form.get("fuelConsumption")??"",notes:form.get("notes")??""});
@@ -73,7 +85,15 @@ export async function POST(req:Request){
       const villageId=action==="villageUpdate"?positiveId.parse(form.get("villageId")):null;
       const optionIds=form.getAll("optionId");const optionNames=form.getAll("optionName");const optionDescriptions=form.getAll("optionDescription");const optionCosts=form.getAll("optionCost");
       const sleepingOptions=optionNames.map((name,i)=>({id:optionIds[i]??"",name,description:optionDescriptions[i]??"",costPerDay:optionCosts[i]}));
-      new VillageService(database).save(user.id,villageId,{name:form.get("name"),description:form.get("description")??"",location:form.get("location")??"",sleepingOptions,availableMonths:form.getAll("months")});
+      const location=String(form.get("location")??"").trim();
+      const previous=villageId===null?undefined:database.prepare("SELECT location,latitude,longitude FROM villages WHERE id=?").get(villageId) as StoredLocation|undefined;
+      const coordinates=user.role==="ADMIN"?await locationCoordinates(previous,location):null;warning=locationWarning(location,coordinates);
+      new VillageService(database).save(user.id,villageId,{name:form.get("name"),description:form.get("description")??"",location,sleepingOptions,availableMonths:form.getAll("months")},coordinates);
+    }else if(action==="adminEventCreate"||action==="adminEventUpdate"){
+      const eventId=action==="adminEventUpdate"?positiveId.parse(form.get("eventId")):null;
+      new AdminEventService(database).save(user.id,eventId,{name:form.get("name"),startDate:form.get("startDate"),endDate:form.get("endDate"),isPublished:form.get("isPublished")==="1",details:form.get("details")??""});
+    }else if(action==="adminEventDelete"){
+      new AdminEventService(database).delete(user.id,positiveId.parse(form.get("eventId")));
     }else if(action==="userUpdate"){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
       const targetId=positiveId.parse(form.get("userId"));
