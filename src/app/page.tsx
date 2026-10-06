@@ -64,21 +64,21 @@ export default async function Home() {
           <p>תמונת מצב תפעולית עדכנית</p>
         </section>
         <div className="kpi-grid">
-          <article className="kpi-card">
+          <Link className="kpi-card" href="/admin/users">
             <span className="kpi-label">קוטפים פעילים</span>
             <div className="metric">{stats.activePickers}/{stats.totalPickers}</div>
             <span className="kpi-sublabel">{stats.totalPickers - stats.activePickers} נשברו</span>
-          </article>
+          </Link>
           <Link className="kpi-card" href="/admin/shifts">
             <span className="kpi-label">משמרות קרובות</span>
             <div className="metric">
               {stats.shifts} <span className="kpi-sublabel">({stats.shiftWorkers} עובדים)</span>
             </div>
           </Link>
-          <article className="kpi-card">
+          <Link className="kpi-card" href="/admin/resources">
             <span className="kpi-label">חקלאים פעילים</span>
             <div className="metric">{stats.farms}</div>
-          </article>
+          </Link>
           <article className="kpi-card">
             <span className="kpi-label">מחשבות שנכתבו היום</span>
             <div className="metric">{stats.journalToday}</div>
@@ -128,9 +128,18 @@ export default async function Home() {
     const i = recentFruitTypes.indexOf(fruitType);
     return i === -1 ? recentFruitTypes.length : i;
   };
+  // Only fruit types that were picked in some shift this month get a records table.
+  const workerMonth = currentJerusalemMonth();
+  const monthFruitTypes = new Set((database
+    .prepare(
+      `SELECT DISTINCT pf.fruit_type FROM shifts s JOIN plantation_fields pf ON pf.id=s.plantation_field_id
+       WHERE s.status IN ('PUBLISHED','COMPLETED') AND s.date>=? AND s.date<? AND s.date<=?`
+    )
+    .all(workerMonth.start, workerMonth.end, today) as Array<{ fruit_type: string }>).map(r => r.fruit_type));
+  const inMonth = (records: { fruitType: string }) => monthFruitTypes.has(records.fruitType);
   const fruitRecordsByPeriod = {
-    month: getTopResultsByFruit(database, today, currentJerusalemMonth()),
-    year: getTopResultsByFruit(database, today, currentJerusalemYear()).sort((a, b) => fruitRank(a.fruitType) - fruitRank(b.fruitType))
+    month: getTopResultsByFruit(database, today, workerMonth).filter(inMonth),
+    year: getTopResultsByFruit(database, today, currentJerusalemYear()).filter(inMonth).sort((a, b) => fruitRank(a.fruitType) - fruitRank(b.fruitType))
   };
   const workerNames = database.prepare("SELECT id,name FROM users WHERE role='PICKER'").all() as Array<{ id: number; name: string }>;
 
@@ -152,6 +161,7 @@ export default async function Home() {
       <HeroGallery images={[{ src: "/worker-hero.png", alt: "" }, { src: "/worker-hero-2.png", alt: "" }, { src: "/worker-hero-3.png", alt: "" }]} />
       <FruitRecordsByPeriod byPeriod={fruitRecordsByPeriod} workers={workerNames} />
       <div className="game-link">
+        <Link href="/journal" className="btn secondary">יומן אישי</Link>
         <Link href="/game" className="btn secondary">למשחק</Link>
       </div>
     </AppShell>

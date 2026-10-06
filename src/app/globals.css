@@ -1174,7 +1174,7 @@ button.bottom-nav-link { border: 0; background: transparent; }
 /* ==========================================================================
    Secret picker snake game (/game)
    ========================================================================== */
-.game-link { display: flex; justify-content: center; margin-top: var(--space-6); }
+.game-link { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-3); margin-top: var(--space-6); }
 .snake-game { display: grid; gap: var(--space-3); justify-items: center; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .snake-scores { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: var(--space-3) var(--space-6); font-size: 1.05rem; }
 .snake-highscores-btn { min-height: 0; padding: var(--space-1) var(--space-3); font-size: 0.95rem; }
