@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { z } from "zod";
 import { db } from "@/lib/server";
+import type { AppDb } from "@/lib/db";
 import { AuthService } from "@/lib/services/auth";
 import { AdminService, type ManagedEntity } from "@/lib/services/admin";
 import { PickerService } from "@/lib/services/picker";
@@ -10,7 +11,7 @@ import { VillageService } from "@/lib/services/villages";
 import { AdminEventService } from "@/lib/services/admin-events";
 import { ShiftService } from "@/lib/services/shifts";
 import { farmSchema, plantationFieldSchema, shiftReportSchema, shiftResultSchema, shiftSchema, unitSchema, userUpdateSchema, vehicleSchema, workerGoalSchema, workerHoursSchema } from "@/lib/schemas";
-import type { Unit } from "@/lib/units";
+import { UNITS, type Unit } from "@/lib/units";
 import { requestBodyIssue, requestUrl } from "@/lib/http";
 import { isMapsLink, locationCoordinates, type Coordinates } from "@/lib/geo";
 
@@ -23,6 +24,17 @@ const entitySchema=z.enum(["USER","FARM","PLANTATION_FIELD","VEHICLE","VILLAGE"]
 
 function locationWarning(location:string,coordinates:Coordinates|null):string {
   return isMapsLink(location)&&!coordinates?UNRESOLVED_LOCATION_WARNING:"";
+}
+
+// הכנסת החברה ליחידה: שדה companyRate_<UNIT> לכל יחידה; ריק = אין תעריף ליחידה זו
+function companyRatesFromForm(form:FormData):Array<{unit:Unit;rateNis:string}> {
+  return UNITS.flatMap(unit=>{const value=String(form.get(`companyRate_${unit}`)??"").trim();return value?[{unit,rateNis:value}]:[];});
+}
+
+function saveCompanyRates(database:AppDb,fieldId:number,rates:Array<{unit:Unit;rateNis:number}>):void {
+  database.prepare("DELETE FROM field_company_rates WHERE field_id=?").run(fieldId);
+  const insert=database.prepare("INSERT INTO field_company_rates(field_id,unit,rate_nis) VALUES(?,?,?)");
+  for(const r of rates)insert.run(fieldId,r.unit,r.rateNis);
 }
 
 function destination(action:string,form:FormData):string {
@@ -62,16 +74,16 @@ export async function POST(req:Request){
       database.transaction(()=>{const result=database.prepare("UPDATE farms SET name=?,contact_person=?,phone=?,address=?,navigation_link=?,notes=? WHERE id=?").run(input.name,input.contactPerson,input.phone,input.address,input.navigationUrl||null,input.notes,farmId);if(result.changes!==1)throw new Error("החקלאי לא נמצא");database.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(user.id,"UPDATE","FARM",farmId);})();
     }else if(action==="plantationFieldCreate"){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
-      const input=plantationFieldSchema.parse({farmId:form.get("farmId"),name:form.get("name"),fruitType:form.get("fruitType"),fruitSubtype:form.get("fruitSubtype"),size:form.get("size")??"",location:form.get("location")??"",details:form.get("details")??""});
+      const input=plantationFieldSchema.parse({farmId:form.get("farmId"),name:form.get("name"),fruitType:form.get("fruitType"),fruitSubtype:form.get("fruitSubtype"),size:form.get("size")??"",location:form.get("location")??"",details:form.get("details")??"",companyRates:companyRatesFromForm(form)});
       const coordinates=await locationCoordinates(undefined,input.location);warning=locationWarning(input.location,coordinates);
-      database.transaction(()=>{const farm=database.prepare("SELECT active FROM farms WHERE id=?").get(input.farmId) as {active:number}|undefined;if(!farm?.active)throw new Error("החקלאי אינו פעיל");const result=database.prepare("INSERT INTO plantation_fields(farm_id,name,fruit_type,fruit_subtype,size,location,latitude,longitude,details) VALUES(?,?,?,?,?,?,?,?,?)").run(input.farmId,input.name,input.fruitType,input.fruitSubtype,input.size,input.location,coordinates?.latitude??null,coordinates?.longitude??null,input.details);database.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(user.id,"CREATE","PLANTATION_FIELD",Number(result.lastInsertRowid));})();
+      database.transaction(()=>{const farm=database.prepare("SELECT active FROM farms WHERE id=?").get(input.farmId) as {active:number}|undefined;if(!farm?.active)throw new Error("החקלאי אינו פעיל");const result=database.prepare("INSERT INTO plantation_fields(farm_id,name,fruit_type,fruit_subtype,size,location,latitude,longitude,details) VALUES(?,?,?,?,?,?,?,?,?)").run(input.farmId,input.name,input.fruitType,input.fruitSubtype,input.size,input.location,coordinates?.latitude??null,coordinates?.longitude??null,input.details);saveCompanyRates(database,Number(result.lastInsertRowid),input.companyRates);database.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(user.id,"CREATE","PLANTATION_FIELD",Number(result.lastInsertRowid));})();
     }else if(action==="plantationFieldUpdate"){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
       const fieldId=positiveId.parse(form.get("fieldId"));
-      const input=plantationFieldSchema.parse({farmId:form.get("farmId"),name:form.get("name"),fruitType:form.get("fruitType"),fruitSubtype:form.get("fruitSubtype"),size:form.get("size")??"",location:form.get("location")??"",details:form.get("details")??""});
+      const input=plantationFieldSchema.parse({farmId:form.get("farmId"),name:form.get("name"),fruitType:form.get("fruitType"),fruitSubtype:form.get("fruitSubtype"),size:form.get("size")??"",location:form.get("location")??"",details:form.get("details")??"",companyRates:companyRatesFromForm(form)});
       const previous=database.prepare("SELECT location,latitude,longitude FROM plantation_fields WHERE id=? AND farm_id=?").get(fieldId,input.farmId) as StoredLocation|undefined;
       const coordinates=await locationCoordinates(previous,input.location);warning=locationWarning(input.location,coordinates);
-      database.transaction(()=>{const result=database.prepare("UPDATE plantation_fields SET name=?,fruit_type=?,fruit_subtype=?,size=?,location=?,latitude=?,longitude=?,details=? WHERE id=? AND farm_id=?").run(input.name,input.fruitType,input.fruitSubtype,input.size,input.location,coordinates?.latitude??null,coordinates?.longitude??null,input.details,fieldId,input.farmId);if(result.changes!==1)throw new Error("החלקה לא נמצאה");database.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(user.id,"UPDATE","PLANTATION_FIELD",fieldId);})();
+      database.transaction(()=>{const result=database.prepare("UPDATE plantation_fields SET name=?,fruit_type=?,fruit_subtype=?,size=?,location=?,latitude=?,longitude=?,details=? WHERE id=? AND farm_id=?").run(input.name,input.fruitType,input.fruitSubtype,input.size,input.location,coordinates?.latitude??null,coordinates?.longitude??null,input.details,fieldId,input.farmId);if(result.changes!==1)throw new Error("החלקה לא נמצאה");saveCompanyRates(database,fieldId,input.companyRates);database.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(user.id,"UPDATE","PLANTATION_FIELD",fieldId);})();
     }else if(action==="vehicleCreate"){
       if(user.role!=="ADMIN")throw new Error("אין הרשאה");
       const input=vehicleSchema.parse({number:form.get("number"),name:form.get("name"),fuelConsumption:form.get("fuelConsumption")??"",notes:form.get("notes")??""});

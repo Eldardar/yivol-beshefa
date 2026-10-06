@@ -10,9 +10,10 @@ import { ActiveSwitch } from "./active-switch";
 import { ShowArchivedToggle } from "./show-archived-toggle";
 import { ChevronDownIcon } from "./icons";
 import { DeleteRecordButton } from "./delete-record-button";
+import type { Unit } from "@/lib/units";
 
 export type FarmRow = { id: number; name: string; contact_person: string; phone: string; address: string; navigation_link: string | null; notes: string; active: number };
-export type PlantationFieldRow = { id: number; farm_id: number; name: string; fruit_type: string; fruit_subtype: string; size: number | null; location: string; latitude: number | null; longitude: number | null; details: string; active: number };
+export type PlantationFieldRow = { id: number; farm_id: number; name: string; fruit_type: string; fruit_subtype: string; size: number | null; location: string; latitude: number | null; longitude: number | null; details: string; active: number; company_rates: Partial<Record<Unit, number>> };
 export type PlantationFieldsByFarm = Record<number, PlantationFieldRow[]>;
 
 export function FarmersTable({ farms, plantationFieldsByFarm, csrf }: { farms: FarmRow[]; plantationFieldsByFarm: PlantationFieldsByFarm; csrf: string }) {
