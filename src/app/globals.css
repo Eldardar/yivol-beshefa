@@ -637,12 +637,29 @@ select.input { appearance: auto; }
 .store-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-4); }
 @media (max-width: 599px) { .store-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); } }
 .store-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; display: flex; flex-direction: column; }
-.store-card-image { aspect-ratio: 1; background: var(--color-surface-sunk); color: var(--color-text-secondary); display: grid; place-items: center; }
+.store-card-image { position: relative; aspect-ratio: 1; background: var(--color-surface-sunk); color: var(--color-text-secondary); display: grid; place-items: center; }
 .store-card-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .store-card-body { padding: var(--space-3) var(--space-4); display: grid; gap: var(--space-1); flex: 1; align-content: start; }
 .store-card-price { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--color-primary); }
 .store-card-description { margin: 0; font: var(--text-body-sm); white-space: pre-line; }
 .store-card-actions { display: flex; gap: var(--space-2); padding: 0 var(--space-4) var(--space-3); }
+.store-card-soon { position: absolute; top: var(--space-2); inset-inline-start: var(--space-2); box-shadow: var(--shadow-sm, 0 1px 2px rgb(0 0 0 / 0.12)); }
+.store-card-buy { flex: 1; }
+.store-card-sticker {
+  position: absolute; bottom: var(--space-3); inset-inline-end: var(--space-2);
+  padding: 0.3rem 0.7rem; border-radius: var(--radius-full);
+  background: #d4a017; color: #3d2a00; font-weight: 800; font-size: 0.875rem;
+  transform: rotate(-12deg); box-shadow: 0 2px 6px rgb(0 0 0 / 0.2);
+  animation: soon-wobble 1.8s ease-in-out infinite;
+}
+@keyframes soon-wobble { 0%, 100% { transform: rotate(-12deg) scale(1); } 50% { transform: rotate(-6deg) scale(1.08); } }
+.soon-title { color: var(--color-text-secondary); font-weight: 500; }
+.soon-inline { color: #7a5417; font-weight: 600; }
+.soon-marquee { overflow: hidden; white-space: nowrap; border-radius: var(--radius-md); background: var(--color-warning-surface); color: #7a5417; font-weight: 700; padding: var(--space-2) 0; }
+.soon-marquee-track { display: inline-block; animation: soon-marquee 40s linear infinite; }
+@keyframes soon-marquee { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+.soon-footer { text-align: center; color: var(--color-text-secondary); font: var(--text-body-sm); margin-top: var(--space-6); }
+@media (prefers-reduced-motion: reduce) { .store-card-sticker, .soon-marquee-track { animation: none; } }
 .store-form-image { width: 160px; aspect-ratio: 1; border-radius: var(--radius-md); border: 1px solid var(--color-border); background: var(--color-surface-sunk); display: grid; place-items: center; overflow: hidden; }
 .store-form-image img { width: 100%; height: 100%; object-fit: cover; }
 
@@ -990,7 +1007,24 @@ button.bottom-nav-link { border: 0; background: transparent; }
 .status-option--maybe.is-selected { background: var(--color-warning); border-color: var(--color-warning); color: var(--white); }
 .status-option--unavailable.is-selected { background: var(--color-danger); border-color: var(--color-danger); color: var(--white); }
 .calendar-day--saving { opacity: 0.65; }
-.calendar--full { grid-template-columns: repeat(7, 1fr); }
+.calendar--full { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.calendar-head-short { display: none; }
+.calendar-peek-btn { border: none; cursor: pointer; text-align: start; }
+.calendar-peek {
+  position: fixed;
+  z-index: 50;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(16rem, calc(100vw - 32px));
+  padding: 0.45rem 0.7rem;
+  border-radius: var(--radius-md);
+  background: var(--neutral-900);
+  color: var(--white);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+}
 .calendar-shift-list { display: grid; gap: 0.3rem; }
 .calendar-shift-list .tag { font-size: 0.72rem; padding: 0.2rem 0.5rem; }
 .calendar-shift-btn { border: none; font: 600 0.72rem/1.3 var(--font-sans); cursor: pointer; width: 100%; justify-content: flex-start; }
@@ -1167,8 +1201,16 @@ button.bottom-nav-link { border: 0; background: transparent; }
   .calendar-day-number { font-size: 0.85rem; }
   .status-option { font-size: 0.68rem; padding: 0.3rem 0.3rem; min-height: 36px; }
   .calendar--full .calendar-day { min-height: 90px; padding: 0.3rem; }
-  .calendar-shift-list .tag { font-size: 0.62rem; padding: 0.15rem 0.35rem; }
-  .calendar-housing::before, .calendar-housing svg { display: none; }
+  .calendar-head-long { display: none; }
+  .calendar-head-short { display: inline; }
+  /* One-line chips in the ~45px cells; tapping a chip shows its full text (bubble or details dialog). */
+  .calendar--full .calendar-day { gap: 0.25rem; min-width: 0; }
+  .calendar-shift-list { gap: 0.15rem; min-width: 0; }
+  .calendar-shift-list .tag { display: block; width: 100%; min-width: 0; font-size: 0.6rem; line-height: 1.4; padding: 0.1rem 0.25rem; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: start; }
+  .calendar-shift-list .tag::before, .calendar-shift-list .tag svg { display: none; }
+  .calendar-shift-list .calendar-shift-btn:not(.calendar-event-btn) { text-align: center; }
+  .calendar-shift-end, .calendar-shift-farm { display: none; }
+  .calendar-event-btn { border-width: 0; border-inline-start-width: 2px; }
 }
 
 /* ==========================================================================

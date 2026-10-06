@@ -78,7 +78,7 @@ export function StoreGrid({ products, csrf, canManage }: { products: StoreProduc
   return (
     <div className="stack">
       <div className="table-toolbar">
-        <input className="input search-input" type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="חיפוש מוצר" aria-label="חיפוש מוצרים" />
+        <input className="input search-input" type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder={canManage ? "חיפוש מוצר" : "חיפוש מוצר (בקרוב)"} aria-label="חיפוש מוצרים" />
         {canManage && <AddProductButton csrf={csrf} />}
       </div>
 
@@ -88,14 +88,22 @@ export function StoreGrid({ products, csrf, canManage }: { products: StoreProduc
         {filtered.map(product => (
           <article className="store-card" key={product.id}>
             <div className="store-card-image">
+              {!canManage && <span className="tag warn store-card-soon">בקרוב</span>}
+              {!canManage && <span className="store-card-sticker" aria-hidden="true">בקרוב!</span>}
               {/* eslint-disable-next-line @next/next/no-img-element -- תמונה פרטית מאחורי הרשאה, לא מתאימה לאופטימיזציית next/image */}
               {product.has_image ? <img src={storeImageUrl(product)} alt={product.name} loading="lazy" /> : <ShoppingBagIcon size={40} />}
             </div>
             <div className="store-card-body">
-              <h3>{product.name}</h3>
-              <span className="store-card-price">{formatMoney(product.price)}</span>
+              <h3>{product.name}{!canManage && <span className="soon-inline"> (בקרוב)</span>}</h3>
+              <span className="store-card-price">{formatMoney(product.price)}{!canManage && <span className="soon-inline"> · זמין בקרוב</span>}</span>
               {product.description && <p className="muted store-card-description">{product.description}</p>}
+              {!canManage && <p className="muted store-card-description soon-inline">משלוח: בקרוב · מלאי: בקרוב · ביקורות: בקרוב</p>}
             </div>
+            {!canManage && (
+              <div className="store-card-actions">
+                <button type="button" className="btn secondary store-card-buy" disabled>בקרוב בקרוב</button>
+              </div>
+            )}
             {canManage && (
               <div className="store-card-actions">
                 <EditProductButton csrf={csrf} product={product} />

@@ -11,9 +11,19 @@ export default async function Store() {
   const products = new StoreService(db()).list();
   return (
     <AppShell user={user}>
-      <h1>חנות</h1>
-      {user.role !== "ADMIN" && <p className="alert" role="status">בקרוב! החנות תיפתח לרכישה בקרוב</p>}
+      <h1>חנות{user.role !== "ADMIN" && <span className="soon-title"> (בקרוב)</span>}</h1>
+      {user.role !== "ADMIN" && (
+        <>
+          <div className="soon-marquee" aria-hidden="true">
+            <div className="soon-marquee-track">{"בקרוב ✦ ".repeat(40)}</div>
+          </div>
+          <p className="alert" role="status">בקרוב! החנות תיפתח לרכישה בקרוב. מתי בקרוב? בקרוב. כמה בקרוב? ממש בקרוב. בקרוב בקרוב בקרוב.</p>
+        </>
+      )}
       <StoreGrid products={products} csrf={csrf} canManage={user.role === "ADMIN"} />
+      {user.role !== "ADMIN" && (
+        <p className="soon-footer" aria-hidden="true">בקרוב™ · כל הזכויות שמורות לבקרוב · עוד בקרוב, בקרוב</p>
+      )}
     </AppShell>
   );
 }

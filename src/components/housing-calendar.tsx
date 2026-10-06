@@ -63,7 +63,6 @@ export function VillagePicker({ villages, villageId, optionId, onVillage, onOpti
                 <input type="radio" name="village" value={v.id} checked={v.id === villageId} onChange={() => onVillage(v.id)} />
                 <span className="housing-choice-body">
                   <strong>{v.name}</strong>
-                  {v.location && <span className="muted">{v.location}</span>}
                   {v.description && <span className="muted">{v.description}</span>}
                 </span>
               </label>

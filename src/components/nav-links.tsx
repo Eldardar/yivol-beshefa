@@ -20,9 +20,16 @@ const PICKER_NAV: NavItem[] = [
       { href: "/housing", label: "מגורים", icon: HouseIcon },
     ],
   },
-  { href: "/assignments", label: "שיבוצים", icon: ClipboardListIcon },
   { href: "/calendar", label: "לוח חודשי", icon: CalendarDaysIcon },
-  { href: "/history", label: "היסטוריה", icon: HistoryIcon },
+  {
+    href: "/assignments",
+    label: "משמרות",
+    icon: ClipboardListIcon,
+    children: [
+      { href: "/assignments", label: "משמרות פעילות", icon: ClipboardListIcon },
+      { href: "/history", label: "היסטוריה", icon: HistoryIcon },
+    ],
+  },
   { href: "/store", label: "חנות", icon: ShoppingBagIcon },
 ];
 

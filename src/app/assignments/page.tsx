@@ -66,7 +66,7 @@ export default async function Assignments() {
 
   return (
     <AppShell user={user}>
-      <h1>השיבוצים שלי</h1>
+      <h1>משמרות פעילות</h1>
       <div className="grid">
         {rows.map(x => (
           <article className="card" key={x.id}>
@@ -95,7 +95,7 @@ export default async function Assignments() {
             <ShiftCoworkers names={coworkersByShift.get(x.id) ?? []} />
           </article>
         ))}
-        {rows.length === 0 && <p className="card muted">אין שיבוצים שפורסמו.</p>}
+        {rows.length === 0 && <p className="card muted">אין משמרות פעילות.</p>}
       </div>
     </AppShell>
   );

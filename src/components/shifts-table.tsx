@@ -636,7 +636,7 @@ function CompleteShiftButton({ csrf, id, units, workerTotals }: { csrf: string; 
             <p>נא להזין את התוצאה הסופית של המשמרת — הכמות שהושגה בפועל — באותן יחידות מידה שנקבעו ביעד.</p>
             {units.map(u => (
               <div className="field" key={u.unit}>
-                <label htmlFor={`result-${id}-${u.unit}`}>{UNIT_LABEL[u.unit]} (יעד: <span dir="ltr" className="ltr-field">{u.goal}</span>) (סה&quot;כ עובדים: <span dir="ltr" className="ltr-field">{workerTotals.find(t => t.unit === u.unit)?.quantity ?? 0}</span>)</label>
+                <label htmlFor={`result-${id}-${u.unit}`}>{UNIT_LABEL[u.unit]} (יעד: <span dir="ltr" className="ltr-field">{u.goal}</span>)</label>
                 <input
                   className="input"
                   id={`result-${id}-${u.unit}`}
@@ -649,6 +649,15 @@ function CompleteShiftButton({ csrf, id, units, workerTotals }: { csrf: string; 
                 />
               </div>
             ))}
+            <p className="muted">
+              סה&quot;כ תוצאות העובדים במשמרת:{" "}
+              {workerTotals.length === 0 ? "—" : workerTotals.map((t, i) => (
+                <Fragment key={t.unit}>
+                  {i > 0 && ", "}
+                  <span dir="ltr" className="ltr-field">{t.quantity}</span> {UNIT_LABEL[t.unit]}
+                </Fragment>
+              ))}
+            </p>
             <div className="actions">
               <button type="submit" className="btn" disabled={busy}>{busy ? "מבצע…" : "סיום משמרת"}</button>
               <button type="button" className="btn secondary" disabled={busy} onClick={() => setOpen(false)}>ביטול</button>

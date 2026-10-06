@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { formatHebrewDate } from "@/lib/dates";
 import { formatMoney } from "@/lib/format";
 import { unitAmount, type UnitPricing } from "@/lib/pricing";
@@ -32,6 +32,7 @@ export type CalendarHousing = { status: "IN_VILLAGE" | "MAYBE"; village: string 
 export type CalendarDay = { date: string; day: number; weekday: number; isToday: boolean; shifts: CalendarShift[]; birthdays: string[]; holidays: CalendarHoliday[]; events: CalendarEvent[]; housing?: CalendarHousing | null };
 
 const WEEKDAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
+const WEEKDAYS_SHORT = ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳"];
 const HOLIDAY_EMOJI: Record<CalendarHoliday["religion"], string> = { jewish: "✡️", christian: "✝️", muslim: "☪️" };
 function timeTag(startTime: string): string {
   const hour = Number(startTime.slice(0, 2));
@@ -86,6 +87,14 @@ function housingLabel(housing: CalendarHousing): string {
   return housing.status === "MAYBE" ? `${place} (אולי)` : place;
 }
 
+/** Nudges the centred bubble back inside a 16px gutter when its chip sits at the screen edge. */
+function keepPeekOnScreen(el: HTMLDivElement | null) {
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
+  const overflow = rect.left < 16 ? 16 - rect.left : rect.right > window.innerWidth - 16 ? window.innerWidth - 16 - rect.right : 0;
+  if (overflow) el.style.left = `${parseFloat(el.style.left) + overflow}px`;
+}
+
 function eventDates(event: CalendarEvent): string {
   return event.startDate === event.endDate ? formatHebrewDate(event.startDate) : `${formatHebrewDate(event.startDate)} – ${formatHebrewDate(event.endDate)}`;
 }
@@ -96,14 +105,37 @@ export function CalendarView({ year, month, label, days, unitRatesByField, csrf,
   const [selected, setSelected] = useState<{ date: string; shift: CalendarShift } | null>(null);
   const [creatingOn, setCreatingOn] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<{ event: CalendarEvent; mode: "view" | "edit" | "delete" } | null>(null);
+  // Full text of a chip that is cut off in a narrow cell, shown in a small bubble next to it.
+  const [peek, setPeek] = useState<{ key: string; text: string; top: number; left: number } | null>(null);
   const leading = days.length ? days[0]!.weekday : 0;
+
+  useEffect(() => {
+    if (!peek) return;
+    const close = (e: Event) => { if (!(e.target as Element | null)?.closest?.(".calendar-peek, .calendar-peek-btn")) setPeek(null); };
+    const dismiss = () => setPeek(null);
+    document.addEventListener("pointerdown", close);
+    window.addEventListener("scroll", dismiss, true);
+    window.addEventListener("resize", dismiss);
+    return () => { document.removeEventListener("pointerdown", close); window.removeEventListener("scroll", dismiss, true); window.removeEventListener("resize", dismiss); };
+  }, [peek]);
+
+  function togglePeek(key: string, text: string, target: HTMLElement) {
+    if (peek?.key === key) { setPeek(null); return; }
+    const rect = target.getBoundingClientRect();
+    setPeek({ key, text, top: rect.bottom + 6, left: rect.left + rect.width / 2 });
+  }
 
   return (
     <>
       <section className="calendar-month">
         <CalendarMonthNav year={year} month={month} />
         <div className="calendar calendar--full" role="grid" aria-label={`לוח שנה ל${label}`}>
-          {WEEKDAYS.map(weekday => <div className="calendar-head" key={weekday} role="columnheader">{weekday}</div>)}
+          {WEEKDAYS.map((weekday, i) => (
+            <div className="calendar-head" key={weekday} role="columnheader" aria-label={weekday}>
+              <span className="calendar-head-long">{weekday}</span>
+              <span className="calendar-head-short" aria-hidden="true">{WEEKDAYS_SHORT[i]}</span>
+            </div>
+          ))}
           {Array.from({ length: leading }, (_, i) => <div className="calendar-pad" key={`pad-${i}`} aria-hidden="true" />)}
           {days.map(d => (
             <div
@@ -120,16 +152,22 @@ export function CalendarView({ year, month, label, days, unitRatesByField, csrf,
               {(d.shifts.length > 0 || d.birthdays.length > 0 || d.holidays.length > 0 || d.events.length > 0 || d.housing) && (
                 <div className="calendar-shift-list">
                   {d.holidays.map(holiday => (
-                    <span key={holiday.name} className={`tag holiday-${holiday.religion}`}>{HOLIDAY_EMOJI[holiday.religion]} {holiday.name}</span>
+                    <button type="button" key={holiday.name} className={`tag calendar-peek-btn holiday-${holiday.religion}`} aria-expanded={peek?.key === `${d.date}-h-${holiday.name}`} onClick={e => togglePeek(`${d.date}-h-${holiday.name}`, `${HOLIDAY_EMOJI[holiday.religion]} ${holiday.name}`, e.currentTarget)}>{HOLIDAY_EMOJI[holiday.religion]} {holiday.name}</button>
                   ))}
                   {d.housing && (
-                    <span className={`tag calendar-housing${d.housing.status === "MAYBE" ? " is-maybe" : ""}`} title={d.housing.option ?? undefined}>
+                    <button
+                      type="button"
+                      className={`tag calendar-peek-btn calendar-housing${d.housing.status === "MAYBE" ? " is-maybe" : ""}`}
+                      title={d.housing.option ?? undefined}
+                      aria-expanded={peek?.key === `${d.date}-housing`}
+                      onClick={e => togglePeek(`${d.date}-housing`, d.housing!.option ? `${housingLabel(d.housing!)} · ${d.housing!.option}` : housingLabel(d.housing!), e.currentTarget)}
+                    >
                       <TentIcon size={13} />
                       <span>{housingLabel(d.housing)}</span>
-                    </span>
+                    </button>
                   )}
                   {d.birthdays.map(name => (
-                    <span key={name} className="tag">🎂 {name}</span>
+                    <button type="button" key={name} className="tag calendar-peek-btn" aria-expanded={peek?.key === `${d.date}-b-${name}`} onClick={e => togglePeek(`${d.date}-b-${name}`, `🎂 יום הולדת: ${name}`, e.currentTarget)}>🎂 {name}</button>
                   ))}
                   {d.events.map(event => (
                     <button
@@ -154,7 +192,8 @@ export function CalendarView({ year, month, label, days, unitRatesByField, csrf,
                         aria-pressed={isSelected}
                         onClick={() => setSelected({ date: d.date, shift })}
                       >
-                        <span dir="ltr">{shift.startTime}–{shift.endTime}</span> · {shift.farm}
+                        <span dir="ltr">{shift.startTime}<span className="calendar-shift-end">–{shift.endTime}</span></span>
+                        <span className="calendar-shift-farm"> · {shift.farm}</span>
                       </button>
                     );
                   })}
@@ -164,6 +203,9 @@ export function CalendarView({ year, month, label, days, unitRatesByField, csrf,
           ))}
         </div>
       </section>
+      {peek && (
+        <div className="calendar-peek" key={peek.key} role="tooltip" style={{ top: peek.top, left: peek.left }} ref={keepPeekOnScreen}>{peek.text}</div>
+      )}
       {creatingOn && (
         <Modal title={`אירוע חדש · ${formatHebrewDate(creatingOn)}`} onClose={() => setCreatingOn(null)}>
           <AdminEventForm csrf={csrf} date={creatingOn} />
