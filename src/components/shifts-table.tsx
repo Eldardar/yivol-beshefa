@@ -258,7 +258,7 @@ export function ShiftsTable({
                 </div>
               ) : (
                 <div className="record-card-actions">
-                  <RowActions row={row} csrf={csrf} pickers={pickers} farms={farms} plantationFieldsByFarm={plantationFieldsByFarm} pickerIdsByShift={pickerIdsByShift} vehicleIdsByShift={vehicleIdsByShift} unitsByShift={unitsByShift} personalGoalUnitsByShift={personalGoalUnitsByShift} />
+                  <RowActions row={row} csrf={csrf} pickers={pickers} farms={farms} plantationFieldsByFarm={plantationFieldsByFarm} pickerIdsByShift={pickerIdsByShift} vehicleIdsByShift={vehicleIdsByShift} unitsByShift={unitsByShift} personalGoalUnitsByShift={personalGoalUnitsByShift} pickerHoursByShift={pickerHoursByShift} />
                 </div>
               )}
               {isOpen && (
@@ -311,7 +311,7 @@ export function ShiftsTable({
                         formatMoney(totalEarnings(pickerHoursByShift[row.id] ?? [], unitRatesByField[row.plantation_field_id] ?? {}))
                       ) : (
                         <div className="actions-cell">
-                          <RowActions row={row} csrf={csrf} pickers={pickers} farms={farms} plantationFieldsByFarm={plantationFieldsByFarm} pickerIdsByShift={pickerIdsByShift} vehicleIdsByShift={vehicleIdsByShift} unitsByShift={unitsByShift} personalGoalUnitsByShift={personalGoalUnitsByShift} />
+                          <RowActions row={row} csrf={csrf} pickers={pickers} farms={farms} plantationFieldsByFarm={plantationFieldsByFarm} pickerIdsByShift={pickerIdsByShift} vehicleIdsByShift={vehicleIdsByShift} unitsByShift={unitsByShift} personalGoalUnitsByShift={personalGoalUnitsByShift} pickerHoursByShift={pickerHoursByShift} />
                         </div>
                       )}
                     </td>
@@ -342,7 +342,8 @@ function RowActions({
   pickerIdsByShift,
   vehicleIdsByShift,
   unitsByShift,
-  personalGoalUnitsByShift
+  personalGoalUnitsByShift,
+  pickerHoursByShift
 }: {
   row: ShiftRow;
   csrf: string;
@@ -353,6 +354,7 @@ function RowActions({
   vehicleIdsByShift: VehicleIdsByShift;
   unitsByShift: UnitsByShift;
   personalGoalUnitsByShift: PersonalGoalUnitsByShift;
+  pickerHoursByShift: PickerHoursByShift;
 }) {
   const editable = ["DRAFT", "PUBLISHED"].includes(row.status);
   return (
@@ -376,7 +378,7 @@ function RowActions({
       {row.status === "DRAFT" && <Transition csrf={csrf} id={row.id} target="PUBLISHED" label="פרסום" />}
       {row.status === "PUBLISHED" && (
         <>
-          <CompleteShiftButton csrf={csrf} id={row.id} units={unitsByShift[row.id] ?? []} />
+          <CompleteShiftButton csrf={csrf} id={row.id} units={unitsByShift[row.id] ?? []} workerTotals={totalsByUnit(pickerHoursByShift[row.id] ?? [])} />
           <Transition csrf={csrf} id={row.id} target="DRAFT" label="החזרה לטיוטה" />
         </>
       )}
@@ -587,7 +589,7 @@ function Transition({ csrf, id, target, label, danger, icon }: { csrf: string; i
   );
 }
 
-function CompleteShiftButton({ csrf, id, units }: { csrf: string; id: number; units: UnitInfo[] }) {
+function CompleteShiftButton({ csrf, id, units, workerTotals }: { csrf: string; id: number; units: UnitInfo[]; workerTotals: Array<{ unit: Unit; quantity: number }> }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [values, setValues] = useState<Record<string, string>>({});
@@ -634,7 +636,7 @@ function CompleteShiftButton({ csrf, id, units }: { csrf: string; id: number; un
             <p>נא להזין את התוצאה הסופית של המשמרת — הכמות שהושגה בפועל — באותן יחידות מידה שנקבעו ביעד.</p>
             {units.map(u => (
               <div className="field" key={u.unit}>
-                <label htmlFor={`result-${id}-${u.unit}`}>{UNIT_LABEL[u.unit]} (יעד: <span dir="ltr" className="ltr-field">{u.goal}</span>)</label>
+                <label htmlFor={`result-${id}-${u.unit}`}>{UNIT_LABEL[u.unit]} (יעד: <span dir="ltr" className="ltr-field">{u.goal}</span>) (סה&quot;כ עובדים: <span dir="ltr" className="ltr-field">{workerTotals.find(t => t.unit === u.unit)?.quantity ?? 0}</span>)</label>
                 <input
                   className="input"
                   id={`result-${id}-${u.unit}`}
