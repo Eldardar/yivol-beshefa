@@ -1,8 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Image from "next/image";
 import { FarmerPicker, type FarmerOption } from "./farmer-picker";
-import { RangeTabs, RANGE_LABEL, type RangeKey } from "./range-tabs";
 import { ExportExcelButton } from "./export-excel-button";
 import { formatHebrewDate } from "@/lib/dates";
 import { UNIT_LABEL, unitsPresent, type Unit } from "@/lib/units";
@@ -41,15 +40,18 @@ function farmerShiftsSheet(shifts: FarmerShiftRow[]): XlsxSheet {
 export function FarmerPerformanceReport({
   farmers,
   shiftsByFarmer,
-  shiftCountsByRange
+  periodNav,
+  periodLabel,
+  shiftCounts
 }: {
   farmers: FarmerOption[];
   shiftsByFarmer: ShiftsByFarmer;
-  shiftCountsByRange: Record<RangeKey, Record<number, number>>;
+  // Period tabs/navigation are URL-driven (server-rendered links), so they only re-rank the farmers list
+  periodNav: ReactNode;
+  periodLabel: string;
+  shiftCounts: Record<number, number>;
 }) {
   const [selected, setSelected] = useState<FarmerOption | null>(null);
-  const [range, setRange] = useState<RangeKey>("all");
-  const shiftCounts = shiftCountsByRange[range];
   const shifts = selected ? shiftsByFarmer[selected.id] ?? [] : [];
   const rankedFarmers = [...farmers].sort((a, b) => (shiftCounts[b.id] ?? 0) - (shiftCounts[a.id] ?? 0) || a.name.localeCompare(b.name, "he"));
 
@@ -57,14 +59,14 @@ export function FarmerPerformanceReport({
     <div className="stack">
       <FarmerPicker farmers={farmers} selected={selected} onSelect={setSelected} />
 
-      {!selected && <RangeTabs active={range} onChange={setRange} />}
+      {!selected && periodNav}
 
       {!selected && rankedFarmers.length > 0 && (
         <ExportExcelButton
-          fileName={`נתוני קטיף לפי חקלאי - ${RANGE_LABEL[range]}`}
+          fileName={`נתוני קטיף לפי חקלאי - ${periodLabel}`}
           sheets={() => [{
             name: "חקלאים",
-            header: ["#", "חקלאי", `מספר משמרות (${RANGE_LABEL[range]})`, "סטטוס"],
+            header: ["#", "חקלאי", `מספר משמרות (${periodLabel})`, "סטטוס"],
             rows: rankedFarmers.map((farmer, i) => [i + 1, farmer.name, shiftCounts[farmer.id] ?? 0, farmer.active ? "פעיל" : "לא פעיל"])
           }]}
         />

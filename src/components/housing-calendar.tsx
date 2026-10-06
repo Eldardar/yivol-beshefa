@@ -140,7 +140,7 @@ export function HousingCalendar({ csrf, year, month, label, days, villages }: { 
     <div className="stack">
       <VillagePicker villages={villages} villageId={villageId} optionId={optionId} onVillage={chooseVillage} onOption={id => { setOptionId(id); setError(""); }} />
       <section className="calendar-month">
-        <CalendarMonthNav year={year} month={month} basePath="/availability?tab=housing" />
+        <CalendarMonthNav year={year} month={month} basePath="/housing" />
         {error && <p className="alert" role="alert">{error}</p>}
         <div className="calendar calendar--full" role="grid" aria-label={`מגורים ל${label}`}>
           {WEEKDAYS.map(weekday => <div className="calendar-head" key={weekday} role="columnheader">{weekday}</div>)}

@@ -12,6 +12,7 @@ export default async function Store() {
   return (
     <AppShell user={user}>
       <h1>חנות</h1>
+      {user.role !== "ADMIN" && <p className="alert" role="status">בקרוב! החנות תיפתח לרכישה בקרוב</p>}
       <StoreGrid products={products} csrf={csrf} canManage={user.role === "ADMIN"} />
     </AppShell>
   );

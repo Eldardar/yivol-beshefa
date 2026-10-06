@@ -1,7 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { FruitTypePicker } from "./fruit-type-picker";
-import { RangeTabs, RANGE_LABEL, type RangeKey } from "./range-tabs";
 import { ExportExcelButton } from "./export-excel-button";
 import { UNIT_LABEL, unitsPresent, type Unit } from "@/lib/units";
 import type { FruitTypeFarmerRow } from "@/lib/shifts-data";
@@ -32,28 +31,31 @@ function sortByResults(rows: FruitTypeFarmerRow[], totals: Array<{ unit: Unit; q
 
 export function CropHarvestReport({
   fruitTypes,
-  pickedAmountsByRange,
-  farmerBreakdownByRange
+  periodNav,
+  periodLabel,
+  pickedAmounts: amounts,
+  farmerBreakdown
 }: {
   fruitTypes: string[];
-  pickedAmountsByRange: Record<RangeKey, PickedAmounts>;
-  farmerBreakdownByRange: Record<RangeKey, Record<string, FruitTypeFarmerRow[]>>;
+  // Period tabs/navigation are URL-driven (server-rendered links), so the selected fruit type survives switching periods
+  periodNav: ReactNode;
+  periodLabel: string;
+  pickedAmounts: PickedAmounts;
+  farmerBreakdown: Record<string, FruitTypeFarmerRow[]>;
 }) {
   const [selectedFruitType, setSelectedFruitType] = useState<string | null>(null);
-  const [range, setRange] = useState<RangeKey>("all");
 
-  const amounts = pickedAmountsByRange[range];
-  const farmerRows = selectedFruitType ? sortByResults(farmerBreakdownByRange[range][selectedFruitType] ?? [], amounts[selectedFruitType]) : [];
+  const farmerRows = selectedFruitType ? sortByResults(farmerBreakdown[selectedFruitType] ?? [], amounts[selectedFruitType]) : [];
 
   return (
     <div className="stack">
       <FruitTypePicker fruitTypes={fruitTypes} selected={selectedFruitType} onSelect={setSelectedFruitType} />
 
-      <RangeTabs active={range} onChange={setRange} />
+      {periodNav}
 
       {!selectedFruitType && fruitTypes.length > 0 && (
         <ExportExcelButton
-          fileName={`נתוני קטיף לפי סוג פרי - ${RANGE_LABEL[range]}`}
+          fileName={`נתוני קטיף לפי סוג פרי - ${periodLabel}`}
           sheets={() => {
             const units = unitsPresent(fruitTypes.map(f => amounts[f]));
             return [{
@@ -67,7 +69,7 @@ export function CropHarvestReport({
 
       {selectedFruitType && farmerRows.length > 0 && (
         <ExportExcelButton
-          fileName={`נתוני קטיף - ${selectedFruitType} - ${RANGE_LABEL[range]}`}
+          fileName={`נתוני קטיף - ${selectedFruitType} - ${periodLabel}`}
           sheets={() => {
             const units = unitsPresent(farmerRows.map(r => r.amounts));
             return [{

@@ -4,21 +4,27 @@ import { CalendarMonthNav } from "./calendar-month-nav";
 import { jerusalemDate } from "@/lib/dates";
 import { PERIOD_VIEWS, type Period, type PeriodView, type PeriodViewOption } from "@/lib/period";
 
+// basePath may already carry its own query (e.g. a report's sub-view), so the period goes under `param`
+function withView(basePath: string, param: string, view: PeriodView): string {
+  return `${basePath}${basePath.includes("?") ? "&" : "?"}${param}=${view}`;
+}
+
 // מעבר בין הלשוניות שומר את השנה/החודש/הטווח האחרונים שנבחרו
-function viewHref(basePath: string, view: PeriodView, period: Period): string {
+function viewHref(basePath: string, param: string, view: PeriodView, period: Period): string {
+  const base = withView(basePath, param, view);
   switch (view) {
-    case "year": return `${basePath}?view=year&y=${period.year}`;
-    case "month": return `${basePath}?view=month&y=${period.year}&m=${period.month}`;
-    case "custom": return `${basePath}?view=custom&from=${period.from}&to=${period.to}`;
-    default: return `${basePath}?view=all`;
+    case "year": return `${base}&y=${period.year}`;
+    case "month": return `${base}&y=${period.year}&m=${period.month}`;
+    case "custom": return `${base}&from=${period.from}&to=${period.to}`;
+    default: return base;
   }
 }
 
-export function PeriodTabs({ period, basePath, views = PERIOD_VIEWS, label }: { period: Period; basePath: string; views?: PeriodViewOption[]; label: string }) {
+export function PeriodTabs({ period, basePath, param = "view", views = PERIOD_VIEWS, label }: { period: Period; basePath: string; param?: string; views?: PeriodViewOption[]; label: string }) {
   return (
     <div className="tabs" role="tablist" aria-label={label}>
       {views.map(view => (
-        <Link key={view.key} href={viewHref(basePath, view.key, period)} role="tab" aria-selected={view.key === period.view} className={`tab${view.key === period.view ? " is-active" : ""}`}>
+        <Link key={view.key} href={viewHref(basePath, param, view.key, period)} role="tab" aria-selected={view.key === period.view} className={`tab${view.key === period.view ? " is-active" : ""}`}>
           {view.label}
         </Link>
       ))}
@@ -28,7 +34,7 @@ export function PeriodTabs({ period, basePath, views = PERIOD_VIEWS, label }: { 
 
 function YearNav({ year, basePath }: { year: number; basePath: string }) {
   const todayYear = Number(jerusalemDate().slice(0, 4));
-  const href = (y: number) => `${basePath}?view=year&y=${y}`;
+  const href = (y: number) => `${basePath}&y=${y}`;
   return (
     <div className="calendar-nav">
       <Link href={href(year - 1)} className="calendar-nav-arrow" aria-label="שנה קודמת"><ArrowRightIcon size={18} /></Link>
@@ -57,10 +63,11 @@ function CustomRangeForm({ from, to, basePath }: { from: string; to: string; bas
 }
 
 // בחירת התקופה בתוך הלשונית הפעילה; ב״כל הזמנים״ אין מה לבחור
-export function PeriodControl({ period, basePath }: { period: Period; basePath: string }) {
+// custom range is only supported with a plain basePath, since its GET form drops the action's query
+export function PeriodControl({ period, basePath, param = "view" }: { period: Period; basePath: string; param?: string }) {
   switch (period.view) {
-    case "year": return <YearNav year={period.year} basePath={basePath} />;
-    case "month": return <CalendarMonthNav year={period.year} month={period.month} basePath={`${basePath}?view=month`} />;
+    case "year": return <YearNav year={period.year} basePath={withView(basePath, param, "year")} />;
+    case "month": return <CalendarMonthNav year={period.year} month={period.month} basePath={withView(basePath, param, "month")} />;
     case "custom": return <CustomRangeForm key={`${period.from}|${period.to}`} from={period.from} to={period.to} basePath={basePath} />;
     default: return null;
   }
