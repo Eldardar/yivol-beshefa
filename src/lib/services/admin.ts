@@ -4,6 +4,7 @@ import { adminAvailabilityUpdateSchema, adminGoalSchema, adminHousingUpdateSchem
 import { pushToUsers } from "@/lib/push";
 import { jerusalemInstant } from "@/lib/dates";
 import type { Unit } from "@/lib/units";
+import { parseTiers, type PriceTier } from "@/lib/pricing";
 
 export type AdminGoal = { startDate: string; endDate: string; goals: Array<{ unit: Unit; goal: number }> };
 export type ManagedEntity = "USER" | "FARM" | "PLANTATION_FIELD" | "VEHICLE" | "VILLAGE";
@@ -233,11 +234,12 @@ export class AdminService {
     }).immediate();
   }
 
-  listFieldUnitRates(fieldId:number):Array<{unit:string;rateNis:number}> {
+  listFieldUnitRates(fieldId:number):Array<{unit:string;rateNis:number;tiers:PriceTier[]}> {
     if(!Number.isSafeInteger(fieldId)||fieldId<1) throw new Error("מזהה אינו תקין");
     const field=this.db.prepare("SELECT id FROM plantation_fields WHERE id=?").get(fieldId);
     if(!field) throw new Error("החלקה לא נמצאה");
-    return this.db.prepare("SELECT unit,rate_nis AS rateNis FROM field_unit_rates WHERE field_id=? ORDER BY unit").all(fieldId) as Array<{unit:string;rateNis:number}>;
+    const rows=this.db.prepare("SELECT unit,rate_nis AS rateNis,tiers FROM field_unit_rates WHERE field_id=? ORDER BY unit").all(fieldId) as Array<{unit:string;rateNis:number;tiers:string|null}>;
+    return rows.map(r=>({unit:r.unit,rateNis:r.rateNis,tiers:parseTiers(r.tiers)}));
   }
 
   setFieldUnitRates(actorId:number, fieldId:number, raw:unknown):void {
@@ -249,8 +251,8 @@ export class AdminService {
       const field=this.db.prepare("SELECT id FROM plantation_fields WHERE id=?").get(fieldId);
       if(!field) throw new Error("החלקה לא נמצאה");
       this.db.prepare("DELETE FROM field_unit_rates WHERE field_id=?").run(fieldId);
-      const insert=this.db.prepare("INSERT INTO field_unit_rates(field_id,unit,rate_nis) VALUES(?,?,?)");
-      for(const r of input.rates) insert.run(fieldId,r.unit,r.rateNis);
+      const insert=this.db.prepare("INSERT INTO field_unit_rates(field_id,unit,rate_nis,tiers) VALUES(?,?,?,?)");
+      for(const r of input.rates) insert.run(fieldId,r.unit,r.rateNis,r.tiers.length?JSON.stringify(r.tiers):null);
       this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)").run(actorId,"UPDATE","FIELD_UNIT_RATES",fieldId,JSON.stringify({units:input.rates.map(r=>r.unit)}));
     }).immediate();
   }

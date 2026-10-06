@@ -67,10 +67,10 @@ describe("תעריפי יחידות לחלקה",()=>{
   it("מנהל שומר תעריפים, מחליף רשימה קודמת ורושם אירוע ביקורת",()=>{
     const x=setup(); const service=new AdminService(db);
     service.setFieldUnitRates(x.admin,x.field,{rates:[{unit:"KG",rateNis:2.5},{unit:"CRATE_SMALL",rateNis:15}]});
-    expect(service.listFieldUnitRates(x.field)).toEqual([{unit:"CRATE_SMALL",rateNis:15},{unit:"KG",rateNis:2.5}]);
+    expect(service.listFieldUnitRates(x.field)).toEqual([{unit:"CRATE_SMALL",rateNis:15,tiers:[]},{unit:"KG",rateNis:2.5,tiers:[]}]);
     expect(db.prepare("SELECT action FROM audit_events WHERE entity_type='FIELD_UNIT_RATES' AND entity_id=?").get(x.field)).toEqual({action:"UPDATE"});
     service.setFieldUnitRates(x.admin,x.field,{rates:[{unit:"BUCKET",rateNis:1000}]});
-    expect(service.listFieldUnitRates(x.field)).toEqual([{unit:"BUCKET",rateNis:1000}]);
+    expect(service.listFieldUnitRates(x.field)).toEqual([{unit:"BUCKET",rateNis:1000,tiers:[]}]);
   });
   it("דוחה יחידה כפולה, סכום לא חיובי, מזהה מזויף ומשתמש שאינו מנהל",()=>{
     const x=setup(); const service=new AdminService(db);
@@ -78,6 +78,16 @@ describe("תעריפי יחידות לחלקה",()=>{
     expect(()=>service.setFieldUnitRates(x.admin,x.field,{rates:[{unit:"KG",rateNis:0}]})).toThrow();
     expect(()=>service.setFieldUnitRates(x.admin,-1,{rates:[]})).toThrow("מזהה אינו תקין");
     expect(()=>service.setFieldUnitRates(x.p1,x.field,{rates:[]})).toThrow("אין הרשאה");
+  });
+  it("שומר מדרגות תמחור לפי כמות ומחשב סכום מדורג ב־SQL",()=>{
+    const x=setup(); const service=new AdminService(db);
+    const tiers=[{aboveQuantity:10,rateNis:3,appliesToAll:false},{aboveQuantity:20,rateNis:4,appliesToAll:true}];
+    service.setFieldUnitRates(x.admin,x.field,{rates:[{unit:"KG",rateNis:2,tiers}]});
+    expect(service.listFieldUnitRates(x.field)).toEqual([{unit:"KG",rateNis:2,tiers}]);
+    const amount=(q:number)=>(db.prepare("SELECT unit_amount(?,rate_nis,tiers) a FROM field_unit_rates WHERE field_id=?").get(q,x.field) as {a:number}).a;
+    expect(amount(15)).toBe(35);
+    expect(amount(25)).toBe(100);
+    expect(()=>service.setFieldUnitRates(x.admin,x.field,{rates:[{unit:"KG",rateNis:2,tiers:[{aboveQuantity:20,rateNis:3},{aboveQuantity:10,rateNis:4}]}]})).toThrow();
   });
   it("דוחה חלקה שלא קיימת",()=>{const x=setup();const service=new AdminService(db);expect(()=>service.setFieldUnitRates(x.admin,999,{rates:[]})).toThrow("החלקה לא נמצאה");expect(()=>service.listFieldUnitRates(999)).toThrow("החלקה לא נמצאה");});
 });

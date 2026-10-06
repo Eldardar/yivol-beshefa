@@ -14,6 +14,7 @@ import { ChevronDownIcon, TrashIcon, AlertTriangleIcon } from "./icons";
 import { LEADER_CONFLICT_MARKER, type Picker, type FarmOption, type PlantationFieldsByFarm } from "./shift-form";
 import { Modal } from "./modal";
 import { formatMoney } from "@/lib/format";
+import { unitAmount, type UnitPricing, type UnitPricingByField } from "@/lib/pricing";
 
 export type ShiftRow = { id: number; date: string; start_time: string; end_time: string; status: string; notes: string; farm_id: number; plantation_field_id: number; leader_id: number; leader: string; farm: string; fruit_type: string; picker_count: number; team_leader_details: string };
 export type UnitInfo = { unit: Unit; goal: number; produced: number | null };
@@ -24,7 +25,7 @@ export type PickerHoursByShift = Record<number, Array<{ name: string; startTime:
 export type VehiclesByShift = Record<number, Array<{ number: string; name: string }>>;
 export type VehicleIdsByShift = Record<number, number[]>;
 export type RatedUnitsByField = Record<number, Unit[]>;
-export type UnitRatesByField = Record<number, Partial<Record<Unit, number>>>;
+export type UnitRatesByField = UnitPricingByField;
 export type PersonalGoalUnitsByShift = Record<number, Unit[]>;
 
 function toMinutes(time: string): number {
@@ -39,12 +40,12 @@ function hoursBetween(startTime: string | null, endTime: string | null): number 
   return minutes / 60;
 }
 
-function pickerEarnings(quantities: Array<{ unit: Unit; quantity: number }>, rates: Partial<Record<Unit, number>>): number | null {
+function pickerEarnings(quantities: Array<{ unit: Unit; quantity: number }>, rates: Partial<Record<Unit, UnitPricing>>): number | null {
   let total = 0;
   let rated = false;
   for (const q of quantities) {
     const rate = rates[q.unit];
-    if (rate != null) { total += q.quantity * rate; rated = true; }
+    if (rate != null) { total += unitAmount(rate, q.quantity); rated = true; }
   }
   return rated ? total : null;
 }
@@ -57,12 +58,12 @@ function totalsByUnit(pickerHours: Array<{ quantities: Array<{ unit: Unit; quant
   return Array.from(totals, ([unit, quantity]) => ({ unit, quantity }));
 }
 
-function totalEarnings(pickerHours: Array<{ quantities: Array<{ unit: Unit; quantity: number }> }>, rates: Partial<Record<Unit, number>>): number {
+function totalEarnings(pickerHours: Array<{ quantities: Array<{ unit: Unit; quantity: number }> }>, rates: Partial<Record<Unit, UnitPricing>>): number {
   let total = 0;
   for (const p of pickerHours) {
     for (const q of p.quantities) {
       const rate = rates[q.unit];
-      if (rate != null) total += q.quantity * rate;
+      if (rate != null) total += unitAmount(rate, q.quantity);
     }
   }
   return total;
@@ -426,7 +427,7 @@ function CompletedEditButton({
   );
 }
 
-function ShiftDetails({ units, pickerNames, totalPickers, pickerHours, unitRates, vehicles, notes, plannedStart, plannedEnd, teamLeaderDetails, completedEditButton }: { units: UnitInfo[]; pickerNames: string[]; totalPickers: number; pickerHours: Array<{ name: string; startTime: string | null; endTime: string | null; selfReportedAt?: string | null; quantities: Array<{ unit: Unit; quantity: number }> }>; unitRates: Partial<Record<Unit, number>>; vehicles: Array<{ number: string; name: string }>; notes: string; plannedStart: string; plannedEnd: string; teamLeaderDetails: string; completedEditButton?: React.ReactNode }) {
+function ShiftDetails({ units, pickerNames, totalPickers, pickerHours, unitRates, vehicles, notes, plannedStart, plannedEnd, teamLeaderDetails, completedEditButton }: { units: UnitInfo[]; pickerNames: string[]; totalPickers: number; pickerHours: Array<{ name: string; startTime: string | null; endTime: string | null; selfReportedAt?: string | null; quantities: Array<{ unit: Unit; quantity: number }> }>; unitRates: Partial<Record<Unit, UnitPricing>>; vehicles: Array<{ number: string; name: string }>; notes: string; plannedStart: string; plannedEnd: string; teamLeaderDetails: string; completedEditButton?: React.ReactNode }) {
   return (
     <div className="sub-tables">
       <div className="stack">

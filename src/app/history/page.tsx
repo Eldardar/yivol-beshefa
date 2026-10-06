@@ -34,7 +34,7 @@ export default async function History({ searchParams }: { searchParams: Promise<
   const { start: monthStart } = currentJerusalemMonth();
   const dailyEarningsRows = db()
     .prepare(
-      `SELECT s.date date, SUM(q.quantity * r.rate_nis) amount FROM shift_pickers sp
+      `SELECT s.date date, SUM(unit_amount(q.quantity, r.rate_nis, r.tiers)) amount FROM shift_pickers sp
        JOIN shifts s ON s.id=sp.shift_id
        JOIN quantities q ON q.shift_id=s.id AND q.user_id=sp.user_id
        JOIN field_unit_rates r ON r.field_id=s.plantation_field_id AND r.unit=q.unit
@@ -52,7 +52,7 @@ export default async function History({ searchParams }: { searchParams: Promise<
 
   const pastMonthTotals = db()
     .prepare(
-      `SELECT SUM(q.quantity * r.rate_nis) amount FROM shift_pickers sp
+      `SELECT SUM(unit_amount(q.quantity, r.rate_nis, r.tiers)) amount FROM shift_pickers sp
        JOIN shifts s ON s.id=sp.shift_id
        JOIN quantities q ON q.shift_id=s.id AND q.user_id=sp.user_id
        JOIN field_unit_rates r ON r.field_id=s.plantation_field_id AND r.unit=q.unit

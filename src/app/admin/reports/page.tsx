@@ -61,7 +61,7 @@ export default async function Reports({ searchParams }: { searchParams: Promise<
 
   const { total } = database
     .prepare(
-      `SELECT COALESCE(SUM(q.quantity*r.rate_nis),0) total
+      `SELECT COALESCE(SUM(unit_amount(q.quantity,r.rate_nis,r.tiers)),0) total
        FROM quantities q JOIN shifts s ON s.id=q.shift_id
        JOIN field_unit_rates r ON r.field_id=s.plantation_field_id AND r.unit=q.unit
        WHERE s.date>=? AND s.date<? AND s.status IN ('PUBLISHED','COMPLETED')`

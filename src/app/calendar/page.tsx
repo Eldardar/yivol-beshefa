@@ -5,6 +5,7 @@ import { db, requireAdmin } from "@/lib/server";
 import { jerusalemDate } from "@/lib/dates";
 import { getHolidays } from "@/lib/holidays";
 import type { Unit } from "@/lib/units";
+import { buildUnitPricingByField } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -83,9 +84,8 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
     }
   }
 
-  const rateRows = database.prepare("SELECT field_id,unit,rate_nis FROM field_unit_rates").all() as Array<{ field_id: number; unit: Unit; rate_nis: number }>;
-  const unitRatesByField: UnitRatesByField = {};
-  for (const r of rateRows) (unitRatesByField[r.field_id] ??= {})[r.unit] = r.rate_nis;
+  const rateRows = database.prepare("SELECT field_id,unit,rate_nis,tiers FROM field_unit_rates").all() as Array<{ field_id: number; unit: Unit; rate_nis: number; tiers: string | null }>;
+  const unitRatesByField: UnitRatesByField = buildUnitPricingByField(rateRows);
 
   const monthNumber = String(month).padStart(2, "0");
   const birthdayRows = database

@@ -14,6 +14,7 @@ import type {
   PersonalGoalUnitsByShift,
 } from "@/components/shifts-table";
 import type { Unit } from "@/lib/units";
+import { buildUnitPricingByField } from "@/lib/pricing";
 import type { EmployeeShiftRow, ShiftsByWorker } from "@/components/employee-performance-report";
 import type { FarmerShiftRow, ShiftsByFarmer } from "@/components/farmer-performance-report";
 import type { VehicleTripRow, TripsByVehicle } from "@/components/vehicle-transport-report";
@@ -92,12 +93,11 @@ export function loadShiftsPageData(database: Database.Database, opts: { dateFrom
     (pickerHoursByShift[p.shift_id] ??= []).push({ name: p.name, startTime: p.start_time, endTime: p.end_time, selfReportedAt: p.self_reported_at, quantities: quantitiesByShiftUser.get(`${p.shift_id}_${p.user_id}`) ?? [] });
   }
 
-  const rateRows = database.prepare("SELECT field_id,unit,rate_nis FROM field_unit_rates").all() as Array<{ field_id: number; unit: Unit; rate_nis: number }>;
+  const rateRows = database.prepare("SELECT field_id,unit,rate_nis,tiers FROM field_unit_rates").all() as Array<{ field_id: number; unit: Unit; rate_nis: number; tiers: string | null }>;
   const ratedUnitsByField: RatedUnitsByField = {};
-  const unitRatesByField: UnitRatesByField = {};
+  const unitRatesByField: UnitRatesByField = buildUnitPricingByField(rateRows);
   for (const r of rateRows) {
     (ratedUnitsByField[r.field_id] ??= []).push(r.unit);
-    (unitRatesByField[r.field_id] ??= {})[r.unit] = r.rate_nis;
   }
 
   const vehicleRows = database
@@ -302,7 +302,7 @@ export function getBestShiftCountsByWorker(database: Database.Database, today: s
   const params = range ? [today, range.start, range.end] : [today];
   const rows = database
     .prepare(
-      `SELECT q.shift_id shift_id, q.user_id user_id, SUM(q.quantity * r.rate_nis) earnings
+      `SELECT q.shift_id shift_id, q.user_id user_id, SUM(unit_amount(q.quantity, r.rate_nis, r.tiers)) earnings
        FROM quantities q
        JOIN shifts s ON s.id = q.shift_id
        JOIN shift_pickers sp ON sp.shift_id = q.shift_id AND sp.user_id = q.user_id
@@ -329,7 +329,7 @@ export function getTopResultsByFruit(database: Database.Database, today: string,
   const params = range ? [today, range.start, range.end] : [today];
   const rows = database
     .prepare(
-      `SELECT pf.fruit_type fruit_type, q.shift_id shift_id, q.user_id user_id, s.date date, q.unit unit, q.quantity quantity, q.quantity * r.rate_nis earnings
+      `SELECT pf.fruit_type fruit_type, q.shift_id shift_id, q.user_id user_id, s.date date, q.unit unit, q.quantity quantity, unit_amount(q.quantity, r.rate_nis, r.tiers) earnings
        FROM quantities q
        JOIN shifts s ON s.id = q.shift_id
        JOIN shift_pickers sp ON sp.shift_id = q.shift_id AND sp.user_id = q.user_id

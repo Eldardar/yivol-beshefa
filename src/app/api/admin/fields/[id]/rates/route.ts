@@ -36,7 +36,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { database, auth, user, token } = await authenticate();
   if (!user || user.role !== "ADMIN" || user.mustChangePassword) return NextResponse.json({ error: "אין הרשאה" }, { status: 403, headers: noStoreHeaders });
   try {
-    const issue = requestBodyIssue(req, 8_192, ["application/json"]);
+    const issue = requestBodyIssue(req, 32_768, ["application/json"]);
     if (issue) throw new Error(issue.message);
     const body = await req.json() as Record<string, unknown>;
     auth.assertCsrf(token, String(body.csrf ?? ""));

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { formatHebrewDate } from "@/lib/dates";
 import { formatMoney } from "@/lib/format";
+import { unitAmount, type UnitPricing } from "@/lib/pricing";
 import { UNIT_LABEL, type Unit } from "@/lib/units";
 import { MapPinIcon, TruckIcon } from "./icons";
 import { Modal } from "./modal";
@@ -48,22 +49,22 @@ function hoursBetween(startTime: string | null, endTime: string | null): number 
   return minutes / 60;
 }
 
-function pickerEarnings(quantities: Array<{ unit: Unit; quantity: number }>, rates: Partial<Record<Unit, number>>): number | null {
+function pickerEarnings(quantities: Array<{ unit: Unit; quantity: number }>, rates: Partial<Record<Unit, UnitPricing>>): number | null {
   let total = 0;
   let rated = false;
   for (const q of quantities) {
     const rate = rates[q.unit];
-    if (rate != null) { total += q.quantity * rate; rated = true; }
+    if (rate != null) { total += unitAmount(rate, q.quantity); rated = true; }
   }
   return rated ? total : null;
 }
 
-function totalEarnings(pickers: CalendarPicker[], rates: Partial<Record<Unit, number>>): number {
+function totalEarnings(pickers: CalendarPicker[], rates: Partial<Record<Unit, UnitPricing>>): number {
   let total = 0;
   for (const p of pickers) {
     for (const q of p.quantities) {
       const rate = rates[q.unit];
-      if (rate != null) total += q.quantity * rate;
+      if (rate != null) total += unitAmount(rate, q.quantity);
     }
   }
   return total;

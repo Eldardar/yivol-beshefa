@@ -1,8 +1,15 @@
 import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
+import { parseTiers, unitAmount } from "./pricing";
 
 export type AppDb = Database.Database;
+
+// unit_amount(quantity, rate_nis, tiers): סכום לכמות לפי תעריף החלקה, כולל תמחור מדורג
+function registerFunctions(db: AppDb): void {
+  db.function("unit_amount", { deterministic: true }, (quantity, rateNis, tiers) =>
+    unitAmount({ rateNis: Number(rateNis), tiers: parseTiers(tiers as string | null) }, Number(quantity)));
+}
 
 export function migrate(db: AppDb): void {
   db.pragma("foreign_keys = OFF");
@@ -30,9 +37,10 @@ export function openDb(filename = process.env.DATABASE_PATH || "./data/yivol.sql
   database.pragma("journal_mode = WAL");
   database.pragma("busy_timeout = 5000");
   migrate(database);
+  registerFunctions(database);
   return database;
 }
 
 let singleton: AppDb | undefined;
 export function getDb(): AppDb { singleton ??= openDb(); return singleton; }
-export function createTestDb(): AppDb { const database = new Database(":memory:"); migrate(database); return database; }
+export function createTestDb(): AppDb { const database = new Database(":memory:"); migrate(database); registerFunctions(database); return database; }

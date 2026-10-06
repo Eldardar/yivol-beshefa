@@ -8,6 +8,7 @@ import { db, requireAdmin } from "@/lib/server";
 import { getShiftsByWorker, getShiftCountsByWorker, getTotalHoursByWorker, getBestShiftCountsByWorker, getTopResultsByFruit, type FruitTopResults } from "@/lib/shifts-data";
 import { jerusalemDate, currentJerusalemMonth, currentJerusalemYear } from "@/lib/dates";
 import type { Unit } from "@/lib/units";
+import { buildUnitPricingByField } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -24,9 +25,8 @@ export default async function EmployeePerformance() {
     all: getShiftCountsByWorker(database, today)
   };
 
-  const rateRows = database.prepare("SELECT field_id,unit,rate_nis FROM field_unit_rates").all() as Array<{ field_id: number; unit: Unit; rate_nis: number }>;
-  const unitRatesByField: UnitRatesByField = {};
-  for (const r of rateRows) (unitRatesByField[r.field_id] ??= {})[r.unit] = r.rate_nis;
+  const rateRows = database.prepare("SELECT field_id,unit,rate_nis,tiers FROM field_unit_rates").all() as Array<{ field_id: number; unit: Unit; rate_nis: number; tiers: string | null }>;
+  const unitRatesByField: UnitRatesByField = buildUnitPricingByField(rateRows);
 
   const totalHoursByRange: Record<RangeKey, Record<number, number>> = {
     month: getTotalHoursByWorker(database, today, currentJerusalemMonth()),

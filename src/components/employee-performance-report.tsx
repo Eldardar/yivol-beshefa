@@ -9,6 +9,7 @@ import { formatHebrewDate, monthRange } from "@/lib/dates";
 import { UNIT_LABEL, unitsPresent, type Unit } from "@/lib/units";
 import type { XlsxCell, XlsxSheet } from "@/lib/xlsx";
 import { formatMoney } from "@/lib/format";
+import { unitAmount } from "@/lib/pricing";
 import type { UnitRatesByField } from "./shifts-table";
 import type { FruitTopResults } from "@/lib/shifts-data";
 import { FruitTopResultsCards } from "./fruit-top-results";
@@ -35,7 +36,7 @@ function shiftEarnings(row: EmployeeShiftRow, unitRatesByField: UnitRatesByField
   let rated = false;
   for (const q of row.quantities) {
     const rate = rates[q.unit];
-    if (rate != null) { total += q.quantity * rate; rated = true; }
+    if (rate != null) { total += unitAmount(rate, q.quantity); rated = true; }
   }
   return rated ? total : null;
 }
