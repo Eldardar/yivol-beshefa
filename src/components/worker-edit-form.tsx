@@ -1,4 +1,4 @@
-export type EditableWorker = { id: number; name: string; email: string; phone: string; national_id: string | null; notes: string; role: "ADMIN" | "PICKER" };
+export type EditableWorker = { id: number; name: string; email: string; phone: string; national_id: string | null; notes: string; role: "ADMIN" | "PICKER"; avatar_version?: string | null };
 
 export function WorkerEditForm({ csrf, worker }: { csrf: string; worker: EditableWorker }) {
   return (

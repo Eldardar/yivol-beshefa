@@ -5,6 +5,7 @@ import { playRandomFunnySound } from "@/lib/funny-sounds";
 import { formatHebrewDate, jerusalemDate } from "@/lib/dates";
 import type { SnakeHighScore } from "@/lib/snake-scores";
 import { Modal } from "./modal";
+import { UserAvatar } from "./user-avatar";
 
 const GRID = 15;
 const TICK_MS = 150;
@@ -76,7 +77,7 @@ function HighScoresModal({ scores, userId, lastId, onClose }: { scores: SnakeHig
           {scores.map((s, i) => (
             <li key={s.id} className={s.id === lastId ? "is-new" : s.userId === userId ? "is-mine" : undefined}>
               <span className="snake-highscores-rank">{i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}</span>
-              <span className="snake-highscores-name">{s.name}</span>
+              <span className="snake-highscores-name avatar-name"><UserAvatar userId={s.userId} name={s.name} avatarVersion={s.avatarVersion} size="sm" /><span>{s.name}</span></span>
               <span className="muted">{scoreDate(s.createdAt)}</span>
               <strong>{s.score}</strong>
             </li>

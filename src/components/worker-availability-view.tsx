@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { WorkerPicker, initials, type WorkerOption } from "./worker-picker";
+import { WorkerPicker, type WorkerOption } from "./worker-picker";
+import { UserAvatar } from "./user-avatar";
 import { CalendarMonthNav } from "./calendar-month-nav";
 import { Modal } from "./modal";
 import { formatHebrewDate } from "@/lib/dates";
@@ -12,7 +13,7 @@ type Status = "AVAILABLE" | "MAYBE" | "UNAVAILABLE";
 export type AvailabilityDay = { date: string; day: number; weekday: number; isToday: boolean; isPast: boolean };
 export type AvailabilityMonth = { key: string; label: string; days: AvailabilityDay[] };
 export type AvailabilityByWorker = Record<number, Record<string, Status>>;
-export type NamedWorker = { id: number; name: string };
+export type NamedWorker = { id: number; name: string; avatar_version?: string | null };
 export type AvailabilityOverviewDay = {
   date: string;
   day: number;
@@ -72,7 +73,7 @@ export function AvailabilityOverviewCalendar({ year, month, label, days }: { yea
                     <div className="status-worker-list">
                       {list.map(w => (
                         <div className="status-worker-row" key={w.id}>
-                          <span className="avatar" aria-hidden="true">{initials(w.name)}</span>
+                          <UserAvatar userId={w.id} name={w.name} avatarVersion={w.avatar_version} />
                           <span>{w.name}</span>
                         </div>
                       ))}

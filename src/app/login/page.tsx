@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { currentUser } from "@/lib/server";
+import { currentUser, db } from "@/lib/server";
+import { SiteContentService } from "@/lib/services/site-content";
+import { quoteDir } from "@/lib/site-content";
 import { AuthShell } from "@/components/auth-shell";
 import { QuoteGallery } from "@/components/quote-gallery";
 
@@ -12,12 +14,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
   return (
     <AuthShell
       sideExtra={
-        <QuoteGallery
-          quotes={[
-            { text: "Ooga Booga", cite: "Andrey" },
-            { text: "היידה תפוחים התחלנו!", cite: "D. Rosen", dir: "rtl" },
-          ]}
-        />
+        <QuoteGallery quotes={new SiteContentService(db()).listQuotes().map(q => ({ text: q.text, cite: q.cite, dir: quoteDir(q.text) }))} />
       }
     >
       <div className="stack">

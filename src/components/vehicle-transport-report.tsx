@@ -1,6 +1,5 @@
 "use client";
-import { useState } from "react";
-import { RangeTabs, RANGE_LABEL, type RangeKey } from "./range-tabs";
+import { useState, type ReactNode } from "react";
 import { ExportExcelButton } from "./export-excel-button";
 import { VehiclePicker, type VehicleOption } from "./vehicle-picker";
 import { formatHebrewDate } from "@/lib/dates";
@@ -18,7 +17,8 @@ export type VehicleTripRow = {
   hours: number;
 };
 export type TripsByVehicle = Record<number, VehicleTripRow[]>;
-type DateRange = { start: string; end: string };
+// end is exclusive; a missing bound means unbounded
+type DateRange = { start?: string; end?: string };
 
 const formatHours = (hours: number) => hours.toLocaleString("he-IL", { maximumFractionDigits: 1 });
 
@@ -35,20 +35,23 @@ const vehicleLabel = (vehicle: VehicleOption) => `${vehicle.name} (${vehicle.num
 export function VehicleTransportReport({
   vehicles,
   tripsByVehicle,
-  ranges
+  range,
+  periodLabel,
+  periodFileLabel,
+  periodNav
 }: {
   vehicles: VehicleOption[];
   tripsByVehicle: TripsByVehicle;
-  ranges: Record<Exclude<RangeKey, "all">, DateRange>;
+  range: DateRange;
+  periodLabel: string;
+  periodFileLabel: string;
+  // Period tabs/navigation are URL-driven (server-rendered links); the selected vehicle survives navigation
+  periodNav: ReactNode;
 }) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [range, setRange] = useState<RangeKey>("all");
 
-  const inRange = (trips: VehicleTripRow[]) => {
-    if (range === "all") return trips;
-    const { start, end } = ranges[range];
-    return trips.filter(t => t.date >= start && t.date < end);
-  };
+  const inRange = (trips: VehicleTripRow[]) =>
+    trips.filter(t => (!range.start || t.date >= range.start) && (!range.end || t.date < range.end));
 
   const selected = vehicles.find(v => v.id === selectedId) ?? null;
   const summaries = new Map(vehicles.map(v => [v.id, summarize(inRange(tripsByVehicle[v.id] ?? []))]));
@@ -62,7 +65,7 @@ export function VehicleTransportReport({
     <div className="stack">
       <VehiclePicker vehicles={vehicles} selected={selected} onSelect={vehicle => setSelectedId(vehicle?.id ?? null)} />
 
-      <RangeTabs active={range} onChange={setRange} />
+      {periodNav}
 
       {!selected && vehicles.length === 0 && (
         <section className="card empty-state">
@@ -73,7 +76,7 @@ export function VehicleTransportReport({
       {!selected && vehicles.length > 0 && (
         <>
           <ExportExcelButton
-            fileName={`דוח תחבורה - ${RANGE_LABEL[range]}`}
+            fileName={`דוח תחבורה - ${periodFileLabel}`}
             sheets={() => [{
               name: "רכבים",
               header: ["#", "רכב", "מספר רכב", "נסיעות", "ימי עבודה", "החזר כספי", "סטטוס"],
@@ -113,7 +116,7 @@ export function VehicleTransportReport({
       {selected && totals && (
         <div className="kpi-grid">
           <article className="kpi-card">
-            <span className="kpi-label">נסיעות · {RANGE_LABEL[range]}</span>
+            <span className="kpi-label">נסיעות · {periodLabel}</span>
             <div className="metric">{totals.trips}</div>
           </article>
           <article className="kpi-card">
@@ -129,7 +132,7 @@ export function VehicleTransportReport({
 
       {selected && trips.length > 0 && (
         <ExportExcelButton
-          fileName={`דוח תחבורה - ${selected.name} - ${RANGE_LABEL[range]}`}
+          fileName={`דוח תחבורה - ${selected.name} - ${periodFileLabel}`}
           sheets={() => [{
             name: "נסיעות",
             header: ["תאריך", "שעות", "חקלאי", "שדה", "גידול", "מוביל משמרת", "משך (שעות)"],

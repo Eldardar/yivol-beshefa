@@ -5,6 +5,8 @@ import { pushToUsers } from "@/lib/push";
 import { jerusalemInstant } from "@/lib/dates";
 import type { Unit } from "@/lib/units";
 import { parseTiers, type PriceTier } from "@/lib/pricing";
+import fs from "node:fs";
+import { AvatarService } from "@/lib/services/avatars";
 
 export type AdminGoal = { startDate: string; endDate: string; goals: Array<{ unit: Unit; goal: number }> };
 export type ManagedEntity = "USER" | "FARM" | "PLANTATION_FIELD" | "VEHICLE" | "VILLAGE";
@@ -46,6 +48,7 @@ export class AdminService {
     if(!Number.isSafeInteger(entityId)||entityId<1) throw new Error("מזהה אינו תקין");
     if(entity==="USER" && actorId===entityId) throw new Error("לא ניתן למחוק את עצמך");
     const table=tables[entity];
+    const avatar=entity==="USER"?new AvatarService(this.db).getImage(entityId)?.path:undefined;
     this.db.transaction(()=>{
       const row=this.db.prepare(`SELECT active FROM ${table} WHERE id=?`).get(entityId) as {active:number}|undefined;
       if(!row) throw new Error("הרשומה לא נמצאה");
@@ -65,6 +68,7 @@ export class AdminService {
       if(result.changes!==1) throw new Error("הרשומה לא נמצאה");
       this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(actorId,"DELETE",entity,entityId);
     }).immediate();
+    if(avatar) fs.rmSync(avatar,{force:true});
   }
 
   async resetPickerPassword(actorId:number, targetId:number):Promise<string> {

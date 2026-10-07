@@ -18,7 +18,7 @@ export default async function ShiftsAvailability({ searchParams }: { searchParam
   const database = db();
   const query = await searchParams;
 
-  const workers = database.prepare("SELECT id,name,phone FROM users WHERE role='PICKER' AND active=1 ORDER BY name").all() as WorkerOption[];
+  const workers = database.prepare("SELECT id,name,phone,avatar_version FROM users WHERE role='PICKER' AND active=1 ORDER BY name").all() as WorkerOption[];
   const today = jerusalemDate();
 
   // Monthly overview: how many active workers filled each status per day.
@@ -50,7 +50,7 @@ export default async function ShiftsAvailability({ searchParams }: { searchParam
     const byUser = statusByDateUser.get(date);
     const workersByStatus = { available: [] as NamedWorker[], maybe: [] as NamedWorker[], unavailable: [] as NamedWorker[], noResponse: [] as NamedWorker[] };
     for (const w of workers) {
-      const entry: NamedWorker = { id: w.id, name: w.name };
+      const entry: NamedWorker = { id: w.id, name: w.name, avatar_version: w.avatar_version };
       const status = byUser?.get(w.id);
       if (status === "AVAILABLE") workersByStatus.available.push(entry);
       else if (status === "MAYBE") workersByStatus.maybe.push(entry);

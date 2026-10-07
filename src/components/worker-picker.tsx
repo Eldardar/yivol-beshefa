@@ -2,13 +2,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Modal } from "./modal";
 import { SearchIcon, XIcon } from "./icons";
+import { UserAvatar } from "./user-avatar";
 
-export type WorkerOption = { id: number; name: string; phone: string; active: number };
+export type WorkerOption = { id: number; name: string; phone: string; active: number; avatar_version?: string | null };
 
-export function initials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase();
-}
+export { initials } from "@/lib/avatars";
 
 export function WorkerPicker({
   workers,
@@ -47,7 +45,7 @@ export function WorkerPicker({
       <div className="worker-search" ref={boxRef}>
         {selected ? (
           <div className="worker-search-selected">
-            <span className="avatar" aria-hidden="true">{initials(selected.name)}</span>
+            <UserAvatar userId={selected.id} name={selected.name} avatarVersion={selected.avatar_version} />
             <span className="worker-search-selected-name">{selected.name}</span>
             <button type="button" className="icon-btn" aria-label="בחירת עובד/ת אחר/ת" onClick={() => { onSelect(null); setOpen(false); }}>
               <XIcon size={18} />
@@ -72,7 +70,7 @@ export function WorkerPicker({
                 {results.length === 0 && <p className="muted worker-search-empty">לא נמצאו עובדים</p>}
                 {results.map(worker => (
                   <button type="button" key={worker.id} className="worker-search-result" role="option" aria-selected={false} onClick={() => select(worker)}>
-                    <span className="avatar" aria-hidden="true">{initials(worker.name)}</span>
+                    <UserAvatar userId={worker.id} name={worker.name} avatarVersion={worker.avatar_version} />
                     <span className="worker-search-result-body">
                       <span className="worker-search-result-name">{worker.name}</span>
                       <span className="muted worker-search-result-phone">{worker.phone}</span>
@@ -99,7 +97,7 @@ export function WorkerPicker({
                 aria-selected={false}
                 onClick={() => { select(worker); setListOpen(false); }}
               >
-                <span className="avatar" aria-hidden="true">{initials(worker.name)}</span>
+                <UserAvatar userId={worker.id} name={worker.name} avatarVersion={worker.avatar_version} />
                 <span className="worker-search-result-body">
                   <span className="worker-search-result-name">{worker.name}</span>
                   <span className="muted worker-search-result-phone">{worker.phone}</span>

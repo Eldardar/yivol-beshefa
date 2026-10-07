@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { ComponentType } from "react";
-import { HomeIcon, CalendarIcon, CalendarDaysIcon, ClipboardListIcon, HistoryIcon, UsersIcon, SproutIcon, TruckIcon, BarChartIcon, ChevronDownIcon, HouseIcon, TentIcon, DollarIcon, ShoppingBagIcon } from "./icons";
+import { HomeIcon, CalendarIcon, CalendarDaysIcon, ClipboardListIcon, HistoryIcon, UsersIcon, SproutIcon, TruckIcon, BarChartIcon, ChevronDownIcon, HouseIcon, TentIcon, DollarIcon, ShoppingBagIcon, CameraIcon } from "./icons";
 
 export type NavChild = { href: string; label: string; icon: ComponentType<{ size?: number; className?: string }> };
 export type NavItem = { href: string; label: string; icon: ComponentType<{ size?: number; className?: string }>; children?: NavChild[] };
@@ -40,6 +40,7 @@ const ADMIN_NAV: NavItem[] = [
   { href: "/admin/villages", label: "כפרים", icon: TentIcon },
   { href: "/admin/expenses", label: "הוצאות", icon: DollarIcon },
   { href: "/store", label: "חנות", icon: ShoppingBagIcon },
+  { href: "/admin/content", label: "תוכן", icon: CameraIcon },
   { href: "/calendar", label: "לוח חודשי", icon: CalendarDaysIcon },
   {
     href: "/admin/shifts",

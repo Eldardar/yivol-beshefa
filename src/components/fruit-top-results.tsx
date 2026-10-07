@@ -3,8 +3,9 @@ import { formatHebrewDate } from "@/lib/dates";
 import { UNIT_LABEL } from "@/lib/units";
 import { formatMoney } from "@/lib/format";
 import type { FruitRecord, FruitTopResults } from "@/lib/shifts-data";
+import { UserAvatar } from "./user-avatar";
 
-export type WorkerRef = { id: number; name: string; active?: number | boolean };
+export type WorkerRef = { id: number; name: string; active?: number | boolean; avatar_version?: string | null };
 
 // A fruit type's best single-shift results.
 export function FruitTopResultsCard({
@@ -48,7 +49,7 @@ export function FruitTopResultsCard({
                   onClick={clickable ? () => onSelectWorker!(result.userId) : undefined}
                 >
                   <td>{i + 1}</td>
-                  <td>{worker?.name ?? "—"}</td>
+                  <td>{worker ? <span className="avatar-name"><UserAvatar userId={worker.id} name={worker.name} avatarVersion={worker.avatar_version} size="sm" /><span>{worker.name}</span></span> : "—"}</td>
                   <td>
                     {result.quantities.map(q => (
                       <span key={q.unit} className="unit-line">

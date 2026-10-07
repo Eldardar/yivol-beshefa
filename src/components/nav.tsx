@@ -2,11 +2,13 @@ import Link from "next/link";
 import type { SessionUser } from "@/lib/services/auth";
 import { csrfValue, db } from "@/lib/server";
 import { PickerService } from "@/lib/services/picker";
+import { AvatarService } from "@/lib/services/avatars";
+import { UserAvatar } from "./user-avatar";
 import { BrandLockup } from "./brand-logo";
 import { SidebarNavLinks, BottomNavLinks } from "./nav-links";
-import { BellIcon, UserIcon, LogOutIcon } from "./icons";
+import { BellIcon, LogOutIcon } from "./icons";
 
-function TopBar({ csrf, hasUnread, notificationsHref }: { csrf: string; hasUnread: boolean; notificationsHref: string }) {
+function TopBar({ user, avatarVersion, csrf, hasUnread, notificationsHref }: { user: SessionUser; avatarVersion: string | null; csrf: string; hasUnread: boolean; notificationsHref: string }) {
   return (
     <header className="topbar">
       <div className="shell inner">
@@ -15,7 +17,7 @@ function TopBar({ csrf, hasUnread, notificationsHref }: { csrf: string; hasUnrea
         </Link>
         <div className="nav-actions">
           <Link href="/account" className="nav-icon" aria-label="החשבון שלי" title="החשבון שלי">
-            <UserIcon size={20} />
+            <UserAvatar userId={user.id} name={user.name} avatarVersion={avatarVersion} size="sm" />
           </Link>
           <Link href={notificationsHref} className="nav-icon" aria-label="התראות" title="התראות">
             <BellIcon size={20} />
@@ -28,7 +30,7 @@ function TopBar({ csrf, hasUnread, notificationsHref }: { csrf: string; hasUnrea
   );
 }
 
-function Sidebar({ user, csrf, hasUnread, notificationsHref }: { user: SessionUser; csrf: string; hasUnread: boolean; notificationsHref: string }) {
+function Sidebar({ user, avatarVersion, csrf, hasUnread, notificationsHref }: { user: SessionUser; avatarVersion: string | null; csrf: string; hasUnread: boolean; notificationsHref: string }) {
   return (
     <aside className="sidebar" aria-label="ניווט ראשי">
       <Link href="/" className="sidebar-brand" aria-label="יבול בשפע · דף הבית">
@@ -44,7 +46,7 @@ function Sidebar({ user, csrf, hasUnread, notificationsHref }: { user: SessionUs
           <span>התראות</span>
         </Link>
         <Link href="/account" className="sidebar-nav-link">
-          <UserIcon size={22} />
+          <UserAvatar userId={user.id} name={user.name} avatarVersion={avatarVersion} size="xs" />
           <span>{user.name.trim().split(/\s+/)[0]}</span>
         </Link>
         <LogoutButton csrf={csrf} />
@@ -74,12 +76,13 @@ function LogoutButton({ csrf, iconOnly }: { csrf: string; iconOnly?: boolean }) 
 export async function AppShell({ user, children }: { user: SessionUser; children: React.ReactNode }) {
   const csrf = await csrfValue();
   const hasUnread = new PickerService(db()).unreadCount(user.id) > 0;
+  const avatarVersion = new AvatarService(db()).version(user.id);
   const notificationsHref = user.role === "ADMIN" ? "/admin/notifications" : "/notifications";
   return (
     <div className="app-shell">
-      <TopBar csrf={csrf} hasUnread={hasUnread} notificationsHref={notificationsHref} />
+      <TopBar user={user} avatarVersion={avatarVersion} csrf={csrf} hasUnread={hasUnread} notificationsHref={notificationsHref} />
       <div className="app-body">
-        <Sidebar user={user} csrf={csrf} hasUnread={hasUnread} notificationsHref={notificationsHref} />
+        <Sidebar user={user} avatarVersion={avatarVersion} csrf={csrf} hasUnread={hasUnread} notificationsHref={notificationsHref} />
         <div className="content-area">
           <main className="shell main">{children}</main>
           <footer className="footer">יבול בשפע</footer>

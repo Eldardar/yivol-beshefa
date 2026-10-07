@@ -662,6 +662,21 @@ select.input { appearance: auto; }
 @media (prefers-reduced-motion: reduce) { .store-card-sticker, .soon-marquee-track { animation: none; } }
 .store-form-image { width: 160px; aspect-ratio: 1; border-radius: var(--radius-md); border: 1px solid var(--color-border); background: var(--color-surface-sunk); display: grid; place-items: center; overflow: hidden; }
 .store-form-image img { width: 100%; height: 100%; object-fit: cover; }
+/* ניהול תוכן האתר: גלריית העובדים וציטוטים */
+.content-photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--space-3); }
+@media (max-width: 599px) { .content-photo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.content-photo { margin: 0; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; display: flex; flex-direction: column; }
+.content-photo img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; background: var(--color-surface-sunk); }
+.content-photo figcaption { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) var(--space-3); font: var(--text-body-sm); }
+.content-error { white-space: pre-line; }
+label.btn.is-disabled { opacity: 0.6; pointer-events: none; }
+.content-quote-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.content-quote { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
+.content-quote blockquote { margin: 0; flex: 1; min-width: 0; }
+.content-quote blockquote p { margin: 0; overflow-wrap: anywhere; }
+.content-quote cite { font: var(--text-body-sm); color: var(--color-text-secondary); }
+.content-quote-form { border-top: 1px solid var(--color-border); padding-top: var(--space-4); }
+.content-quote-form h3 { margin: 0; }
 
 .shift-coworkers-toggle {
   background: transparent;
@@ -696,7 +711,15 @@ select.input { appearance: auto; }
   justify-content: center;
   font: 600 1rem/1 var(--font-sans);
   flex: none;
+  overflow: hidden;
 }
+.avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.avatar-xs { width: 28px; height: 28px; font-size: 0.7rem; }
+.avatar-sm { width: 32px; height: 32px; font-size: 0.8rem; }
+.avatar-lg { width: 88px; height: 88px; font-size: 1.75rem; }
+.avatar-editor { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
+.avatar-name { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.avatar-name > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ==========================================================================
    Modal / bottom sheet

@@ -1,9 +1,10 @@
 import { AppShell } from "@/components/nav";
 import { PasswordRules } from "@/components/password-rules";
 import { csrfValue, db, requireUser } from "@/lib/server";
-import { UserIcon } from "@/components/icons";
 import { PickerService } from "@/lib/services/picker";
 import { BankDetailsFields } from "@/components/bank-details-fields";
+import { AvatarEditor } from "@/components/avatar-editor";
+import { AvatarService } from "@/lib/services/avatars";
 
 export const dynamic = "force-dynamic";
 
@@ -19,13 +20,11 @@ export default async function Account({ searchParams }: { searchParams: Promise<
     <AppShell user={user}>
       <h1>החשבון שלי</h1>
       <section className="card">
-        <div className="record-card-head">
-          <span className="avatar" aria-hidden="true"><UserIcon size={20} /></span>
-          <div className="record-card-body">
-            <span className="record-card-name">{user.name}</span>
-            <span className="muted">{user.email}</span>
-          </div>
+        <div className="record-card-body">
+          <span className="record-card-name">{user.name}</span>
+          <span className="muted">{user.email}</span>
         </div>
+        <AvatarEditor csrf={csrf} userId={user.id} name={user.name} avatarVersion={new AvatarService(db()).version(user.id)} />
       </section>
       <section className="card">
         <h2>פרטים אישיים</h2>

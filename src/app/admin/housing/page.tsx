@@ -12,7 +12,7 @@ export default async function AdminHousing({ searchParams }: { searchParams: Pro
   const database = db();
   const query = await searchParams;
 
-  const workers = database.prepare("SELECT id,name,phone FROM users WHERE role='PICKER' AND active=1 ORDER BY name").all() as WorkerOption[];
+  const workers = database.prepare("SELECT id,name,phone,avatar_version FROM users WHERE role='PICKER' AND active=1 ORDER BY name").all() as WorkerOption[];
   const today = jerusalemDate();
   const todayYear = Number(today.slice(0, 4));
   const todayMonth = Number(today.slice(5, 7));
@@ -54,7 +54,7 @@ export default async function AdminHousing({ searchParams }: { searchParams: Pro
     const byUser = statusByDateUser.get(d.date);
     const workersByStatus = { inVillage: [] as NamedWorker[], maybe: [] as NamedWorker[], away: [] as NamedWorker[], noResponse: [] as NamedWorker[] };
     for (const w of workers) {
-      const entry: NamedWorker = { id: w.id, name: w.name };
+      const entry: NamedWorker = { id: w.id, name: w.name, avatar_version: w.avatar_version };
       const status = byUser?.get(w.id);
       if (status === "IN_VILLAGE") workersByStatus.inVillage.push(entry);
       else if (status === "MAYBE") workersByStatus.maybe.push(entry);

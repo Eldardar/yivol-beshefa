@@ -6,6 +6,8 @@ import { currentJerusalemMonth, currentJerusalemYear, formatHebrewDate, jerusale
 import { PickerService } from "@/lib/services/picker";
 import { DayCheckIn } from "@/components/day-checkin";
 import { HeroGallery } from "@/components/hero-gallery";
+import { SiteContentService } from "@/lib/services/site-content";
+import { galleryPhotoUrl } from "@/lib/site-content";
 import { FruitRecordsByPeriod } from "@/components/fruit-records-by-period";
 import { getPickedAmountsByFruitType, getTopResultsByFruit } from "@/lib/shifts-data";
 import { AdminService } from "@/lib/services/admin";
@@ -56,7 +58,7 @@ export default async function Home() {
       month: getTopResultsByFruit(database, today, monthRange),
       year: getTopResultsByFruit(database, today, currentJerusalemYear())
     };
-    const workerNames = database.prepare("SELECT id,name FROM users WHERE role='PICKER'").all() as Array<{ id: number; name: string }>;
+    const workerNames = database.prepare("SELECT id,name,avatar_version FROM users WHERE role='PICKER'").all() as Array<{ id: number; name: string; avatar_version: string | null }>;
     return (
       <AppShell user={user}>
         <section className="hero">
@@ -141,7 +143,7 @@ export default async function Home() {
     month: getTopResultsByFruit(database, today, workerMonth).filter(inMonth),
     year: getTopResultsByFruit(database, today, currentJerusalemYear()).filter(inMonth).sort((a, b) => fruitRank(a.fruitType) - fruitRank(b.fruitType))
   };
-  const workerNames = database.prepare("SELECT id,name FROM users WHERE role='PICKER'").all() as Array<{ id: number; name: string }>;
+  const workerNames = database.prepare("SELECT id,name,avatar_version FROM users WHERE role='PICKER'").all() as Array<{ id: number; name: string; avatar_version: string | null }>;
 
   return (
     <AppShell user={user}>
@@ -158,7 +160,7 @@ export default async function Home() {
       ) : (
         <p>אין שיבוצים קרובים</p>
       )}
-      <HeroGallery images={[{ src: "/worker-hero.png", alt: "" }, { src: "/worker-hero-2.png", alt: "" }, { src: "/worker-hero-3.png", alt: "" }]} />
+      <HeroGallery images={new SiteContentService(database).listPhotos().map(photo => ({ src: galleryPhotoUrl(photo), alt: "" }))} />
       <FruitRecordsByPeriod byPeriod={fruitRecordsByPeriod} workers={workerNames} />
       <div className="game-link">
         <Link href="/journal" className="btn secondary">יומן אישי</Link>

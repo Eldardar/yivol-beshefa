@@ -12,9 +12,10 @@ import { ShowArchivedToggle } from "./show-archived-toggle";
 import { ChevronDownIcon } from "./icons";
 import { DeleteRecordButton } from "./delete-record-button";
 import { ExportExcelButton } from "./export-excel-button";
+import { UserAvatar } from "./user-avatar";
 
 export type WorkerRow = {
-  id: number; name: string; email: string; phone: string; national_id: string | null; notes: string; role: "ADMIN" | "PICKER"; active: number;
+  id: number; name: string; email: string; phone: string; national_id: string | null; notes: string; role: "ADMIN" | "PICKER"; active: number; avatar_version: string | null;
   date_of_birth: string | null; favorite_fruit: string;
   bank_account_holder: string; bank_number: string; bank_name: string; bank_branch_number: string; bank_branch_name: string; bank_account_number: string;
 };
@@ -53,10 +54,6 @@ function workerSheets(workers: WorkerRow[], shiftsByUser: ShiftsByUser): XlsxShe
   ];
 }
 
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase();
-}
 
 export function WorkersTable({ users, shiftsByUser, csrf, currentUserId }: { users: WorkerRow[]; shiftsByUser: ShiftsByUser; csrf: string; currentUserId: number }) {
   const [expanded, setExpanded] = useState<number | null>(null);
@@ -89,7 +86,7 @@ export function WorkersTable({ users, shiftsByUser, csrf, currentUserId }: { use
           return (
             <article className="record-card" key={row.id}>
               <div className="record-card-head">
-                <span className="avatar" aria-hidden="true">{initials(row.name)}</span>
+                <UserAvatar userId={row.id} name={row.name} avatarVersion={row.avatar_version} />
                 <div className="record-card-body">
                   <span className="record-card-name">{row.name}</span>
                   <div className="record-card-meta">
@@ -141,7 +138,7 @@ export function WorkersTable({ users, shiftsByUser, csrf, currentUserId }: { use
                       )}
                     </td>
                     <td><span dir="ltr" className="ltr-field">{row.id}</span></td>
-                    <td>{row.name}</td>
+                    <td><span className="avatar-name"><UserAvatar userId={row.id} name={row.name} avatarVersion={row.avatar_version} size="sm" /><span>{row.name}</span></span></td>
                     <td>{row.role === "ADMIN" ? "מנהל" : "עובד"}</td>
                     <td>{row.email}</td>
                     <td><span dir="ltr" className="ltr-field">{row.phone}</span></td>
