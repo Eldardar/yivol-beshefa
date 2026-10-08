@@ -57,35 +57,102 @@ function workerShiftsSheet(shifts: EmployeeShiftRow[], unitRatesByField: UnitRat
   };
 }
 
+function toMinutes(time: string): number {
+  const [h, m] = time.split(":");
+  return Number(h) * 60 + Number(m);
+}
+
+function hoursBetween(startTime: string | null, endTime: string | null): number | null {
+  if (!startTime || !endTime) return null;
+  let minutes = toMinutes(endTime) - toMinutes(startTime);
+  if (minutes < 0) minutes += 24 * 60;
+  return minutes / 60;
+}
+
+const roundHours = (hours: number) => Math.round(hours * 100) / 100;
+const hourlyAverage = (earnings: number, hours: number): XlsxCell => (hours > 0 ? { money: earnings / hours } : null);
+
+type WorkerTotals = { days: number; hours: number; earnings: number };
+
+// Work days count each date once per worker: the first shift of a day gets 1, any others that day get 0.
+function workerShiftLines(shifts: EmployeeShiftRow[], unitRatesByField: UnitRatesByField) {
+  const totals: WorkerTotals = { days: 0, hours: 0, earnings: 0 };
+  const countedDates = new Set<string>();
+  const lines = shifts.map(row => {
+    const earnings = shiftEarnings(row, unitRatesByField);
+    const hours = hoursBetween(row.actual_start, row.actual_end);
+    const workDay = countedDates.has(row.date) ? 0 : 1;
+    countedDates.add(row.date);
+    totals.days += workDay;
+    totals.hours += hours ?? 0;
+    totals.earnings += earnings ?? 0;
+    return { row, earnings, hours, workDay };
+  });
+  return { lines, totals };
+}
+
 // One sheet with every worker's shifts, grouped by worker with a blank row between workers.
-function allWorkersMonthSheet(monthShifts: Array<{ worker: WorkerOption; shifts: EmployeeShiftRow[] }>, unitRatesByField: UnitRatesByField): XlsxSheet {
-  const units = unitsPresent(monthShifts.flatMap(({ shifts }) => shifts.map(row => row.quantities)));
-  const byName = [...monthShifts].sort((a, b) => a.worker.name.localeCompare(b.worker.name, "he"));
+function allWorkersShiftsSheet(workerShifts: Array<{ worker: WorkerOption; shifts: EmployeeShiftRow[] }>, unitRatesByField: UnitRatesByField): XlsxSheet {
+  const byName = [...workerShifts].sort((a, b) => a.worker.name.localeCompare(b.worker.name, "he"));
   const rows: XlsxCell[][] = [];
   const boldRows: number[] = [];
-  let totalEarnings = 0;
+  const total: WorkerTotals = { days: 0, hours: 0, earnings: 0 };
   byName.forEach(({ worker, shifts }, i) => {
     if (i > 0) rows.push([]);
-    let workerEarnings = 0;
-    for (const row of shifts) {
-      const earnings = shiftEarnings(row, unitRatesByField);
-      workerEarnings += earnings ?? 0;
+    const { lines, totals } = workerShiftLines(shifts, unitRatesByField);
+    for (const { row, earnings, hours, workDay } of lines) {
       rows.push([
-        worker.name, { date: row.date }, row.farm, row.fruit_type, row.leader, row.start_time, row.end_time, row.actual_start, row.actual_end,
-        ...units.map(u => row.quantities.find(q => q.unit === u)?.quantity),
-        earnings != null ? { money: earnings } : null
+        worker.name, { date: row.date }, workDay, row.farm, row.actual_start, row.actual_end,
+        hours != null ? roundHours(hours) : null,
+        earnings != null ? { money: earnings } : null,
+        earnings != null && hours != null ? hourlyAverage(earnings, hours) : null
       ]);
     }
     boldRows.push(rows.length);
-    rows.push([`סה"כ ${worker.name}`, ...Array<null>(8 + units.length).fill(null), { money: workerEarnings }]);
-    totalEarnings += workerEarnings;
+    rows.push([`סה"כ ${worker.name}`, null, totals.days, null, null, null, roundHours(totals.hours), { money: totals.earnings }, hourlyAverage(totals.earnings, totals.hours)]);
+    total.days += totals.days;
+    total.hours += totals.hours;
+    total.earnings += totals.earnings;
   });
   return {
-    name: "משמרות",
-    header: ["עובד/ת", "תאריך", "חקלאי", "גידול", "מוביל משמרת", "התחלה מתוכננת", "סיום מתוכנן", "התחלה בפועל", "סיום בפועל", ...units.map(u => `כמות (${UNIT_LABEL[u]})`), "הכנסה"],
+    name: "דוח עבודה מפרט",
+    header: ["עובד/ת", "תאריך", "כמות ימי עבודה", "חקלאי", "התחלה בפועל", "סיום בפועל", "סך כל שעות", "הכנסה", "ממוצע שעתי"],
+    highlightHeader: true,
+    boxed: true,
     rows,
     boldRows,
-    footer: ["סה\"כ הכנסה - כל העובדים", ...Array<null>(8 + units.length).fill(null), { money: totalEarnings }]
+    footer: ["סה\"כ - כל העובדים", null, total.days, null, null, null, roundHours(total.hours), { money: total.earnings }, hourlyAverage(total.earnings, total.hours)]
+  };
+}
+
+// One row per worker who either worked or slept in the village during the period.
+function grossSummarySheet(
+  workerShifts: Array<{ worker: WorkerOption; shifts: EmployeeShiftRow[] }>,
+  workers: WorkerOption[],
+  housingCostByWorker: Record<number, number>,
+  unitRatesByField: UnitRatesByField
+): XlsxSheet {
+  const shiftsById = new Map(workerShifts.map(({ worker, shifts }) => [worker.id, shifts]));
+  const included = workers
+    .filter(worker => shiftsById.has(worker.id) || (housingCostByWorker[worker.id] ?? 0) > 0)
+    .sort((a, b) => a.name.localeCompare(b.name, "he"));
+  const total = { days: 0, hours: 0, earnings: 0, housing: 0 };
+  const rows: XlsxCell[][] = included.map(worker => {
+    const { totals } = workerShiftLines(shiftsById.get(worker.id) ?? [], unitRatesByField);
+    const housing = housingCostByWorker[worker.id] ?? 0;
+    total.days += totals.days;
+    total.hours += totals.hours;
+    total.earnings += totals.earnings;
+    total.housing += housing;
+    return [worker.name, totals.days, roundHours(totals.hours), { money: totals.earnings }, { money: housing }, { money: 0 }];
+  });
+  return {
+    name: "דוח מסכם ברוטו",
+    header: ["עובד/ת", "כמות ימי עבודה", "סך כל שעות", "סך הכל הכנסה חקלאות", "ניכויי מגורים", "החזר נסיעות"],
+    highlightHeader: true,
+    boxed: true,
+    rows,
+    footer: ["סה\"כ - כל העובדים", total.days, roundHours(total.hours), { money: total.earnings }, { money: total.housing }, { money: 0 }]
   };
 }
 
@@ -95,6 +162,8 @@ export function EmployeePerformanceReport({
   unitRatesByField,
   periodNav,
   periodLabel,
+  periodRange,
+  housingCostByWorker,
   rangeLabel,
   shiftCounts,
   totalHoursByWorker,
@@ -109,6 +178,9 @@ export function EmployeePerformanceReport({
   // Period tabs/navigation are URL-driven (server-rendered links), so they only affect the all-workers view
   periodNav: ReactNode;
   periodLabel: string;
+  // end is exclusive; a missing bound means unbounded
+  periodRange: { start?: string; end?: string };
+  housingCostByWorker: Record<number, number>;
   rangeLabel: string;
   shiftCounts: Record<number, number>;
   totalHoursByWorker: Record<number, number>;
@@ -124,11 +196,12 @@ export function EmployeePerformanceReport({
   const { start: monthStart, end: monthEnd } = useMemo(() => monthRange(viewYear, viewMonth), [viewYear, viewMonth]);
   const shifts = allShifts.filter(row => row.date >= monthStart && row.date < monthEnd);
   const totalEarnings = shifts.reduce((sum, row) => sum + (shiftEarnings(row, unitRatesByField) ?? 0), 0);
-  const allWorkersMonthShifts = selected
-    ? workers
-      .map(worker => ({ worker, shifts: (shiftsByWorker[worker.id] ?? []).filter(row => row.date >= monthStart && row.date < monthEnd) }))
-      .filter(({ shifts }) => shifts.length > 0)
-    : [];
+  const inPeriod = (row: EmployeeShiftRow) => (!periodRange.start || row.date >= periodRange.start) && (!periodRange.end || row.date < periodRange.end);
+  const allWorkersPeriodShifts = selected
+    ? []
+    : workers
+      .map(worker => ({ worker, shifts: (shiftsByWorker[worker.id] ?? []).filter(inPeriod) }))
+      .filter(({ shifts }) => shifts.length > 0);
   const monthLabel = `${String(viewMonth).padStart(2, "0")}-${viewYear}`;
   const bestWorkers = workers
     .filter(worker => (bestShiftCounts[worker.id] ?? 0) > 0)
@@ -153,32 +226,31 @@ export function EmployeePerformanceReport({
       {!selected && periodNav}
 
       {!selected && rankedWorkers.length > 0 && (
-        <ExportExcelButton
-          fileName={`ביצועי עובדים - ${periodLabel}`}
-          sheets={() => [{
-            name: "ביצועי עובדים",
-            header: ["#", "עובד/ת", `מספר משמרות (${periodLabel})`, `סה"כ שעות עבודה (${periodLabel})`, "סטטוס"],
-            rows: rankedWorkers.map((worker, i) => [i + 1, worker.name, shiftCounts[worker.id] ?? 0, Math.round((totalHoursByWorker[worker.id] ?? 0) * 100) / 100, worker.active ? "פעיל" : "לא פעיל"])
-          }]}
-        />
+        <div className="report-export">
+          <ExcelDownloadButton
+            fileName={`ביצועי עובדים - ${periodLabel}`}
+            sheets={() => [{
+              name: "ביצועי עובדים",
+              header: ["#", "עובד/ת", `מספר משמרות (${periodLabel})`, `סה"כ שעות עבודה (${periodLabel})`, "סטטוס"],
+              rows: rankedWorkers.map((worker, i) => [i + 1, worker.name, shiftCounts[worker.id] ?? 0, Math.round((totalHoursByWorker[worker.id] ?? 0) * 100) / 100, worker.active ? "פעיל" : "לא פעיל"])
+            }]}
+          />
+          <ExcelDownloadButton
+            label="ייצוא משמרות לאקסל - כל העובדים"
+            fileName={`משמרות כל העובדים - ${periodLabel}`}
+            sheets={() => [
+              allWorkersShiftsSheet(allWorkersPeriodShifts, unitRatesByField),
+              grossSummarySheet(allWorkersPeriodShifts, workers, housingCostByWorker, unitRatesByField)
+            ]}
+          />
+        </div>
       )}
 
-      {selected && (shifts.length > 0 || allWorkersMonthShifts.length > 0) && (
-        <div className="report-export">
-          {shifts.length > 0 && (
-            <ExcelDownloadButton
-              fileName={`${selected.name} - ${monthLabel}`}
-              sheets={() => [workerShiftsSheet(shifts, unitRatesByField, totalEarnings)]}
-            />
-          )}
-          {allWorkersMonthShifts.length > 0 && (
-            <ExcelDownloadButton
-              label="ייצוא לאקסל - כל העובדים"
-              fileName={`כל העובדים - ${monthLabel}`}
-              sheets={() => [allWorkersMonthSheet(allWorkersMonthShifts, unitRatesByField)]}
-            />
-          )}
-        </div>
+      {selected && shifts.length > 0 && (
+        <ExportExcelButton
+          fileName={`${selected.name} - ${monthLabel}`}
+          sheets={() => [workerShiftsSheet(shifts, unitRatesByField, totalEarnings)]}
+        />
       )}
 
       {!selected && rankedWorkers.length === 0 && (

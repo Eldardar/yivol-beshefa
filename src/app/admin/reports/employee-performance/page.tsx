@@ -10,6 +10,7 @@ import { jerusalemDate } from "@/lib/dates";
 import type { Unit } from "@/lib/units";
 import { buildUnitPricingByField } from "@/lib/pricing";
 import { PERIOD_VIEWS, resolvePeriod } from "@/lib/period";
+import { getHousingReport } from "@/lib/housing-report";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,8 @@ export default async function EmployeePerformance({ searchParams }: { searchPara
         unitRatesByField={unitRatesByField}
         periodNav={periodNav}
         periodLabel={period.fileLabel}
+        periodRange={period.range}
+        housingCostByWorker={Object.fromEntries(getHousingReport(database, period.range).map(row => [row.user_id, row.cost]))}
         rangeLabel={period.label}
         shiftCounts={getShiftCountsByWorker(database, today, range)}
         totalHoursByWorker={getTotalHoursByWorker(database, today, range)}

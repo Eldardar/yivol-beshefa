@@ -2,9 +2,29 @@
 // money and date formats), packed into an uncompressed zip so it needs no dependency.
 
 export type XlsxCell = string | number | null | undefined | { money: number } | { date: string };
-export type XlsxSheet = { name: string; header: string[]; rows: XlsxCell[][]; footer?: XlsxCell[]; boldRows?: number[] };
+// highlightHeader paints the header row yellow (it is always bold);
+// boxed gives every cell of the table (header to footer, blanks included) a thin black border and wrapped text
+export type XlsxSheet = {
+  name: string;
+  header: string[];
+  rows: XlsxCell[][];
+  footer?: XlsxCell[];
+  boldRows?: number[];
+  highlightHeader?: boolean;
+  boxed?: boolean;
+};
 
-const STYLE = { plain: 0, bold: 1, money: 2, moneyBold: 3, date: 4 } as const;
+const STYLE = { plain: 0, bold: 1, money: 2, moneyBold: 3, date: 4, highlight: 5 } as const;
+// Each style above has a boxed twin at style + BOXED
+const BASE_XFS: Array<{ numFmtId: number; fontId: number; fillId: number }> = [
+  { numFmtId: 0, fontId: 0, fillId: 0 },
+  { numFmtId: 0, fontId: 1, fillId: 0 },
+  { numFmtId: 164, fontId: 0, fillId: 0 },
+  { numFmtId: 164, fontId: 1, fillId: 0 },
+  { numFmtId: 165, fontId: 0, fillId: 0 },
+  { numFmtId: 0, fontId: 1, fillId: 2 }
+];
+const BOXED = BASE_XFS.length;
 
 function escapeXml(value: string): string {
   return value
@@ -26,16 +46,29 @@ function excelDateSerial(isoDate: string): number {
   return (Date.UTC(y, m - 1, d) - Date.UTC(1899, 11, 30)) / 86_400_000;
 }
 
-function cellXml(cell: XlsxCell, ref: string, bold: boolean): string {
-  if (cell == null || cell === "") return "";
-  if (typeof cell === "number") {
-    return Number.isFinite(cell) ? `<c r="${ref}"${bold ? ` s="${STYLE.bold}"` : ""}><v>${cell}</v></c>` : "";
+// Empty cells are skipped, unless boxed: they still need a styled cell to carry the border.
+function cellXml(cell: XlsxCell, ref: string, bold: boolean, highlight = false, boxed = false): string {
+  const textStyle = highlight ? STYLE.highlight : bold ? STYLE.bold : STYLE.plain;
+  let style: number = textStyle;
+  let type = "";
+  let value = "";
+  if (cell == null || cell === "" || (typeof cell === "number" && !Number.isFinite(cell))) {
+    if (!boxed && !highlight) return "";
+  } else if (typeof cell === "number") {
+    value = `<v>${cell}</v>`;
+  } else if (typeof cell === "string") {
+    type = ` t="inlineStr"`;
+    value = `<is><t xml:space="preserve">${escapeXml(cell)}</t></is>`;
+  } else if ("money" in cell) {
+    style = bold ? STYLE.moneyBold : STYLE.money;
+    value = `<v>${cell.money}</v>`;
+  } else {
+    style = STYLE.date;
+    value = `<v>${excelDateSerial(cell.date)}</v>`;
   }
-  if (typeof cell === "string") {
-    return `<c r="${ref}" t="inlineStr"${bold ? ` s="${STYLE.bold}"` : ""}><is><t xml:space="preserve">${escapeXml(cell)}</t></is></c>`;
-  }
-  if ("money" in cell) return `<c r="${ref}" s="${bold ? STYLE.moneyBold : STYLE.money}"><v>${cell.money}</v></c>`;
-  return `<c r="${ref}" s="${STYLE.date}"><v>${excelDateSerial(cell.date)}</v></c>`;
+  if (boxed) style += BOXED;
+  const styleAttr = style ? ` s="${style}"` : "";
+  return value ? `<c r="${ref}"${type}${styleAttr}>${value}</c>` : `<c r="${ref}"${styleAttr}/>`;
 }
 
 function displayLength(cell: XlsxCell): number {
@@ -46,8 +79,8 @@ function displayLength(cell: XlsxCell): number {
 }
 
 function sheetXml(sheet: XlsxSheet): string {
-  const allRows: Array<{ cells: XlsxCell[]; bold: boolean }> = [
-    { cells: sheet.header, bold: true },
+  const allRows: Array<{ cells: XlsxCell[]; bold: boolean; highlight?: boolean }> = [
+    { cells: sheet.header, bold: true, highlight: sheet.highlightHeader },
     ...sheet.rows.map((cells, i) => ({ cells, bold: sheet.boldRows?.includes(i) ?? false })),
     ...(sheet.footer ? [{ cells: sheet.footer, bold: true }] : [])
   ];
@@ -55,7 +88,10 @@ function sheetXml(sheet: XlsxSheet): string {
   const widths = Array.from({ length: columnCount }, (_, c) => Math.min(50, Math.max(8, ...allRows.map(r => displayLength(r.cells[c]) + 2))));
   const cols = widths.map((w, c) => `<col min="${c + 1}" max="${c + 1}" width="${w}" customWidth="1"/>`).join("");
   const rows = allRows
-    .map((row, r) => `<row r="${r + 1}">${row.cells.map((cell, c) => cellXml(cell, `${columnName(c)}${r + 1}`, row.bold)).join("")}</row>`)
+    .map((row, r) => {
+      const cells = sheet.boxed ? Array.from({ length: columnCount }, (_, c) => row.cells[c]) : row.cells;
+      return `<row r="${r + 1}">${cells.map((cell, c) => cellXml(cell, `${columnName(c)}${r + 1}`, row.bold, row.highlight, sheet.boxed)).join("")}</row>`;
+    })
     .join("");
   return (
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
@@ -78,20 +114,22 @@ function sheetNames(sheets: XlsxSheet[]): string[] {
   });
 }
 
+function xfXml({ numFmtId, fontId, fillId }: (typeof BASE_XFS)[number], boxed: boolean): string {
+  const apply = (numFmtId ? ` applyNumberFormat="1"` : "") + (fontId ? ` applyFont="1"` : "") + (fillId ? ` applyFill="1"` : "");
+  const attrs = `numFmtId="${numFmtId}" fontId="${fontId}" fillId="${fillId}" borderId="${boxed ? 1 : 0}" xfId="0"${apply}`;
+  return boxed ? `<xf ${attrs} applyBorder="1" applyAlignment="1"><alignment wrapText="1"/></xf>` : `<xf ${attrs}/>`;
+}
+
 const STYLES_XML =
   `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
   `<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">` +
   `<numFmts count="2"><numFmt numFmtId="164" formatCode="&quot;₪&quot;#,##0.00"/><numFmt numFmtId="165" formatCode="dd/mm/yyyy"/></numFmts>` +
   `<fonts count="2"><font><sz val="11"/><name val="Arial"/></font><font><b/><sz val="11"/><name val="Arial"/></font></fonts>` +
-  `<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>` +
-  `<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>` +
+  `<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFFF00"/><bgColor indexed="64"/></patternFill></fill></fills>` +
+  `<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>` +
+  `<border>${["left", "right", "top", "bottom"].map(side => `<${side} style="thin"><color rgb="FF000000"/></${side}>`).join("")}<diagonal/></border></borders>` +
   `<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>` +
-  `<cellXfs count="5">` +
-  `<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>` +
-  `<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>` +
-  `<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>` +
-  `<xf numFmtId="164" fontId="1" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/>` +
-  `<xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>` +
+  `<cellXfs count="${BASE_XFS.length * 2}">${[false, true].map(boxed => BASE_XFS.map(xf => xfXml(xf, boxed)).join("")).join("")}` +
   `</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
 
 export function buildXlsx(sheets: XlsxSheet[]): Uint8Array {
