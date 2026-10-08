@@ -1,50 +1,39 @@
 import { AppShell } from "@/components/nav";
 import { ReportsTabs } from "@/components/reports-tabs";
-import type { RangeKey } from "@/components/range-tabs";
 import { EmployeePerformanceReport } from "@/components/employee-performance-report";
+import { PeriodControl, PeriodTabs } from "@/components/period-nav";
 import type { WorkerOption } from "@/components/worker-picker";
 import type { UnitRatesByField } from "@/components/shifts-table";
 import { db, requireAdmin } from "@/lib/server";
-import { getShiftsByWorker, getShiftCountsByWorker, getTotalHoursByWorker, getBestShiftCountsByWorker, getTopResultsByFruit, type FruitTopResults } from "@/lib/shifts-data";
-import { jerusalemDate, currentJerusalemMonth, currentJerusalemYear } from "@/lib/dates";
+import { getShiftsByWorker, getShiftCountsByWorker, getTotalHoursByWorker, getBestShiftCountsByWorker, getTopResultsByFruit } from "@/lib/shifts-data";
+import { jerusalemDate } from "@/lib/dates";
 import type { Unit } from "@/lib/units";
 import { buildUnitPricingByField } from "@/lib/pricing";
+import { PERIOD_VIEWS, resolvePeriod } from "@/lib/period";
 
 export const dynamic = "force-dynamic";
 
-export default async function EmployeePerformance() {
+const BASE = "/admin/reports/employee-performance";
+const REPORT_PERIOD_VIEWS = PERIOD_VIEWS.filter(v => v.key !== "custom");
+
+export default async function EmployeePerformance({ searchParams }: { searchParams: Promise<{ view?: string; y?: string; m?: string }> }) {
   const user = await requireAdmin();
+  const query = await searchParams;
   const database = db();
   const today = jerusalemDate();
 
-  const workers = database.prepare("SELECT id,name,phone,active,avatar_version FROM users WHERE role='PICKER' ORDER BY name").all() as WorkerOption[];
-  const shiftsByWorker = getShiftsByWorker(database, today);
-  const shiftCountsByRange: Record<RangeKey, Record<number, number>> = {
-    month: getShiftCountsByWorker(database, today, currentJerusalemMonth()),
-    year: getShiftCountsByWorker(database, today, currentJerusalemYear()),
-    all: getShiftCountsByWorker(database, today)
-  };
+  const period = resolvePeriod(query, today, { views: REPORT_PERIOD_VIEWS });
+  const range = period.range.start && period.range.end ? { start: period.range.start, end: period.range.end } : undefined;
+  const periodNav = (
+    <>
+      <PeriodTabs period={period} basePath={BASE} views={REPORT_PERIOD_VIEWS} label="תקופת הדוח" />
+      <PeriodControl period={period} basePath={BASE} />
+    </>
+  );
 
+  const workers = database.prepare("SELECT id,name,phone,active,avatar_version FROM users WHERE role='PICKER' ORDER BY name").all() as WorkerOption[];
   const rateRows = database.prepare("SELECT field_id,unit,rate_nis,tiers FROM field_unit_rates").all() as Array<{ field_id: number; unit: Unit; rate_nis: number; tiers: string | null }>;
   const unitRatesByField: UnitRatesByField = buildUnitPricingByField(rateRows);
-
-  const totalHoursByRange: Record<RangeKey, Record<number, number>> = {
-    month: getTotalHoursByWorker(database, today, currentJerusalemMonth()),
-    year: getTotalHoursByWorker(database, today, currentJerusalemYear()),
-    all: getTotalHoursByWorker(database, today)
-  };
-
-  const bestShiftCountsByRange: Record<RangeKey, Record<number, number>> = {
-    month: getBestShiftCountsByWorker(database, today, currentJerusalemMonth()),
-    year: getBestShiftCountsByWorker(database, today, currentJerusalemYear()),
-    all: getBestShiftCountsByWorker(database, today)
-  };
-
-  const fruitTopResultsByRange: Record<RangeKey, FruitTopResults[]> = {
-    month: getTopResultsByFruit(database, today, currentJerusalemMonth()),
-    year: getTopResultsByFruit(database, today, currentJerusalemYear()),
-    all: getTopResultsByFruit(database, today)
-  };
 
   return (
     <AppShell user={user}>
@@ -52,12 +41,15 @@ export default async function EmployeePerformance() {
       <ReportsTabs active="employee" />
       <EmployeePerformanceReport
         workers={workers}
-        shiftsByWorker={shiftsByWorker}
+        shiftsByWorker={getShiftsByWorker(database, today)}
         unitRatesByField={unitRatesByField}
-        shiftCountsByRange={shiftCountsByRange}
-        totalHoursByRange={totalHoursByRange}
-        bestShiftCountsByRange={bestShiftCountsByRange}
-        fruitTopResultsByRange={fruitTopResultsByRange}
+        periodNav={periodNav}
+        periodLabel={period.fileLabel}
+        rangeLabel={period.label}
+        shiftCounts={getShiftCountsByWorker(database, today, range)}
+        totalHoursByWorker={getTotalHoursByWorker(database, today, range)}
+        bestShiftCounts={getBestShiftCountsByWorker(database, today, range)}
+        fruitTopResults={getTopResultsByFruit(database, today, range)}
         initialYear={Number(today.slice(0, 4))}
         initialMonth={Number(today.slice(5, 7))}
       />

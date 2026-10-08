@@ -1,8 +1,7 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Image from "next/image";
 import { WorkerPicker, type WorkerOption } from "./worker-picker";
-import { RangeTabs, RANGE_LABEL, type RangeKey } from "./range-tabs";
 import { CalendarMonthNav } from "./calendar-month-nav";
 import { ExcelDownloadButton, ExportExcelButton } from "./export-excel-button";
 import { formatHebrewDate, monthRange } from "@/lib/dates";
@@ -94,29 +93,33 @@ export function EmployeePerformanceReport({
   workers,
   shiftsByWorker,
   unitRatesByField,
-  shiftCountsByRange,
-  totalHoursByRange,
-  bestShiftCountsByRange,
-  fruitTopResultsByRange,
+  periodNav,
+  periodLabel,
+  rangeLabel,
+  shiftCounts,
+  totalHoursByWorker,
+  bestShiftCounts,
+  fruitTopResults,
   initialYear,
   initialMonth
 }: {
   workers: WorkerOption[];
   shiftsByWorker: ShiftsByWorker;
   unitRatesByField: UnitRatesByField;
-  shiftCountsByRange: Record<RangeKey, Record<number, number>>;
-  totalHoursByRange: Record<RangeKey, Record<number, number>>;
-  bestShiftCountsByRange: Record<RangeKey, Record<number, number>>;
-  fruitTopResultsByRange: Record<RangeKey, FruitTopResults[]>;
+  // Period tabs/navigation are URL-driven (server-rendered links), so they only affect the all-workers view
+  periodNav: ReactNode;
+  periodLabel: string;
+  rangeLabel: string;
+  shiftCounts: Record<number, number>;
+  totalHoursByWorker: Record<number, number>;
+  bestShiftCounts: Record<number, number>;
+  fruitTopResults: FruitTopResults[];
   initialYear: number;
   initialMonth: number;
 }) {
   const [selected, setSelected] = useState<WorkerOption | null>(null);
-  const [range, setRange] = useState<RangeKey>("all");
   const [viewYear, setViewYear] = useState(initialYear);
   const [viewMonth, setViewMonth] = useState(initialMonth);
-  const shiftCounts = shiftCountsByRange[range];
-  const totalHoursByWorker = totalHoursByRange[range];
   const allShifts = selected ? shiftsByWorker[selected.id] ?? [] : [];
   const { start: monthStart, end: monthEnd } = useMemo(() => monthRange(viewYear, viewMonth), [viewYear, viewMonth]);
   const shifts = allShifts.filter(row => row.date >= monthStart && row.date < monthEnd);
@@ -127,12 +130,10 @@ export function EmployeePerformanceReport({
       .filter(({ shifts }) => shifts.length > 0)
     : [];
   const monthLabel = `${String(viewMonth).padStart(2, "0")}-${viewYear}`;
-  const bestShiftCounts = bestShiftCountsByRange[range];
   const bestWorkers = workers
     .filter(worker => (bestShiftCounts[worker.id] ?? 0) > 0)
     .sort((a, b) => (bestShiftCounts[b.id] ?? 0) - (bestShiftCounts[a.id] ?? 0) || a.name.localeCompare(b.name, "he"));
   const workersById = new Map(workers.map(worker => [worker.id, worker]));
-  const fruitTopResults = fruitTopResultsByRange[range];
   const rankedWorkers = [...workers].sort((a, b) => (totalHoursByWorker[b.id] ?? 0) - (totalHoursByWorker[a.id] ?? 0) || a.name.localeCompare(b.name, "he"));
 
   function selectWorker(worker: WorkerOption | null) {
@@ -149,14 +150,14 @@ export function EmployeePerformanceReport({
         <CalendarMonthNav year={viewYear} month={viewMonth} onChange={(y, m) => { setViewYear(y); setViewMonth(m); }} />
       )}
 
-      {!selected && <RangeTabs active={range} onChange={setRange} />}
+      {!selected && periodNav}
 
       {!selected && rankedWorkers.length > 0 && (
         <ExportExcelButton
-          fileName={`ביצועי עובדים - ${RANGE_LABEL[range]}`}
+          fileName={`ביצועי עובדים - ${periodLabel}`}
           sheets={() => [{
             name: "ביצועי עובדים",
-            header: ["#", "עובד/ת", `מספר משמרות (${RANGE_LABEL[range]})`, `סה"כ שעות עבודה (${RANGE_LABEL[range]})`, "סטטוס"],
+            header: ["#", "עובד/ת", `מספר משמרות (${periodLabel})`, `סה"כ שעות עבודה (${periodLabel})`, "סטטוס"],
             rows: rankedWorkers.map((worker, i) => [i + 1, worker.name, shiftCounts[worker.id] ?? 0, Math.round((totalHoursByWorker[worker.id] ?? 0) * 100) / 100, worker.active ? "פעיל" : "לא פעיל"])
           }]}
         />
@@ -223,14 +224,14 @@ export function EmployeePerformanceReport({
             <FruitTopResultsCards
               fruitTopResults={fruitTopResults}
               workersById={workersById}
-              rangeLabel={RANGE_LABEL[range]}
+              rangeLabel={rangeLabel}
               showEarnings
               onSelectWorker={id => selectWorker(workersById.get(id) ?? null)}
             />
 
             <section className="card best-workers">
               <h2>👑 עובד/ת המשמרת</h2>
-              <p className="muted">מספר המשמרות שבהן העובד/ת הרוויח/ה הכי הרבה ({RANGE_LABEL[range]})</p>
+              <p className="muted">מספר המשמרות שבהן העובד/ת הרוויח/ה הכי הרבה ({rangeLabel})</p>
               {bestWorkers.length === 0 ? (
                 <p className="muted">אין עדיין נתונים.</p>
               ) : (
