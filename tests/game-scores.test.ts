@@ -14,11 +14,12 @@ describe("טבלאות שיאים למשחקים", () => {
     const best = recordGameScore(db, "snake", user, 9);
     db.prepare("INSERT INTO game_scores(game,user_id,score) VALUES('retired',?,50)").run(user);
     expect(topGameScores(db, "snake").map(s => s.id)).toEqual([best, best - 1]);
-    expect(allLeaderboards(db)).toEqual({ snake: topGameScores(db, "snake") });
+    expect(allLeaderboards(db)).toEqual({ snake: topGameScores(db, "snake"), catcher: [] });
   });
 
   it("רק משחקים רשומים מתקבלים", () => {
     expect(isGameId("snake")).toBe(true);
+    expect(isGameId("catcher")).toBe(true);
     expect(isGameId("toString")).toBe(false);
     expect(isGameId(undefined)).toBe(false);
   });

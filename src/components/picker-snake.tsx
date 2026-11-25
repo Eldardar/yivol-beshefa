@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { playRandomFunnySound } from "@/lib/funny-sounds";
-import type { GameHighScore, GameLeaderboards } from "@/lib/game-scores";
 import { GameHighScoresModal } from "./game-high-scores";
+import { useGameRecords, type GameProps } from "./use-game-records";
 
 const GRID = 15;
 const TICK_MS = 150;
@@ -45,48 +45,14 @@ function initialState() {
   };
 }
 
-function readBest() {
-  try { return Number(localStorage.getItem(BEST_KEY)) || 0; } catch { return 0; }
-}
-
-const bestListeners = new Set<() => void>();
-
-function subscribeBest(listener: () => void) {
-  bestListeners.add(listener);
-  return () => bestListeners.delete(listener);
-}
-
-function writeBest(score: number) {
-  try { localStorage.setItem(BEST_KEY, String(score)); } catch { /* storage unavailable */ }
-  bestListeners.forEach(l => l());
-}
-
-export function PickerSnake({ initialLeaderboards, userId, csrf }: { initialLeaderboards: GameLeaderboards; userId: number; csrf: string }) {
+export function PickerSnake({ initialLeaderboards, userId, csrf, onScoresSaved }: GameProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const game = useRef(initialState());
   const [status, setStatus] = useState<Status>("ready");
   const [score, setScore] = useState(0);
-  const best = useSyncExternalStore(subscribeBest, readBest, () => 0);
+  const { best, leaderboards, lastScoreId, showHighScores, setShowHighScores, finishGame } =
+    useGameRecords({ game: "snake", bestKey: BEST_KEY, initialLeaderboards, csrf, onScoresSaved });
   const touchStart = useRef<Point | null>(null);
-  const [leaderboards, setLeaderboards] = useState(initialLeaderboards);
-  const [lastScoreId, setLastScoreId] = useState<number | null>(null);
-  const [showHighScores, setShowHighScores] = useState(false);
-
-  // Records the finished game; if it made the top 10, opens the table with the new row highlighted.
-  const submitScore = useCallback(async (finalScore: number) => {
-    try {
-      const res = await fetch("/api/game/scores", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ game: "snake", score: finalScore, csrf })
-      });
-      if (!res.ok) return;
-      const data = await res.json() as { id: number; scores: GameHighScore[] };
-      setLeaderboards(boards => ({ ...boards, snake: data.scores }));
-      setLastScoreId(data.id);
-      if (data.scores.some(s => s.id === data.id)) setShowHighScores(true);
-    } catch { /* offline — the game still works without the leaderboard */ }
-  }, [csrf]);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -156,9 +122,7 @@ export function PickerSnake({ initialLeaderboards, userId, csrf }: { initialLead
       const body = eats ? g.snake : g.snake.slice(0, -1);
       if (next.x < 0 || next.y < 0 || next.x >= GRID || next.y >= GRID || body.some(p => p.x === next.x && p.y === next.y)) {
         playRandomFunnySound();
-        const finalScore = g.snake.length - 3;
-        if (finalScore > readBest()) writeBest(finalScore);
-        if (finalScore > 0) submitScore(finalScore);
+        void finishGame(g.snake.length - 3);
         setStatus("over");
         return;
       }
@@ -174,7 +138,7 @@ export function PickerSnake({ initialLeaderboards, userId, csrf }: { initialLead
     };
     timer = setTimeout(tick, TICK_MS);
     return () => clearTimeout(timer);
-  }, [status, draw, submitScore]);
+  }, [status, draw, finishGame]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -208,18 +172,18 @@ export function PickerSnake({ initialLeaderboards, userId, csrf }: { initialLead
   };
 
   return (
-    <div className="snake-game">
-      <div className="snake-scores">
+    <div className="game-area">
+      <div className="game-stats">
         <span>ניקוד: <strong>{score}</strong></span>
         <span>שיא: <strong>{best}</strong></span>
         <button type="button" className="btn secondary game-highscores-btn" onClick={() => setShowHighScores(true)}>🏆 טבלת שיאים</button>
       </div>
-      <div className="snake-board" onTouchStart={onTouchStart} onTouchMove={onTouchMove}>
+      <div className="game-board" onTouchStart={onTouchStart} onTouchMove={onTouchMove}>
         <canvas ref={canvasRef} aria-label="לוח משחק הנחש" />
         {status !== "playing" && (
-          <div className="snake-overlay">
-            {status === "over" && <p className="snake-overlay-title">נגמר! אספתם {score} פירות</p>}
-            {status === "ready" && <p className="snake-overlay-title">אספו פירות והגדילו את צוות הקטיף</p>}
+          <div className="game-overlay">
+            {status === "over" && <p className="game-overlay-title">נגמר! אספתם {score} פירות</p>}
+            {status === "ready" && <p className="game-overlay-title">אספו פירות והגדילו את צוות הקטיף</p>}
             <button type="button" className="btn" onClick={start}>{status === "over" ? "שוב!" : "התחלה"}</button>
           </div>
         )}

@@ -3,7 +3,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "./modal";
 
-// Playful gate that keeps admins out of the snake game unless they know the password.
+// Playful gate that keeps admins out of the game of the month unless they know the password.
 const PASSWORD = "kingeldar";
 
 function PasswordModal({ onSuccess, onClose }: { onSuccess: () => void; onClose: () => void }) {

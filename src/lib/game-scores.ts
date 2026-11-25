@@ -4,13 +4,15 @@ import type { AppDb } from "@/lib/db";
 export const GAMES = {
   // Longest possible snake fills the 15x15 board, starting from 3 pickers.
   snake: { title: "סנייק", maxScore: 15 * 15 - 3 },
+  // No natural ceiling — the cap only rejects obviously forged submissions.
+  catcher: { title: "הקוטף הזריז", maxScore: 9999 },
 } as const satisfies Record<string, { title: string; maxScore: number }>;
 
 export type GameId = keyof typeof GAMES;
 export const GAME_IDS = Object.keys(GAMES) as GameId[];
 
 // The game currently on /game.
-export const CURRENT_GAME: GameId = "snake";
+export const CURRENT_GAME: GameId = "catcher";
 
 export const isGameId = (value: unknown): value is GameId => typeof value === "string" && Object.hasOwn(GAMES, value);
 
