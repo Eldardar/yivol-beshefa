@@ -4,11 +4,10 @@ import { z } from "zod";
 import { db } from "@/lib/server";
 import { AuthService } from "@/lib/services/auth";
 import { requestBodyIssue } from "@/lib/http";
-import { MAX_SNAKE_SCORE, recordSnakeScore, topSnakeScores } from "@/lib/snake-scores";
+import { GAMES, isGameId, recordGameScore, topGameScores } from "@/lib/game-scores";
 
 export const runtime = "nodejs";
 const noStoreHeaders = { "Cache-Control": "no-store" };
-const scoreSchema = z.number().int().min(1).max(MAX_SNAKE_SCORE);
 
 export async function POST(req: Request) {
   const jar = await cookies();
@@ -23,8 +22,11 @@ export async function POST(req: Request) {
     if (issue) throw new Error(issue.message);
     const body = await req.json() as Record<string, unknown>;
     auth.assertCsrf(token, String(body.csrf ?? ""));
-    const id = recordSnakeScore(database, user.id, scoreSchema.parse(body.score));
-    return NextResponse.json({ ok: true, id, scores: topSnakeScores(database) }, { headers: noStoreHeaders });
+    if (!isGameId(body.game)) throw new Error("משחק לא מוכר");
+    const game = body.game;
+    const score = z.number().int().min(1).max(GAMES[game].maxScore).parse(body.score);
+    const id = recordGameScore(database, game, user.id, score);
+    return NextResponse.json({ ok: true, id, scores: topGameScores(database, game) }, { headers: noStoreHeaders });
   } catch (error) {
     const message = error instanceof z.ZodError ? "ניקוד אינו תקין" : error instanceof Error ? error.message : "השמירה נכשלה";
     return NextResponse.json({ error: message }, { status: 400, headers: noStoreHeaders });

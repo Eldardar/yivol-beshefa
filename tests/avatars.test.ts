@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import Database from "better-sqlite3";
 import { createTestDb } from "@/lib/db";
 import { AvatarService } from "@/lib/services/avatars";
-import { topSnakeScores } from "@/lib/snake-scores";
+import { topGameScores } from "@/lib/game-scores";
 
 let db: Database.Database;
 let dir: string;
@@ -57,8 +57,8 @@ describe("תמונות פרופיל", () => {
   it("טבלת השיאים של הנחש כוללת את גרסת התמונה", () => {
     const x = setup();
     x.service.set(x.picker, x.picker, png);
-    db.prepare("INSERT INTO snake_scores(user_id,score) VALUES(?,?),(?,?)").run(x.picker, 10, x.other, 5);
-    const scores = topSnakeScores(db);
+    db.prepare("INSERT INTO game_scores(game,user_id,score) VALUES('snake',?,?),('snake',?,?)").run(x.picker, 10, x.other, 5);
+    const scores = topGameScores(db, "snake");
     expect(scores[0]).toEqual(expect.objectContaining({ userId: x.picker, avatarVersion: x.service.version(x.picker) }));
     expect(scores[1]).toEqual(expect.objectContaining({ userId: x.other, avatarVersion: null }));
   });
