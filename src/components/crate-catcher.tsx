@@ -18,7 +18,10 @@ const KEY_SPEED = 330; // units/s while an arrow key is held
 const DRAG_SPEED = 1100; // units/s chasing the finger / mouse
 const FRUITS = ["🍎", "🍊", "🍋", "🍇", "🍓", "🍑", "🍒", "🥑", "🥭", "🍐"];
 const PESTS = ["🐝", "🐛"];
-const PICKERS = ["👩‍🌾", "👨‍🌾", "🧑‍🌾"];
+// The picker ages every 10 points: baby → old man, then skeleton, fire, and finally an orange for good.
+const AGES = ["👶", "🧒", "🧑‍🌾", "🧔", "🧓", "👴", "💀", "🔥", "🍊"];
+const POINTS_PER_AGE = 10;
+const pickerFor = (score: number) => AGES[Math.min(Math.floor(score / POINTS_PER_AGE), AGES.length - 1)]!;
 const BEST_KEY = "crate-catcher-best";
 const LEFT_KEYS = new Set(["ArrowLeft", "a", "A"]);
 const RIGHT_KEYS = new Set(["ArrowRight", "d", "D"]);
@@ -42,7 +45,6 @@ function initialState() {
     px: W / 2,
     target: null as number | null,
     held: { left: false, right: false },
-    picker: random(PICKERS),
     items: [] as Item[],
     popups: [] as Popup[],
     elapsed: 0,
@@ -118,7 +120,7 @@ function drawScene(ctx: CanvasRenderingContext2D, g: State) {
 
   // Picker standing behind the basket.
   ctx.font = emojiFont(40);
-  ctx.fillText(g.picker, g.px, BASKET_Y - 26);
+  ctx.fillText(pickerFor(g.score), g.px, BASKET_Y - 26);
   ctx.font = emojiFont(44);
   ctx.fillText("🧺", g.px, BASKET_Y);
 
