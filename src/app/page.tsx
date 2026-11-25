@@ -139,9 +139,10 @@ export default async function Home() {
     )
     .all(workerMonth.start, workerMonth.end, today) as Array<{ fruit_type: string }>).map(r => r.fruit_type));
   const inMonth = (records: { fruitType: string }) => monthFruitTypes.has(records.fruitType);
+  // Hour-based results aren't shown to workers as records.
   const fruitRecordsByPeriod = {
-    month: getTopResultsByFruit(database, today, workerMonth).filter(inMonth),
-    year: getTopResultsByFruit(database, today, currentJerusalemYear()).filter(inMonth).sort((a, b) => fruitRank(a.fruitType) - fruitRank(b.fruitType))
+    month: getTopResultsByFruit(database, today, workerMonth, 5, ["HOURS"]).filter(inMonth),
+    year: getTopResultsByFruit(database, today, currentJerusalemYear(), 5, ["HOURS"]).filter(inMonth).sort((a, b) => fruitRank(a.fruitType) - fruitRank(b.fruitType))
   };
   const workerNames = database.prepare("SELECT id,name,avatar_version FROM users WHERE role='PICKER'").all() as Array<{ id: number; name: string; avatar_version: string | null }>;
 

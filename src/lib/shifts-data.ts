@@ -324,7 +324,8 @@ export type FruitRecord = { fruitType: string; userId: number; date: string; ear
 export type FruitTopResults = { fruitType: string; results: FruitRecord[] };
 
 // Per fruit type, the best single-shift worker results (by earnings, like the 👑), one per worker; ties go to the earliest shift.
-export function getTopResultsByFruit(database: Database.Database, today: string, range?: { start: string; end: string }, limit = 5): FruitTopResults[] {
+// Results with a quantity in one of `excludeUnits` are left out; fruit types left with no results are dropped.
+export function getTopResultsByFruit(database: Database.Database, today: string, range?: { start: string; end: string }, limit = 5, excludeUnits: readonly Unit[] = []): FruitTopResults[] {
   const rangeClause = range ? "AND s.date >= ? AND s.date < ?" : "";
   const params = range ? [today, range.start, range.end] : [today];
   const rows = database
@@ -349,7 +350,7 @@ export function getTopResultsByFruit(database: Database.Database, today: string,
   }
   const byFruit: Record<string, FruitRecord[]> = {};
   for (const result of results.values()) {
-    if (result.earnings > 0) (byFruit[result.fruitType] ??= []).push(result);
+    if (result.earnings > 0 && !result.quantities.some(q => excludeUnits.includes(q.unit))) (byFruit[result.fruitType] ??= []).push(result);
   }
   return Object.entries(byFruit)
     .map(([fruitType, list]) => ({
