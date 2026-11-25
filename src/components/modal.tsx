@@ -1,7 +1,9 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { XIcon } from "./icons";
+
+const noSubscribe = () => () => {};
 
 export function Modal({ title, onClose, children, wide = false }: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
   useEffect(() => {
@@ -9,6 +11,10 @@ export function Modal({ title, onClose, children, wide = false }: { title: strin
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  // document.body doesn't exist on the server; a modal open on first render (e.g. the admin game gate) mounts right after hydration.
+  const isClient = useSyncExternalStore(noSubscribe, () => true, () => false);
+  if (!isClient) return null;
 
   return createPortal(
     <div className="modal-backdrop" onClick={onClose}>
