@@ -45,10 +45,23 @@ export function approxLocation(timeZone: string, utcOffsetMinutes: number): { la
   return { lat: 32, lng: utcOffsetMinutes / 4 };
 }
 
-/** Runs in the browser: sets <html data-theme> now and re-checks every minute. */
+/** Cookie holding an admin's manual choice ("light" | "dark"); absent means auto. */
+export const THEME_COOKIE = "yivol_theme";
+export type ThemePreference = "auto" | "light" | "dark";
+export function parseThemePreference(value: string | undefined): ThemePreference {
+  return value === "light" || value === "dark" ? value : "auto";
+}
+
+/**
+ * Runs in the browser: sets <html data-theme> now and re-checks every minute.
+ * A server-rendered <html data-theme-pref="light|dark"> (admins only) pins the theme;
+ * anything else follows the sun. Exposes window.__yivolApplyTheme for the switcher.
+ */
 export function themeBootstrap(sun: typeof sunTimes, locate: typeof approxLocation): void {
   const root = document.documentElement;
   const apply = () => {
+    const pref = root.dataset.themePref;
+    if (pref === "light" || pref === "dark") { root.dataset.theme = pref; return; }
     let tz = "";
     try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch { /* old browsers */ }
     const now = Date.now();
@@ -57,6 +70,7 @@ export function themeBootstrap(sun: typeof sunTimes, locate: typeof approxLocati
     const dark = t === "night" || (t !== "day" && (now < t.sunrise || now >= t.sunset));
     root.dataset.theme = dark ? "dark" : "light";
   };
+  (window as unknown as { __yivolApplyTheme: () => void }).__yivolApplyTheme = apply;
   apply();
   setInterval(apply, 60000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) apply(); });

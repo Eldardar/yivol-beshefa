@@ -373,3 +373,31 @@ export function ShoppingBagIcon(props: IconProps) {
     </Svg>
   );
 }
+
+export function SunIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4" />
+    </Svg>
+  );
+}
+
+export function MoonIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" />
+    </Svg>
+  );
+}
+
+/** Sun setting over the horizon — "follows sunset" (auto theme). */
+export function SunsetIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M7 16a5 5 0 0 1 10 0" />
+      <path d="M12 4v3M4.2 9.2l1.4 1.4M18.4 10.6l1.4-1.4M2.5 16h2M19.5 16h2" />
+      <path d="M3 20h18" />
+    </Svg>
+  );
+}

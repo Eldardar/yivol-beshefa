@@ -5,6 +5,9 @@ import { PickerService } from "@/lib/services/picker";
 import { BankDetailsFields } from "@/components/bank-details-fields";
 import { AvatarEditor } from "@/components/avatar-editor";
 import { AvatarService } from "@/lib/services/avatars";
+import { cookies } from "next/headers";
+import { ThemeSwitcher } from "@/components/theme-switcher";
+import { THEME_COOKIE, parseThemePreference } from "@/lib/sun-theme";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +18,7 @@ export default async function Account({ searchParams }: { searchParams: Promise<
   const pickers = new PickerService(db());
   const personalDetails = pickers.personalDetails(user.id);
   const bankDetails = pickers.bankDetails(user.id);
+  const themePref = user.role === "ADMIN" ? parseThemePreference((await cookies()).get(THEME_COOKIE)?.value) : null;
 
   return (
     <AppShell user={user}>
@@ -26,6 +30,13 @@ export default async function Account({ searchParams }: { searchParams: Promise<
         </div>
         <AvatarEditor csrf={csrf} userId={user.id} name={user.name} avatarVersion={new AvatarService(db()).version(user.id)} />
       </section>
+      {themePref && (
+        <section className="card">
+          <h2>מצב תצוגה</h2>
+          <p className="muted">במצב אוטומטי התצוגה עוברת למצב כהה בשקיעה וחוזרת למצב בהיר בזריחה. הבחירה נשמרת בדפדפן הזה.</p>
+          <ThemeSwitcher initial={themePref} />
+        </section>
+      )}
       <section className="card">
         <h2>פרטים אישיים</h2>
         {detailsError && <p className="alert" role="alert">{detailsError}</p>}

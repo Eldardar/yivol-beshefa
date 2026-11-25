@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { approxLocation, sunTimes, THEME_SCRIPT } from "@/lib/sun-theme";
+import { approxLocation, parseThemePreference, sunTimes, THEME_SCRIPT } from "@/lib/sun-theme";
 
 const TLV = { lat: 32.08, lng: 34.78 };
 const hhmm = (ms: number) => new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Jerusalem", hour: "2-digit", minute: "2-digit" }).format(ms);
@@ -48,5 +48,14 @@ describe("approxLocation", () => {
 describe("THEME_SCRIPT", () => {
   it("is a standalone, syntactically valid script", () => {
     expect(() => new Function(THEME_SCRIPT)).not.toThrow();
+  });
+});
+
+describe("parseThemePreference", () => {
+  it("accepts only light/dark and treats anything else as auto", () => {
+    expect(parseThemePreference("dark")).toBe("dark");
+    expect(parseThemePreference("light")).toBe("light");
+    expect(parseThemePreference(undefined)).toBe("auto");
+    expect(parseThemePreference("<script>")).toBe("auto");
   });
 });
