@@ -175,13 +175,14 @@ img, svg { display: block; max-width: 100%; }
 @media (min-width: 1200px) { .shell { padding-inline: var(--space-8); } }
 
 .main {
+  --main-gap: var(--space-6);
   padding-block: var(--space-6) var(--space-9);
   display: grid;
-  gap: var(--space-6);
+  gap: var(--main-gap);
   min-width: 0;
 }
 @media (max-width: 599px) {
-  .main { padding-block: var(--space-4) var(--space-6); gap: var(--space-5); }
+  .main { --main-gap: var(--space-5); padding-block: var(--space-4) var(--space-6); }
 }
 
 .stack { display: grid; gap: var(--space-4); align-content: start; }
@@ -535,6 +536,27 @@ select.input { appearance: auto; }
 }
 .alert[role="alert"] { background: var(--color-danger-surface); border-color: #dba79a; color: #6b2e1f; }
 .alert[role="status"] { background: var(--color-success-surface); border-color: #a9d3b6; color: #205234; }
+.alert.alert-warn { background: var(--color-warning-surface); border-color: #e3c17f; color: #7a5417; }
+.alert.alert-dismissible { grid-template-columns: 1fr auto; align-items: start; }
+.alert-close { display: inline-flex; align-items: center; justify-content: center; padding: 2px; margin: -2px; border: 0; background: transparent; color: inherit; border-radius: var(--radius-sm, 4px); cursor: pointer; opacity: .75; }
+.alert-close:hover { opacity: 1; background: rgb(0 0 0 / .06); }
+/* כותרת עמוד + הודעות: עמודת flex, כדי שהודעה שנסגרת תבלע גם את הרווח שלה בלי קפיצה */
+.page-head-stack { display: flex; flex-direction: column; gap: var(--main-gap, var(--space-6)); min-width: 0; }
+/* סגירה: דהייה והרמה קלה, ואז כיווץ הגובה (והרווח שבגריד) כדי שהתוכן יחליק למעלה */
+.alert-shell {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 260ms var(--ease-standard) 140ms, margin-block-start 260ms var(--ease-standard) 140ms;
+}
+.alert-shell-inner { min-height: 0; overflow: hidden; }
+.alert-shell .alert {
+  transition: opacity 180ms var(--ease-standard), transform 180ms var(--ease-standard), filter 180ms var(--ease-standard);
+}
+.alert-shell.is-closing { grid-template-rows: 0fr; margin-block-start: calc(-1 * var(--main-gap, 0px)); pointer-events: none; }
+.alert-shell.is-closing .alert { opacity: 0; transform: translateY(-6px) scale(0.98); filter: blur(1px); }
+@media (prefers-reduced-motion: reduce) {
+  .alert-shell, .alert-shell .alert { transition: none; }
+}
 
 /* ==========================================================================
    Tables

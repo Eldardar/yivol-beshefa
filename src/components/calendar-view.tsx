@@ -20,7 +20,7 @@ export type CalendarShift = {
   navigationLink: string | null;
   fruitType: string;
   fruitSubtype: string;
-  leader: string;
+  leader: string | null;
   notes: string;
   plantationFieldId: number;
   pickers: CalendarPicker[];
@@ -260,7 +260,7 @@ export function CalendarView({ year, month, label, days, unitRatesByField, csrf,
               <span>{selected.shift.farm} · {selected.shift.fruitType}{selected.shift.fruitSubtype ? ` (${selected.shift.fruitSubtype})` : ""}</span>
             </p>
             {selected.shift.address && <p className="muted">{selected.shift.address}</p>}
-            <p>מוביל משמרת: {selected.shift.leader}</p>
+            {selected.shift.leader && <p>מוביל משמרת: {selected.shift.leader}</p>}
             {!isAdmin && (
               <div>
                 <p>עובדים במשמרת:</p>

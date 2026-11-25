@@ -1,6 +1,6 @@
 import { beforeEach, afterEach, describe, expect, it } from "vitest";
 import { createTestDb } from "@/lib/db";
-import { SchedulingService } from "@/lib/services/scheduling";
+import { NO_LEADER_WARNING, SchedulingService } from "@/lib/services/scheduling";
 import type Database from "better-sqlite3";
 
 let db: Database.Database;
@@ -22,6 +22,16 @@ describe("כללי שיבוץ", () => {
   it("דורש מוביל יחיד מתוך הקוטפים", () => {
     const x=setup(); const service=new SchedulingService(db);
     expect(() => service.createShift(x.admin,{date:"2099-08-10",startTime:"06:00",endTime:"12:00",plantationFieldId:x.field,pickerIds:[x.p1,x.p2],leaderId:999,vehicleIds:[x.vehicle],goals:[{unit:"KG",goal:0}],notes:""})).toThrow("המוביל חייב להיות חלק מהצוות");
+  });
+  it("מאפשר משמרת ללא מוביל (ללא) ושיבוץ קוטפים בהמשך", () => {
+    const x=setup(); const service=new SchedulingService(db);
+    const {shiftId,warnings}=service.createShift(x.admin,{date:"2099-08-10",startTime:"06:00",endTime:"12:00",plantationFieldId:x.field,pickerIds:[],leaderId:"none",vehicleIds:[],goals:[{unit:"KG",goal:1}],notes:""});
+    expect(warnings).toContain(NO_LEADER_WARNING);
+    expect((db.prepare("SELECT leader_id FROM shifts WHERE id=?").get(shiftId) as {leader_id:number|null}).leader_id).toBeNull();
+    service.assignPickers(x.admin,shiftId,[x.p1]);
+    expect(db.prepare("SELECT user_id FROM shift_pickers WHERE shift_id=?").all(shiftId)).toEqual([{user_id:x.p1}]);
+    service.updateShift(x.admin,shiftId,{date:"2099-08-10",startTime:"06:00",endTime:"12:00",plantationFieldId:x.field,pickerIds:[x.p1],leaderId:x.p1,vehicleIds:[],goals:[{unit:"KG",goal:1}],notes:""});
+    expect((db.prepare("SELECT leader_id FROM shifts WHERE id=?").get(shiftId) as {leader_id:number|null}).leader_id).toBe(x.p1);
   });
   it("חוסם חסר זמינות ומאפשר אולי עם אזהרה", () => {
     const x=setup(); const service=new SchedulingService(db);

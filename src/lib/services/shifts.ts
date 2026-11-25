@@ -55,7 +55,7 @@ export class ShiftService{
   return warnings;
  }
  saveQuantities(actorId:number,shiftId:number,entries:Array<{userId:number;quantity:number;unit:Unit}>,report?:{teamLeaderDetails:string},hours?:Array<{userId:number;startTime:string;endTime:string}>):void{
-  const actor=this.actor(actorId);const shift=this.db.prepare("SELECT leader_id,status FROM shifts WHERE id=?").get(shiftId) as {leader_id:number;status:string}|undefined;
+  const actor=this.actor(actorId);const shift=this.db.prepare("SELECT leader_id,status FROM shifts WHERE id=?").get(shiftId) as {leader_id:number|null;status:string}|undefined;
   if(!actor?.active||!shift)throw new Error("אין הרשאה");if(shift.status!=="PUBLISHED"&&!(shift.status==="COMPLETED"&&actor.role==="ADMIN"))throw new Error("מצב המשמרת אינו מאפשר דיווח");if(actor.role!=="ADMIN"&&shift.leader_id!==actorId)throw new Error("אין הרשאה");
   const assigned=(this.db.prepare("SELECT user_id FROM shift_pickers WHERE shift_id=? ORDER BY user_id").all(shiftId) as Array<{user_id:number}>).map(x=>x.user_id);
   if(entries.length===0)throw new Error("יש לדווח עבור כל הקוטפים");
@@ -127,7 +127,7 @@ export class ShiftService{
   })();
  }
  totals(actorId:number,shiftId:number):Array<{unit:Unit;produced:number;goal:number}>{
-  const actor=this.actor(actorId);const shift=this.db.prepare("SELECT leader_id,status FROM shifts WHERE id=?").get(shiftId) as {leader_id:number;status:string}|undefined;if(!actor?.active||!shift||!["PUBLISHED","COMPLETED"].includes(shift.status)||(actor.role!=="ADMIN"&&shift.leader_id!==actorId))throw new Error("אין הרשאה");
+  const actor=this.actor(actorId);const shift=this.db.prepare("SELECT leader_id,status FROM shifts WHERE id=?").get(shiftId) as {leader_id:number|null;status:string}|undefined;if(!actor?.active||!shift||!["PUBLISHED","COMPLETED"].includes(shift.status)||(actor.role!=="ADMIN"&&shift.leader_id!==actorId))throw new Error("אין הרשאה");
   const produced=this.db.prepare("SELECT unit,SUM(quantity) produced FROM quantities WHERE shift_id=? GROUP BY unit").all(shiftId) as Array<{unit:Unit;produced:number}>;
   const goals=this.db.prepare("SELECT unit,goal FROM shift_goals WHERE shift_id=?").all(shiftId) as Array<{unit:Unit;goal:number}>;
   const map=new Map<Unit,{unit:Unit;produced:number;goal:number}>();

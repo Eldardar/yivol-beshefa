@@ -86,8 +86,9 @@ export const shiftSchema = z.object({
   startTime: timeSchema,
   endTime: timeSchema,
   plantationFieldId: id,
-  pickerIds: z.array(id).min(1).transform((items) => [...new Set(items)]),
-  leaderId: id,
+  pickerIds: z.array(id).transform((items) => [...new Set(items)]),
+  // "none" (ללא) או null — משמרת ללא מוביל
+  leaderId: z.preprocess((v) => (v === "none" || v == null ? null : v), id.nullable()),
   vehicleIds: z.array(id).transform((items) => [...new Set(items)]),
   goals: z.array(goalLineSchema).min(1).refine((items) => new Set(items.map((x) => x.unit)).size === items.length, "כל יחידת מידה יכולה להופיע פעם אחת ביעד"),
   personalGoalUnits: z.array(unitSchema).transform((items) => [...new Set(items)]).default([]),

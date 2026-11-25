@@ -46,8 +46,8 @@ function hoursBetween(startTime: string, endTime: string): number {
   return minutes / 60;
 }
 
-const SHIFT_SELECT = `SELECT s.id,s.date,s.start_time,s.end_time,s.status,s.notes,pf.farm_id,s.plantation_field_id,s.leader_id,u.name leader,f.name farm,pf.fruit_type,s.team_leader_details,(SELECT COUNT(*) FROM shift_pickers WHERE shift_id=s.id) picker_count
-   FROM shifts s JOIN users u ON u.id=s.leader_id JOIN plantation_fields pf ON pf.id=s.plantation_field_id JOIN farms f ON f.id=pf.farm_id`;
+const SHIFT_SELECT = `SELECT s.id,s.date,s.start_time,s.end_time,s.status,s.notes,pf.farm_id,s.plantation_field_id,s.leader_id,COALESCE(u.name,'ללא') leader,f.name farm,pf.fruit_type,s.team_leader_details,(SELECT COUNT(*) FROM shift_pickers WHERE shift_id=s.id) picker_count
+   FROM shifts s LEFT JOIN users u ON u.id=s.leader_id JOIN plantation_fields pf ON pf.id=s.plantation_field_id JOIN farms f ON f.id=pf.farm_id`;
 
 export function loadShiftsPageData(database: Database.Database, opts: { dateFrom?: string; dateTo?: string; limit?: number } = {}): ShiftsPageData {
   const { dateFrom, dateTo, limit = 100 } = opts;
@@ -118,12 +118,12 @@ export function getShiftsByWorker(database: Database.Database, today: string): S
     .prepare(
       `SELECT sp.user_id user_id, s.id id, s.date date, s.start_time start_time, s.end_time end_time,
               sh.start_time actual_start, sh.end_time actual_end,
-              s.plantation_field_id plantation_field_id, f.name farm, pf.fruit_type fruit_type, u.name leader, s.status status
+              s.plantation_field_id plantation_field_id, f.name farm, pf.fruit_type fruit_type, COALESCE(u.name,'ללא') leader, s.status status
        FROM shift_pickers sp
        JOIN shifts s ON s.id = sp.shift_id
        JOIN plantation_fields pf ON pf.id = s.plantation_field_id
        JOIN farms f ON f.id = pf.farm_id
-       JOIN users u ON u.id = s.leader_id
+       LEFT JOIN users u ON u.id = s.leader_id
        LEFT JOIN shift_hours sh ON sh.shift_id = s.id AND sh.user_id = sp.user_id
        WHERE s.status IN ('PUBLISHED','COMPLETED') AND (s.date < ? OR s.status = 'COMPLETED')
        ORDER BY sp.user_id, s.date DESC, s.start_time DESC`
@@ -255,10 +255,10 @@ export function getShiftsByFarmer(database: Database.Database, today: string): S
   const rows = database
     .prepare(
       `SELECT pf.farm_id farm_id, s.id id, s.date date, s.start_time start_time, s.end_time end_time,
-              s.plantation_field_id plantation_field_id, pf.name field_name, pf.fruit_type fruit_type, u.name leader, s.status status
+              s.plantation_field_id plantation_field_id, pf.name field_name, pf.fruit_type fruit_type, COALESCE(u.name,'ללא') leader, s.status status
        FROM shifts s
        JOIN plantation_fields pf ON pf.id = s.plantation_field_id
-       JOIN users u ON u.id = s.leader_id
+       LEFT JOIN users u ON u.id = s.leader_id
        WHERE s.status IN ('PUBLISHED','COMPLETED') AND (s.date < ? OR s.status = 'COMPLETED')
        ORDER BY pf.farm_id, s.date DESC, s.start_time DESC`
     )
@@ -367,13 +367,13 @@ export function getTripsByVehicle(database: Database.Database, today: string): T
   const rows = database
     .prepare(
       `SELECT sv.vehicle_id vehicle_id, s.id id, s.date date, s.start_time start_time, s.end_time end_time,
-              f.name farm_name, pf.name field_name, pf.fruit_type fruit_type, u.name leader,
+              f.name farm_name, pf.name field_name, pf.fruit_type fruit_type, COALESCE(u.name,'ללא') leader,
               (SELECT COUNT(*) FROM shift_pickers sp WHERE sp.shift_id = s.id) workers
        FROM shift_vehicles sv
        JOIN shifts s ON s.id = sv.shift_id
        JOIN plantation_fields pf ON pf.id = s.plantation_field_id
        JOIN farms f ON f.id = pf.farm_id
-       JOIN users u ON u.id = s.leader_id
+       LEFT JOIN users u ON u.id = s.leader_id
        WHERE s.status IN ('PUBLISHED','COMPLETED') AND (s.date < ? OR s.status = 'COMPLETED')
        ORDER BY sv.vehicle_id, s.date DESC, s.start_time DESC`
     )

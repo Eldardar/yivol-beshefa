@@ -4,7 +4,7 @@ import { Modal } from "./modal";
 import { AssignPickersModal } from "./assign-pickers-modal";
 import { UsersIcon } from "./icons";
 
-export function AssignPickersButton({ shiftId, leaderId, date, csrf }: { shiftId: number; leaderId: number; date: string; csrf: string }) {
+export function AssignPickersButton({ shiftId, leaderId, date, csrf }: { shiftId: number; leaderId: number | null; date: string; csrf: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>

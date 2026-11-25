@@ -18,7 +18,7 @@ type ShiftRow = {
   start_time: string;
   end_time: string;
   notes: string;
-  leader: string;
+  leader: string | null;
   farm: string;
   address: string;
   navigation_link: string | null;
@@ -143,7 +143,7 @@ function AdminCalendar({ user, csrf, query }: { user: SessionUser; csrf: string;
   const shifts = database
     .prepare(
       `SELECT s.id,s.date,s.start_time,s.end_time,s.notes,u.name leader,f.name farm,f.address,f.navigation_link,pf.fruit_type,pf.fruit_subtype,s.plantation_field_id
-       FROM shifts s JOIN users u ON u.id=s.leader_id JOIN plantation_fields pf ON pf.id=s.plantation_field_id JOIN farms f ON f.id=pf.farm_id
+       FROM shifts s LEFT JOIN users u ON u.id=s.leader_id JOIN plantation_fields pf ON pf.id=s.plantation_field_id JOIN farms f ON f.id=pf.farm_id
        WHERE s.status IN ('PUBLISHED','COMPLETED') AND s.date>=? AND s.date<?
        ORDER BY s.date,s.start_time`
     )

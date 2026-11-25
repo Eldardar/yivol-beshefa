@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 
 type Candidate = { id: number; name: string; availability: string | null; conflict: boolean; assigned: boolean };
 
-export function AssignPickersModal({ shiftId, leaderId, date, csrf, onClose }: { shiftId: number; leaderId: number; date: string; csrf: string; onClose: () => void }) {
+export function AssignPickersModal({ shiftId, leaderId, date, csrf, onClose }: { shiftId: number; leaderId: number | null; date: string; csrf: string; onClose: () => void }) {
   const router = useRouter();
   const [candidates, setCandidates] = useState<Candidate[] | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());

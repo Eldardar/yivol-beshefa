@@ -4,6 +4,7 @@ import { UnitLines } from "./unit-lines";
 import { Modal } from "./modal";
 import { REPORT_UNITS, UNITS, UNIT_LABEL, type Unit } from "@/lib/units";
 
+const NO_LEADER = "none";
 export const LEADER_CONFLICT_MARKER = "שיבוץ כפול למוביל המשמרת";
 const LEADER_ERRORS = ["שיבוץ כפול למוביל המשמרת"];
 const FIELD_ERRORS = ["חלקת הגידול אינה פעילה"];
@@ -20,7 +21,7 @@ export type EditableShift = {
   end_time: string;
   farm_id: number;
   plantation_field_id: number;
-  leader_id: number;
+  leader_id: number | null;
   leader_name?: string;
   notes: string;
   status?: string;
@@ -49,7 +50,7 @@ export function ShiftForm({
   existingPersonalGoalUnits: Unit[];
   onSuccess?: (redirectTo: string) => void;
 }) {
-  const [leaderId, setLeaderId] = useState(shift ? String(shift.leader_id) : "");
+  const [leaderId, setLeaderId] = useState(shift ? (shift.leader_id == null ? NO_LEADER : String(shift.leader_id)) : "");
   const [farmId, setFarmId] = useState(shift ? String(shift.farm_id) : "");
   const [fieldId, setFieldId] = useState(shift ? String(shift.plantation_field_id) : "");
   const [startTime, setStartTime] = useState(shift?.start_time ?? "06:00");
@@ -68,14 +69,14 @@ export function ShiftForm({
 
   const pickerIds = useMemo(() => {
     const set = new Set(existingPickerIds.map(String));
-    if (leaderId) set.add(leaderId);
+    if (leaderId && leaderId !== NO_LEADER) set.add(leaderId);
     return [...set];
   }, [leaderId, existingPickerIds]);
 
   const fields = farmId ? (plantationFieldsByFarm[Number(farmId)] ?? []) : [];
 
   const leaderOptions = useMemo(() => {
-    if (shift && !pickers.some(p => p.id === shift.leader_id)) {
+    if (shift && shift.leader_id != null && !pickers.some(p => p.id === shift.leader_id)) {
       return [{ id: shift.leader_id, name: `${shift.leader_name ?? "קוטף שאינו פעיל"} (לא פעיל)` }, ...pickers];
     }
     return pickers;
@@ -167,8 +168,10 @@ export function ShiftForm({
           <label htmlFor="shift-leader">מוביל משמרת</label>
           <select className="input" id="shift-leader" name="leaderId" required value={leaderId} onChange={e => setLeaderId(e.target.value)}>
             <option value="" disabled>בחירת מוביל</option>
+            <option value={NO_LEADER}>ללא</option>
             {leaderOptions.map(p => <option value={p.id} key={p.id}>{p.name}</option>)}
           </select>
+          {leaderId === NO_LEADER && <p className="alert alert-warn" role="status">שימו לב: משמרת ללא מוביל — רק מנהל יוכל לדווח כמויות עבורה.</p>}
         </div>
       </div>
       <div className="field">

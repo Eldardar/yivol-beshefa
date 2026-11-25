@@ -9,7 +9,7 @@ import type { Unit } from "@/lib/units";
 
 export const dynamic = "force-dynamic";
 
-type AssignmentRow = { id: number; date: string; start_time: string; end_time: string; leader_id: number; farm: string; address: string; navigation_link: string | null; fruit_type: string; vehicles: string | null; reported: number };
+type AssignmentRow = { id: number; date: string; start_time: string; end_time: string; leader_id: number | null; farm: string; address: string; navigation_link: string | null; fruit_type: string; vehicles: string | null; reported: number };
 
 export default async function Assignments() {
   const user = await requireUser();

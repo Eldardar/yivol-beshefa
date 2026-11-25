@@ -16,7 +16,7 @@ import { Modal } from "./modal";
 import { formatMoney } from "@/lib/format";
 import { unitAmount, type UnitPricing, type UnitPricingByField } from "@/lib/pricing";
 
-export type ShiftRow = { id: number; date: string; start_time: string; end_time: string; status: string; notes: string; farm_id: number; plantation_field_id: number; leader_id: number; leader: string; farm: string; fruit_type: string; picker_count: number; team_leader_details: string };
+export type ShiftRow = { id: number; date: string; start_time: string; end_time: string; status: string; notes: string; farm_id: number; plantation_field_id: number; leader_id: number | null; leader: string; farm: string; fruit_type: string; picker_count: number; team_leader_details: string };
 export type UnitInfo = { unit: Unit; goal: number; produced: number | null };
 export type UnitsByShift = Record<number, UnitInfo[]>;
 export type PickerNamesByShift = Record<number, string[]>;
