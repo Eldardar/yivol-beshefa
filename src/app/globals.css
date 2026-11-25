@@ -1543,3 +1543,29 @@ button.bottom-nav-link { border: 0; background: transparent; }
 /* Photos and the logo look harsh at full brightness on a dark page */
 :root[data-theme="dark"] img:not(.brand-logo) { filter: brightness(0.9); }
 :root[data-theme="dark"] .calendar-peek { background: #2b342e; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5); }
+
+/* ==========================================================================
+   Multi-date picker (bulk shift creation)
+   ========================================================================== */
+.multi-date-field { grid-column: 1 / -1; }
+.multi-date { display: grid; gap: var(--space-3); max-width: 26rem; padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); }
+.multi-date-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.25rem; }
+.multi-date-day {
+  aspect-ratio: 1;
+  min-height: 36px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  font: 600 0.9rem/1 var(--font-sans);
+  color: var(--color-text-primary);
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+.multi-date-day:hover:not(:disabled) { background: var(--neutral-100); }
+.multi-date-day:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+.multi-date-day.is-past { color: var(--color-text-secondary); }
+.multi-date-day.is-today { border-color: var(--color-border-strong); }
+.multi-date-day.is-selected, .multi-date-day.is-selected:hover { background: var(--color-primary); border-color: var(--color-primary); color: var(--white); }
+.multi-date-day:disabled { opacity: 0.4; cursor: not-allowed; }
+.multi-date-summary { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.multi-date-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.multi-date-chip { border: none; cursor: pointer; gap: 0.35rem; }
+.multi-date-chip::before { display: none; }

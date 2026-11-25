@@ -7,6 +7,8 @@ import { jerusalemDate } from "@/lib/dates";
 export const NO_LEADER_WARNING="המשמרת נשמרה ללא מוביל משמרת — רק מנהל יוכל לדווח כמויות עבורה";
 
 type Result={shiftId:number;warnings:string[]};
+export const MAX_BULK_DATES=62;
+const formatDate=(iso:string)=>{const [y,m,d]=iso.split("-");return `${d}/${m}/${y}`;};
 type ParsedShift=ReturnType<typeof shiftSchema.parse>;
 
 export class SchedulingService{
@@ -58,10 +60,29 @@ export class SchedulingService{
   const input=shiftSchema.parse({date:row.date,startTime:row.start_time,endTime:row.end_time,plantationFieldId:row.plantation_field_id,pickerIds,leaderId:row.leader_id,vehicleIds,goals,personalGoalUnits,notes:row.notes});
   return this.validateAssignments(input,shiftId,allowLeaderConflict,new Set(pickerIds));
  }
+ private insertShift(actorId:number,input:ParsedShift,options?:{allowLeaderConflict?:boolean}):Result{
+  const warnings=this.validateAssignments(input,undefined,options?.allowLeaderConflict);if(input.leaderId==null)warnings.push(NO_LEADER_WARNING);const shiftId=Number(this.db.prepare("INSERT INTO shifts(date,start_time,end_time,plantation_field_id,leader_id,notes,created_by) VALUES(?,?,?,?,?,?,?)").run(input.date,input.startTime,input.endTime,input.plantationFieldId,input.leaderId,input.notes,actorId).lastInsertRowid);const addGoal=this.db.prepare("INSERT INTO shift_goals(shift_id,unit,goal,actual) VALUES(?,?,?,?)");for(const g of input.goals)addGoal.run(shiftId,g.unit,g.goal,g.actual===""||g.actual==null?null:g.actual);const addGoalUnit=this.db.prepare("INSERT INTO shift_goal_units(shift_id,unit) VALUES(?,?)");for(const u of input.personalGoalUnits)addGoalUnit.run(shiftId,u);const addPicker=this.db.prepare("INSERT INTO shift_pickers(shift_id,user_id) VALUES(?,?)");for(const id of input.pickerIds)addPicker.run(shiftId,id);const addVehicle=this.db.prepare("INSERT INTO shift_vehicles(shift_id,vehicle_id) VALUES(?,?)");for(const id of input.vehicleIds)addVehicle.run(shiftId,id);this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(actorId,"CREATE","SHIFT",shiftId);return {shiftId,warnings};
+ }
  createShift(actorId:number,raw:ShiftInput,options?:{allowLeaderConflict?:boolean}):Result{
   const input=shiftSchema.parse(raw);this.assertAdmin(actorId);
-  const create=this.db.transaction(()=>{const warnings=this.validateAssignments(input,undefined,options?.allowLeaderConflict);if(input.leaderId==null)warnings.push(NO_LEADER_WARNING);const shiftId=Number(this.db.prepare("INSERT INTO shifts(date,start_time,end_time,plantation_field_id,leader_id,notes,created_by) VALUES(?,?,?,?,?,?,?)").run(input.date,input.startTime,input.endTime,input.plantationFieldId,input.leaderId,input.notes,actorId).lastInsertRowid);const addGoal=this.db.prepare("INSERT INTO shift_goals(shift_id,unit,goal,actual) VALUES(?,?,?,?)");for(const g of input.goals)addGoal.run(shiftId,g.unit,g.goal,g.actual===""||g.actual==null?null:g.actual);const addGoalUnit=this.db.prepare("INSERT INTO shift_goal_units(shift_id,unit) VALUES(?,?)");for(const u of input.personalGoalUnits)addGoalUnit.run(shiftId,u);const addPicker=this.db.prepare("INSERT INTO shift_pickers(shift_id,user_id) VALUES(?,?)");for(const id of input.pickerIds)addPicker.run(shiftId,id);const addVehicle=this.db.prepare("INSERT INTO shift_vehicles(shift_id,vehicle_id) VALUES(?,?)");for(const id of input.vehicleIds)addVehicle.run(shiftId,id);this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id) VALUES(?,?,?,?)").run(actorId,"CREATE","SHIFT",shiftId);return {shiftId,warnings};});
-  return create.immediate();
+  return this.db.transaction(()=>this.insertShift(actorId,input,options)).immediate();
+ }
+ /** יצירת משמרות זהות במספר תאריכים — הכל או כלום: שגיאה בתאריך אחד מבטלת את כולם. */
+ createShifts(actorId:number,raw:Omit<ShiftInput,"date">,dates:string[],options?:{allowLeaderConflict?:boolean}):{shiftIds:number[];warnings:string[]}{
+  const unique=[...new Set(dates)].sort();
+  if(!unique.length)throw new Error("יש לבחור לפחות תאריך אחד");
+  if(unique.length>MAX_BULK_DATES)throw new Error(`ניתן ליצור עד ${MAX_BULK_DATES} משמרות בבת אחת`);
+  const inputs=unique.map(date=>shiftSchema.parse({...raw,date}));this.assertAdmin(actorId);
+  return this.db.transaction(()=>{
+   const shiftIds:number[]=[];const warnings=new Set<string>();
+   for(const input of inputs){
+    let result:Result;
+    try{result=this.insertShift(actorId,input,options);}catch(e){throw new Error(`${formatDate(input.date)}: ${e instanceof Error?e.message:String(e)}`);}
+    shiftIds.push(result.shiftId);
+    for(const w of result.warnings)warnings.add(w===NO_LEADER_WARNING?w:`${formatDate(input.date)}: ${w}`);
+   }
+   return {shiftIds,warnings:[...warnings]};
+  }).immediate();
  }
  updateShift(actorId:number,shiftId:number,raw:ShiftInput,options?:{allowLeaderConflict?:boolean}):Result{
   const input=shiftSchema.parse(raw);this.assertAdmin(actorId);if(!Number.isSafeInteger(shiftId)||shiftId<1)throw new Error("מזהה אינו תקין");

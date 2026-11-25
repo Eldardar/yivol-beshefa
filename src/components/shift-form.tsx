@@ -2,12 +2,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { UnitLines } from "./unit-lines";
 import { Modal } from "./modal";
+import { MultiDatePicker } from "./multi-date-picker";
 import { REPORT_UNITS, UNITS, UNIT_LABEL, type Unit } from "@/lib/units";
 
 const NO_LEADER = "none";
 export const LEADER_CONFLICT_MARKER = "שיבוץ כפול למוביל המשמרת";
 const LEADER_ERRORS = ["שיבוץ כפול למוביל המשמרת"];
 const FIELD_ERRORS = ["חלקת הגידול אינה פעילה"];
+const MAX_BULK_DATES = 62;
 
 export type Picker = { id: number; name: string };
 export type FarmOption = { id: number; name: string };
@@ -55,6 +57,9 @@ export function ShiftForm({
   const [fieldId, setFieldId] = useState(shift ? String(shift.plantation_field_id) : "");
   const [startTime, setStartTime] = useState(shift?.start_time ?? "06:00");
   const [endTime, setEndTime] = useState(shift?.end_time ?? "14:00");
+  const [date, setDate] = useState(shift?.date ?? "");
+  const [multiDate, setMultiDate] = useState(false);
+  const [dates, setDates] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [leaderConflict, setLeaderConflict] = useState<{ message: string; formData: FormData } | null>(null);
@@ -110,6 +115,10 @@ export function ShiftForm({
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    if (multiDate && dates.length === 0) {
+      setError("יש לבחור לפחות תאריך אחד בלוח");
+      return;
+    }
     if (shift?.status === "COMPLETED") {
       setConfirmCompletedEdit(formData);
       return;
@@ -141,7 +150,38 @@ export function ShiftForm({
       {pickerIds.map(id => <input type="hidden" name="pickerIds" value={id} key={id} />)}
       {existingVehicleIds.map(id => <input type="hidden" name="vehicleIds" value={id} key={id} />)}
       <div className="grid">
-        <div className="field"><label htmlFor="shift-date">תאריך</label><input className="input" id="shift-date" type="date" name="date" required defaultValue={shift?.date} /></div>
+        <div className="field">
+          <label htmlFor="shift-date">{multiDate ? "תאריכים" : "תאריך"}</label>
+          {multiDate ? (
+            <p className="muted">{dates.length ? `${dates.length} תאריכים נבחרו בלוח` : "בחרו תאריכים בלוח שלמטה"}</p>
+          ) : (
+            <input className="input" id="shift-date" type="date" name="date" required value={date} onChange={e => setDate(e.target.value)} />
+          )}
+          {!shift && (
+            <label className="switch-row">
+              <span className="switch">
+                <input
+                  type="checkbox"
+                  name="multiDate"
+                  value="1"
+                  checked={multiDate}
+                  onChange={e => {
+                    setMultiDate(e.target.checked);
+                    if (e.target.checked && date && dates.length === 0) setDates([date]);
+                    if (!e.target.checked && !date && dates[0]) setDate(dates[0]);
+                  }}
+                />
+                <span className="switch-track" aria-hidden="true" />
+              </span>
+              <span>יצירה מרובה — משמרות זהות במספר תאריכים</span>
+            </label>
+          )}
+        </div>
+        {multiDate && (
+          <div className="field multi-date-field">
+            <MultiDatePicker name="dates" value={dates} onChange={setDates} max={MAX_BULK_DATES} />
+          </div>
+        )}
         <div className="field"><label htmlFor="shift-start-time">שעת התחלה</label><input className="input" id="shift-start-time" type="time" name="startTime" required value={startTime} onChange={e => setStartTime(e.target.value)} /></div>
         <div className="field">
           <label htmlFor="shift-end-time">שעת סיום משוערת</label>
@@ -225,13 +265,13 @@ export function ShiftForm({
       )}
       <div className="field"><label htmlFor="shift-notes">הערות</label><textarea className="input" id="shift-notes" name="notes" maxLength={4000} defaultValue={shift?.notes} /></div>
       <div className="actions">
-        <button className="btn" disabled={busy}>{busy ? "שומר…" : shift ? "שמירת שינויים" : "יצירת טיוטה"}</button>
+        <button className="btn" disabled={busy}>{busy ? "שומר…" : shift ? "שמירת שינויים" : multiDate && dates.length > 1 ? `יצירת ${dates.length} טיוטות` : "יצירת טיוטה"}</button>
       </div>
       {leaderConflict && (
         <Modal title="שיבוץ כפול למוביל המשמרת" onClose={() => setLeaderConflict(null)}>
           <div className="stack">
             <p role="alert">{leaderConflict.message}</p>
-            <p>ליצור את המשמרת בכל זאת?</p>
+            <p>{multiDate && dates.length > 1 ? "ליצור את המשמרות בכל זאת?" : "ליצור את המשמרת בכל זאת?"}</p>
             <div className="actions">
               <button type="button" className="btn" disabled={busy} onClick={confirmLeaderConflict}>{busy ? "שומר…" : shift ? "שמירה בכל זאת" : "יצירה בכל זאת"}</button>
               <button type="button" className="btn secondary" disabled={busy} onClick={() => setLeaderConflict(null)}>ביטול</button>
