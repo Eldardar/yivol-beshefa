@@ -1454,3 +1454,92 @@ button.bottom-nav-link { border: 0; background: transparent; }
   .tier-row .input { padding-inline: var(--space-1); }
   .tier-row .icon-btn { width: 36px; height: 36px; }
 }
+
+/* ==========================================================================
+   Dark theme — applied automatically between local sunset and sunrise
+   (data-theme is set by the inline script from src/lib/sun-theme.ts).
+   ========================================================================== */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Soft-tint brand surfaces become deep, low-chroma tints */
+  --brand-olive-100: #2c3324;
+  --brand-cream-50: #1f2721;
+  --brand-cream-100: #242c25;
+  --brand-sand-200: #343a2f;
+  --brand-harvest-100: #3a2f1c;
+  --brand-fruit-100: #3c2520;
+  --brand-sky-100: #1c323c;
+  --brand-olive-700: #b9bd86;
+
+  /* Neutral ramp flipped: low numbers are now dark fills, high numbers light text */
+  --neutral-950: #f1f4f1;
+  --neutral-900: #e3e9e4;
+  --neutral-700: #b7c1ba;
+  --neutral-600: #9ba79f;
+  --neutral-500: #7b867e;
+  --neutral-300: #424c45;
+  --neutral-200: #323b35;
+  --neutral-100: #29312b;
+  --neutral-50: #1b221d;
+
+  --color-bg: #121814;
+  --color-surface: #1a211c;
+  --color-surface-warm: var(--brand-cream-50);
+  --color-surface-sunk: #161c18;
+  --color-text-primary: var(--neutral-900);
+  --color-text-secondary: var(--neutral-600);
+  --color-border: #2d3630;
+  --color-border-strong: #424c45;
+
+  --color-primary: #4f8d64;
+  --color-primary-hover: #5a9b70;
+  --color-primary-pressed: #447c58;
+  --color-primary-surface: var(--brand-olive-100);
+
+  --color-success: #4fa871;
+  --color-success-surface: #1c3324;
+  --color-warning: #d59b3a;
+  --color-warning-surface: var(--brand-harvest-100);
+  --color-danger: #d0735d;
+  --color-danger-surface: var(--brand-fruit-100);
+  --color-danger-hover: #dd8a76;
+  --color-info: #6eb0c9;
+  --color-info-surface: var(--brand-sky-100);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 1px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.6);
+}
+
+/* Text colours that were hard-coded dark-on-light */
+:root[data-theme="dark"] :is(.next-shift-card p, .expand-btn, .snake-overlay-title, .sidebar-nav-link.is-active, .sidebar-nav-sublink.is-active) { color: #b6d8bf; }
+:root[data-theme="dark"] .hero-gallery-dot.active { background: var(--color-primary); }
+:root[data-theme="dark"] :is(.tag, .count-pill--available) { color: #9fd6b0; }
+:root[data-theme="dark"] :is(.tag.warn, .count-pill--maybe, .soon-inline, .soon-marquee, .expense-notes, .expense-failed-btn) { color: #e8c37e; }
+:root[data-theme="dark"] :is(.tag.bad, .count-pill--unavailable, .cell-editor-error) { color: #eba796; }
+:root[data-theme="dark"] .tag.info { color: #9fcfe2; }
+:root[data-theme="dark"] .tag.holiday-jewish { background: #2c2747; color: #c4b9f2; }
+:root[data-theme="dark"] .tag.holiday-christian { background: #3d2330; color: #eeb2ca; }
+:root[data-theme="dark"] .tag.holiday-muslim { background: #173a33; color: #94dbc9; }
+
+:root[data-theme="dark"] .alert { border-color: #6a5326; color: #ecca86; }
+:root[data-theme="dark"] .alert[role="alert"] { border-color: #6b3a2e; color: #f0b9aa; }
+:root[data-theme="dark"] .alert[role="status"] { border-color: #2f5e3e; color: #a9dcb8; }
+:root[data-theme="dark"] .alert.alert-warn { border-color: #6a5326; color: #ecca86; }
+:root[data-theme="dark"] .alert-close:hover { background: rgb(255 255 255 / 0.08); }
+
+:root[data-theme="dark"] .calendar-day--available { border-color: #346b47; }
+:root[data-theme="dark"] .calendar-day--maybe { border-color: #7a6128; }
+:root[data-theme="dark"] .calendar-day--unavailable { border-color: #7a4133; }
+:root[data-theme="dark"] .calendar-day--locked-available { background: #2c5c3c; border-color: #3f7d53; }
+:root[data-theme="dark"] .calendar-day--locked-maybe { background: #5e4b1f; border-color: #8a6d2a; }
+:root[data-theme="dark"] .calendar-day--locked-unavailable { background: #5c2f24; border-color: #8a4a3a; }
+
+:root[data-theme="dark"] .modal-backdrop { background: rgba(0, 0, 0, 0.6); }
+:root[data-theme="dark"] .snake-overlay { background: rgba(18, 24, 20, 0.85); }
+:root[data-theme="dark"] .view-toggle-option.is-active { box-shadow: 0 1px 2px rgb(0 0 0 / 0.4); }
+
+/* Photos and the logo look harsh at full brightness on a dark page */
+:root[data-theme="dark"] img:not(.brand-logo) { filter: brightness(0.9); }
+:root[data-theme="dark"] .calendar-peek { background: #2b342e; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5); }
