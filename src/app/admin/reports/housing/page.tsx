@@ -14,9 +14,9 @@ export default async function HousingReportPage({ searchParams }: { searchParams
 
   return (
     <AppShell user={user}>
-      <h1>דוח מגורים</h1>
-      <HousingReportTabs period={period} />
-      <HousingReportPeriodControl period={period} />
+      <h1>דוח מגורים עובדים</h1>
+      <HousingReportTabs period={period} basePath="/admin/reports/housing" />
+      <HousingReportPeriodControl period={period} basePath="/admin/reports/housing" />
       <HousingReport key={period.label} rows={getHousingReport(database, period.range)} nightsByWorker={getHousingNights(database, period.range)} label={period.label} fileLabel={period.fileLabel} />
     </AppShell>
   );

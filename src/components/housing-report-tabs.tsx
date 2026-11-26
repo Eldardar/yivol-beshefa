@@ -4,22 +4,20 @@ import { CalendarMonthNav } from "./calendar-month-nav";
 import { jerusalemDate } from "@/lib/dates";
 import { HOUSING_REPORT_VIEWS, type HousingReportPeriod, type HousingReportView } from "@/lib/housing-report";
 
-const BASE = "/admin/reports/housing";
-
 // מעבר בין הלשוניות שומר את השנה/החודש האחרונים שנבחרו
-function viewHref(view: HousingReportView, period: HousingReportPeriod): string {
+function viewHref(base: string, view: HousingReportView, period: HousingReportPeriod): string {
   switch (view) {
-    case "yearly": return `${BASE}?view=yearly&y=${period.year}`;
-    case "monthly": return `${BASE}?view=monthly&y=${period.year}&m=${period.month}`;
-    default: return `${BASE}?view=all`;
+    case "yearly": return `${base}?view=yearly&y=${period.year}`;
+    case "monthly": return `${base}?view=monthly&y=${period.year}&m=${period.month}`;
+    default: return `${base}?view=all`;
   }
 }
 
-export function HousingReportTabs({ period }: { period: HousingReportPeriod }) {
+export function HousingReportTabs({ period, basePath }: { period: HousingReportPeriod; basePath: string }) {
   return (
     <div className="tabs" role="tablist" aria-label="תקופת הדוח">
       {HOUSING_REPORT_VIEWS.map(view => (
-        <Link key={view.key} href={viewHref(view.key, period)} role="tab" aria-selected={view.key === period.view} className={`tab${view.key === period.view ? " is-active" : ""}`}>
+        <Link key={view.key} href={viewHref(basePath, view.key, period)} role="tab" aria-selected={view.key === period.view} className={`tab${view.key === period.view ? " is-active" : ""}`}>
           {view.label}
         </Link>
       ))}
@@ -27,9 +25,9 @@ export function HousingReportTabs({ period }: { period: HousingReportPeriod }) {
   );
 }
 
-function YearNav({ year }: { year: number }) {
+function YearNav({ year, basePath }: { year: number; basePath: string }) {
   const todayYear = Number(jerusalemDate().slice(0, 4));
-  const href = (y: number) => `${BASE}?view=yearly&y=${y}`;
+  const href = (y: number) => `${basePath}?view=yearly&y=${y}`;
   return (
     <div className="calendar-nav">
       <Link href={href(year - 1)} className="calendar-nav-arrow" aria-label="שנה קודמת"><ArrowRightIcon size={18} /></Link>
@@ -41,10 +39,10 @@ function YearNav({ year }: { year: number }) {
 }
 
 // בחירת התקופה בתוך הלשונית הפעילה; ב״כל הזמנים״ אין מה לבחור
-export function HousingReportPeriodControl({ period }: { period: HousingReportPeriod }) {
+export function HousingReportPeriodControl({ period, basePath }: { period: HousingReportPeriod; basePath: string }) {
   switch (period.view) {
-    case "yearly": return <YearNav year={period.year} />;
-    case "monthly": return <CalendarMonthNav year={period.year} month={period.month} basePath={`${BASE}?view=monthly`} />;
+    case "yearly": return <YearNav year={period.year} basePath={basePath} />;
+    case "monthly": return <CalendarMonthNav year={period.year} month={period.month} basePath={`${basePath}?view=monthly`} />;
     default: return null;
   }
 }

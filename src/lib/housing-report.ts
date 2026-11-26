@@ -77,3 +77,47 @@ export function getHousingNights(db: Database.Database, range: { start?: string;
   for (const { user_id, ...night } of rows) (byWorker[user_id] ??= []).push(night);
   return byWorker;
 }
+
+export type VillageHousingReportRow = { village_id: number | null; name: string | null; active: number | null; nights: number; workers: number; cost: number; unpriced_nights: number };
+
+/**
+ * לילות, עובדים ועלות לכל כפר בטווח. הכפר נגזר מאפשרות הלינה שנבחרה;
+ * לילות ללא אפשרות לינה מקובצים בשורה אחת ללא כפר (village_id = null).
+ */
+export function getVillageHousingReport(db: Database.Database, range: { start?: string; end?: string }): VillageHousingReportRow[] {
+  return db
+    .prepare(
+      `SELECT v.id village_id,v.name,v.active,COUNT(*) nights,COUNT(DISTINCT h.user_id) workers,
+         COALESCE(SUM(COALESCE(h.price_override,o.cost_per_day)),0) cost,
+         SUM(CASE WHEN o.id IS NULL AND h.price_override IS NULL THEN 1 ELSE 0 END) unpriced_nights
+       FROM housing_status h
+       LEFT JOIN village_sleeping_options o ON o.id=h.sleeping_option_id
+       LEFT JOIN villages v ON v.id=o.village_id
+       WHERE h.status='IN_VILLAGE' AND h.date>=? AND h.date<?
+       GROUP BY v.id
+       ORDER BY v.id IS NULL,cost DESC,nights DESC,v.name`
+    )
+    .all(range.start ?? "0000-01-01", range.end ?? "9999-12-31") as VillageHousingReportRow[];
+}
+
+export type VillageHousingNight = { date: string; worker: string; sleeping_option: string | null; cost: number | null };
+/** המפתח הוא מזהה הכפר, או "none" ללילות ללא כפר. */
+export type HousingNightsByVillage = Record<string, VillageHousingNight[]>;
+export const villageKey = (villageId: number | null) => (villageId === null ? "none" : String(villageId));
+
+/** כל הלילות שנשמרו בכפר בטווח, לפי כפר וממוינים לפי תאריך ושם עובד/ת. */
+export function getHousingNightsByVillage(db: Database.Database, range: { start?: string; end?: string }): HousingNightsByVillage {
+  const rows = db
+    .prepare(
+      `SELECT v.id village_id,h.date,u.name worker,o.name sleeping_option,COALESCE(h.price_override,o.cost_per_day) cost
+       FROM housing_status h JOIN users u ON u.id=h.user_id
+       LEFT JOIN village_sleeping_options o ON o.id=h.sleeping_option_id
+       LEFT JOIN villages v ON v.id=o.village_id
+       WHERE h.status='IN_VILLAGE' AND h.date>=? AND h.date<?
+       ORDER BY h.date,u.name`
+    )
+    .all(range.start ?? "0000-01-01", range.end ?? "9999-12-31") as Array<VillageHousingNight & { village_id: number | null }>;
+  const byVillage: HousingNightsByVillage = {};
+  for (const { village_id, ...night } of rows) (byVillage[villageKey(village_id)] ??= []).push(night);
+  return byVillage;
+}

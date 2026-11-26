@@ -58,7 +58,7 @@ export function HousingReport({ rows, nightsByWorker, label, fileLabel }: { rows
       ) : (
         <>
           <ExportExcelButton
-            fileName={`דוח מגורים - ${fileLabel}`}
+            fileName={`דוח מגורים עובדים - ${fileLabel}`}
             sheets={() => [{
               name: "מגורים",
               header: ["#", "עובד/ת", "לילות", "עלות כוללת", "לילות ללא אפשרות לינה"],

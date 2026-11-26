@@ -95,7 +95,7 @@ describe("שמירת לינה בכפר ע\"י עובד", () => {
   });
 });
 
-describe("דוח מגורים", () => {
+describe("דוח מגורים עובדים", () => {
   it("סופר לילות ועלות לכל עובד/ת בטווח הנבחר", async () => {
     const { getHousingReport } = await import("@/lib/housing-report");
     const x = setup();
@@ -144,6 +144,40 @@ describe("פירוט לילות בדוח מגורים", () => {
         { date: "2026-10-01", village: "כפר א", sleeping_option: "אוהל", cost: 50 },
         { date: "2026-10-02", village: null, sleeping_option: null, cost: null }
       ]
+    });
+  });
+});
+
+describe("דוח מגורים כפרים", () => {
+  it("סופר לילות, עובדים ועלות לכל כפר, ולילות ללא אפשרות לינה בשורה נפרדת", async () => {
+    const { getVillageHousingReport, getHousingNightsByVillage } = await import("@/lib/housing-report");
+    const x = setup();
+    const other = Number(db.prepare("INSERT INTO users(name,email,phone,role,password_hash) VALUES(?,?,?,?,?)").run("קוטפת", "picker2@example.com", "0500000002", "PICKER", "x").lastInsertRowid);
+    const a = new VillageService(db).save(x.admin, null, base);
+    const b = new VillageService(db).save(x.admin, null, { ...base, name: "כפר ב" });
+    const [tentA, caravanA] = db.prepare("SELECT id FROM village_sleeping_options WHERE village_id=? ORDER BY id").all(a) as Array<{ id: number }>;
+    const [tentB] = db.prepare("SELECT id FROM village_sleeping_options WHERE village_id=? ORDER BY id").all(b) as Array<{ id: number }>;
+    const insert = db.prepare("INSERT INTO housing_status(user_id,date,status,sleeping_option_id) VALUES(?,?,?,?)");
+    insert.run(x.picker, "2026-10-01", "IN_VILLAGE", tentA!.id);
+    insert.run(other, "2026-10-01", "IN_VILLAGE", caravanA!.id);
+    insert.run(x.picker, "2026-10-02", "IN_VILLAGE", tentB!.id);
+    insert.run(x.picker, "2026-10-03", "IN_VILLAGE", null);
+    insert.run(other, "2026-10-04", "MAYBE", tentB!.id);
+    insert.run(x.picker, "2026-11-01", "IN_VILLAGE", tentB!.id);
+
+    const range = { start: "2026-10-01", end: "2026-11-01" };
+    expect(getVillageHousingReport(db, range)).toEqual([
+      { village_id: a, name: "כפר א", active: 1, nights: 2, workers: 2, cost: 170, unpriced_nights: 0 },
+      { village_id: b, name: "כפר ב", active: 1, nights: 1, workers: 1, cost: 50, unpriced_nights: 0 },
+      { village_id: null, name: null, active: null, nights: 1, workers: 1, cost: 0, unpriced_nights: 1 }
+    ]);
+    expect(getHousingNightsByVillage(db, range)).toEqual({
+      [String(a)]: [
+        { date: "2026-10-01", worker: "קוטף", sleeping_option: "אוהל", cost: 50 },
+        { date: "2026-10-01", worker: "קוטפת", sleeping_option: "קרוואן", cost: 120 }
+      ],
+      [String(b)]: [{ date: "2026-10-02", worker: "קוטף", sleeping_option: "אוהל", cost: 50 }],
+      none: [{ date: "2026-10-03", worker: "קוטף", sleeping_option: null, cost: null }]
     });
   });
 });

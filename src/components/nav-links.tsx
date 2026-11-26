@@ -60,7 +60,8 @@ const ADMIN_NAV: NavItem[] = [
       { href: "/admin/reports/employee-performance", label: "דוח עובדים", icon: UsersIcon },
       { href: "/admin/reports/harvest", label: "דוח נתוני קטיף", icon: SproutIcon },
       { href: "/admin/reports/transport", label: "דוח תחבורה", icon: TruckIcon },
-      { href: "/admin/reports/housing", label: "דוח מגורים", icon: HouseIcon },
+      { href: "/admin/reports/housing", label: "דוח מגורים עובדים", icon: HouseIcon },
+      { href: "/admin/reports/housing-villages", label: "דוח מגורים כפרים", icon: TentIcon },
     ],
   },
 ];
