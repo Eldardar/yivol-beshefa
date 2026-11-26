@@ -1,4 +1,5 @@
 "use client";
+import { ActionForm } from "@/components/action-form";
 import { useState } from "react";
 import { HEBREW_MONTHS } from "@/lib/dates";
 import { PlusIcon, XIcon } from "./icons";
@@ -17,7 +18,7 @@ export function VillageForm({ csrf, village }: { csrf: string; village?: Editabl
   const months = new Set(village?.months ?? []);
 
   return (
-    <form className="stack" method="post" action="/api/actions">
+    <ActionForm className="stack">
       <input type="hidden" name="csrf" value={csrf} />
       <input type="hidden" name="action" value={village ? "villageUpdate" : "villageCreate"} />
       {village && <input type="hidden" name="villageId" value={village.id} />}
@@ -58,6 +59,6 @@ export function VillageForm({ csrf, village }: { csrf: string; village?: Editabl
       </fieldset>
 
       <button className="btn">{village ? "שמירת שינויים" : "הוספת כפר"}</button>
-    </form>
+    </ActionForm>
   );
 }

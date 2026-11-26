@@ -1,4 +1,5 @@
 "use client";
+import { ActionForm } from "@/components/action-form";
 import { useState } from "react";
 import { Modal } from "./modal";
 import { UnitLines } from "./unit-lines";
@@ -12,7 +13,7 @@ export function WorkerGoalButton({ csrf, shiftId, existingGoal, allowedUnits }: 
       <button type="button" className="btn secondary" onClick={() => setOpen(true)}>{existingGoal.length ? "עריכת יעד אישי" : "קביעת יעד אישי"}</button>
       {open && (
         <Modal title="יעד אישי למשמרת" onClose={() => setOpen(false)}>
-          <form className="stack" action="/api/actions" method="post">
+          <ActionForm className="stack">
             <input type="hidden" name="csrf" value={csrf} />
             <input type="hidden" name="action" value="workerGoalSet" />
             <input type="hidden" name="shiftId" value={shiftId} />
@@ -24,7 +25,7 @@ export function WorkerGoalButton({ csrf, shiftId, existingGoal, allowedUnits }: 
               <button className="btn">שמירה</button>
               <button type="button" className="btn secondary" onClick={() => setOpen(false)}>ביטול</button>
             </div>
-          </form>
+          </ActionForm>
         </Modal>
       )}
     </>

@@ -1,3 +1,4 @@
+import { ActionForm } from "@/components/action-form";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/nav";
 import { csrfValue, db, requireUser } from "@/lib/server";
@@ -22,11 +23,11 @@ export default async function Notifications() {
       <div className="page-header">
         <h1>ההתראות שלי</h1>
         {hasUnread && (
-          <form action="/api/actions" method="post">
+          <ActionForm>
             <input type="hidden" name="action" value="readAllNotifications" />
             <input type="hidden" name="csrf" value={csrf} />
             <button className="btn secondary btn-sm">סימון הכל כנקרא</button>
-          </form>
+          </ActionForm>
         )}
       </div>
       {publicKey && <PushToggle vapidPublicKey={publicKey} csrf={csrf} />}
@@ -40,12 +41,12 @@ export default async function Notifications() {
             <p>{x.body}</p>
             <small className="muted">{formatHebrewDateTime(x.created_at)}</small>
             {!x.read_at && (
-              <form action="/api/actions" method="post">
+              <ActionForm>
                 <input type="hidden" name="action" value="readNotification" />
                 <input type="hidden" name="csrf" value={csrf} />
                 <input type="hidden" name="notificationId" value={x.id} />
                 <button className="btn secondary btn-sm">סימון כנקראה</button>
-              </form>
+              </ActionForm>
             )}
           </article>
         ))}

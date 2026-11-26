@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { UnitLines } from "./unit-lines";
-import { Modal } from "./modal";
+import { Modal, useModalClose } from "./modal";
+import { useAction } from "@/lib/use-action";
 import { MultiDatePicker } from "./multi-date-picker";
 import { REPORT_UNITS, UNITS, UNIT_LABEL, type Unit } from "@/lib/units";
 
@@ -50,7 +51,7 @@ export function ShiftForm({
   existingVehicleIds: number[];
   existingGoals: Array<{ value: number; unit: Unit; actual?: number | null }>;
   existingPersonalGoalUnits: Unit[];
-  onSuccess?: (redirectTo: string) => void;
+  onSuccess?: () => void;
 }) {
   const [leaderId, setLeaderId] = useState(shift ? (shift.leader_id == null ? NO_LEADER : String(shift.leader_id)) : "");
   const [farmId, setFarmId] = useState(shift ? String(shift.farm_id) : "");
@@ -61,7 +62,8 @@ export function ShiftForm({
   const [multiDate, setMultiDate] = useState(false);
   const [dates, setDates] = useState<string[]>([]);
   const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const { run, busy } = useAction();
+  const closeModal = useModalClose();
   const [leaderConflict, setLeaderConflict] = useState<{ message: string; formData: FormData } | null>(null);
   const [confirmCompletedEdit, setConfirmCompletedEdit] = useState<FormData | null>(null);
   const [actuals, setActuals] = useState<Record<string, string>>(() => Object.fromEntries(existingGoals.map(g => [g.unit, g.actual != null ? String(g.actual) : ""])));
@@ -88,28 +90,20 @@ export function ShiftForm({
   }, [pickers, shift]);
 
   async function submitForm(formData: FormData) {
-    setBusy(true);
     setError("");
-    try {
-      const res = await fetch("/api/actions", { method: "POST", body: formData });
-      const url = new URL(res.url);
-      const message = url.searchParams.get("error");
-      if (message) {
-        if (message.includes(LEADER_CONFLICT_MARKER)) {
-          setLeaderConflict({ message, formData });
-          return;
-        }
-        setError(message);
-        if (LEADER_ERRORS.some(m => message.includes(m))) setLeaderId("");
-        if (FIELD_ERRORS.some(m => message.includes(m))) { setFarmId(""); setFieldId(""); }
-        return;
-      }
-      onSuccess?.(url.pathname + url.search);
-    } catch {
-      setError("שגיאת תקשורת, נסו שוב");
-    } finally {
-      setBusy(false);
+    const result = await run(formData);
+    if (result.ok) {
+      (onSuccess ?? closeModal)?.();
+      return;
     }
+    const message = result.error;
+    if (message.includes(LEADER_CONFLICT_MARKER)) {
+      setLeaderConflict({ message, formData });
+      return;
+    }
+    setError(message);
+    if (LEADER_ERRORS.some(m => message.includes(m))) setLeaderId("");
+    if (FIELD_ERRORS.some(m => message.includes(m))) { setFarmId(""); setFieldId(""); }
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {

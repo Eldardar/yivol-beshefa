@@ -1,4 +1,5 @@
 "use client";
+import { ActionForm } from "@/components/action-form";
 import { useEffect, useState } from "react";
 import { formatHebrewDate } from "@/lib/dates";
 import { formatMoney } from "@/lib/format";
@@ -239,7 +240,7 @@ export function CalendarView({ year, month, label, days, unitRatesByField, csrf,
       )}
       {selectedEvent?.mode === "delete" && (
         <Modal title={`מחיקת ${selectedEvent.event.name}`} onClose={() => setSelectedEvent(null)}>
-          <form className="stack" method="post" action="/api/actions">
+          <ActionForm className="stack">
             <input type="hidden" name="csrf" value={csrf} />
             <input type="hidden" name="action" value="adminEventDelete" />
             <input type="hidden" name="eventId" value={selectedEvent.event.id} />
@@ -249,7 +250,7 @@ export function CalendarView({ year, month, label, days, unitRatesByField, csrf,
               <button className="btn danger">מחיקה</button>
               <button type="button" className="btn secondary" onClick={() => setSelectedEvent({ ...selectedEvent, mode: "view" })}>ביטול</button>
             </div>
-          </form>
+          </ActionForm>
         </Modal>
       )}
       {selected && (

@@ -1,9 +1,13 @@
 "use client";
-import { useEffect, useSyncExternalStore } from "react";
+import { createContext, useContext, useEffect, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { XIcon } from "./icons";
 
 const noSubscribe = () => () => {};
+
+// Lets a form inside the modal close it once its save succeeds (see ActionForm).
+const ModalCloseContext = createContext<(() => void) | null>(null);
+export const useModalClose = () => useContext(ModalCloseContext);
 
 export function Modal({ title, onClose, children, wide = false }: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
   useEffect(() => {
@@ -23,7 +27,7 @@ export function Modal({ title, onClose, children, wide = false }: { title: strin
           <h2>{title}</h2>
           <button type="button" className="modal-close" aria-label="סגירה" onClick={onClose}><XIcon size={20} /></button>
         </div>
-        {children}
+        <ModalCloseContext.Provider value={onClose}>{children}</ModalCloseContext.Provider>
       </div>
     </div>,
     document.body

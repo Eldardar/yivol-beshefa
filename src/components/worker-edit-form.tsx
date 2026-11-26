@@ -1,8 +1,9 @@
+import { ActionForm } from "@/components/action-form";
 export type EditableWorker = { id: number; name: string; email: string; phone: string; national_id: string | null; notes: string; role: "ADMIN" | "PICKER"; avatar_version?: string | null };
 
 export function WorkerEditForm({ csrf, worker }: { csrf: string; worker: EditableWorker }) {
   return (
-    <form className="stack" method="post" action="/api/actions">
+    <ActionForm className="stack">
       <input type="hidden" name="csrf" value={csrf} />
       <input type="hidden" name="action" value="userUpdate" />
       <input type="hidden" name="userId" value={worker.id} />
@@ -14,6 +15,6 @@ export function WorkerEditForm({ csrf, worker }: { csrf: string; worker: Editabl
       )}
       <div className="field"><label>הערות<textarea className="input" name="notes" maxLength={2000} defaultValue={worker.notes} /></label></div>
       <button className="btn">שמירת שינויים</button>
-    </form>
+    </ActionForm>
   );
 }

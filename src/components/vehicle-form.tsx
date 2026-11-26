@@ -1,8 +1,9 @@
+import { ActionForm } from "@/components/action-form";
 export type EditableVehicle = { id: number; number: string; name: string; fuelConsumption: number | null; notes: string };
 
 export function VehicleForm({ csrf, vehicle }: { csrf: string; vehicle?: EditableVehicle }) {
   return (
-    <form className="stack" method="post" action="/api/actions">
+    <ActionForm className="stack">
       <input type="hidden" name="csrf" value={csrf} />
       <input type="hidden" name="action" value={vehicle ? "vehicleUpdate" : "vehicleCreate"} />
       {vehicle && <input type="hidden" name="vehicleId" value={vehicle.id} />}
@@ -11,6 +12,6 @@ export function VehicleForm({ csrf, vehicle }: { csrf: string; vehicle?: Editabl
       <div className="field"><label>צריכת דלק (ליטר ל-100 ק״מ)<input className="input" name="fuelConsumption" type="number" min="0" step="any" defaultValue={vehicle?.fuelConsumption ?? undefined} /></label></div>
       <div className="field"><label>הערות<textarea className="input" name="notes" maxLength={2000} defaultValue={vehicle?.notes} /></label></div>
       <button className="btn">{vehicle ? "שמירת שינויים" : "הוספת רכב"}</button>
-    </form>
+    </ActionForm>
   );
 }

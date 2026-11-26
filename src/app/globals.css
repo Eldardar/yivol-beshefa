@@ -557,6 +557,24 @@ select.input { appearance: auto; }
 @media (prefers-reduced-motion: reduce) {
   .alert-shell, .alert-shell .alert { transition: none; }
 }
+/* Feedback after an in-place save (see toaster.tsx): floats above the page, clear of the mobile bottom nav. */
+.toaster {
+  position: fixed;
+  inset-inline: 0;
+  bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + var(--space-4));
+  z-index: calc(var(--z-modal) + 1);
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  padding-inline: var(--space-4);
+  pointer-events: none;
+}
+@media (min-width: 840px) { .toaster { bottom: var(--space-6); } }
+.toast { pointer-events: auto; width: min(100%, 28rem); box-shadow: var(--shadow-lg); animation: toast-in 200ms var(--ease-standard); }
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
+/* Saving in the background (ActionForm): the submit button shouldn't fire twice. */
+form[aria-busy="true"] button:not([type="button"]) { opacity: .6; pointer-events: none; }
 
 /* ==========================================================================
    Tables

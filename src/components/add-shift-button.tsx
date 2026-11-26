@@ -1,13 +1,11 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Modal } from "./modal";
 import { ShiftForm, type Picker, type FarmOption, type PlantationFieldsByFarm } from "./shift-form";
 import { PlusIcon } from "./icons";
 
 export function AddShiftButton({ csrf, pickers, farms, plantationFieldsByFarm }: { csrf: string; pickers: Picker[]; farms: FarmOption[]; plantationFieldsByFarm: PlantationFieldsByFarm }) {
   const [open, setOpen] = useState(false);
-  const router = useRouter();
   return (
     <>
       <button type="button" className="btn btn-icon-leading" onClick={() => setOpen(true)}><PlusIcon size={18} /><span>הוספת משמרת</span></button>
@@ -22,7 +20,6 @@ export function AddShiftButton({ csrf, pickers, farms, plantationFieldsByFarm }:
             existingVehicleIds={[]}
             existingGoals={[]}
             existingPersonalGoalUnits={[]}
-            onSuccess={redirectTo => { setOpen(false); router.push(redirectTo); }}
           />
         </Modal>
       )}

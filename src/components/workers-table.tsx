@@ -1,4 +1,5 @@
 "use client";
+import { ActionForm } from "@/components/action-form";
 import { Fragment, useState } from "react";
 import { formatHebrewDate } from "@/lib/dates";
 import { maskNationalId } from "@/lib/privacy";
@@ -230,12 +231,12 @@ function SignupActions({ csrf, worker }: { csrf: string; worker: WorkerRow }) {
   return (
     <>
       {!worker.approved_at && (
-        <form action="/api/actions" method="post">
+        <ActionForm>
           <input type="hidden" name="csrf" value={csrf} />
           <input type="hidden" name="action" value="approveSignup" />
           <input type="hidden" name="userId" value={worker.id} />
           <button className="btn btn-sm btn-icon-leading" type="submit"><CheckIcon size={16} /> אישור</button>
-        </form>
+        </ActionForm>
       )}
       <DeleteRecordButton csrf={csrf} entity="USER" id={worker.id} name={worker.name} label="דחייה" prompt={`לדחות את ההרשמה של "${worker.name}"? החשבון יימחק לצמיתות.`} />
     </>

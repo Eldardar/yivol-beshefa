@@ -1,36 +1,25 @@
 "use client";
 import { useState } from "react";
 import { Modal } from "./modal";
+import { useAction } from "@/lib/use-action";
 import { TrashIcon } from "./icons";
 import type { ManagedEntity } from "@/lib/services/admin";
 
 export function DeleteRecordButton({ csrf, entity, id, name, label = "מחיקה לצמיתות", prompt }: { csrf: string; entity: ManagedEntity; id: number; name: string; label?: string; prompt?: string }) {
   const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const { run, busy } = useAction();
   const [error, setError] = useState("");
 
   async function confirmDelete() {
-    setBusy(true);
     setError("");
     const formData = new FormData();
     formData.set("csrf", csrf);
     formData.set("action", "delete");
     formData.set("entity", entity);
     formData.set("entityId", String(id));
-    try {
-      const res = await fetch("/api/actions", { method: "POST", body: formData });
-      const url = new URL(res.url);
-      const message = url.searchParams.get("error");
-      if (message) {
-        setError(message);
-        setBusy(false);
-        return;
-      }
-      window.location.href = res.url;
-    } catch {
-      setError("הפעולה נכשלה");
-      setBusy(false);
-    }
+    const result = await run(formData);
+    if (result.ok) setOpen(false);
+    else setError(result.error);
   }
 
   return (

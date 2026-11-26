@@ -1,3 +1,4 @@
+import { ActionForm } from "@/components/action-form";
 import { AppShell } from "@/components/nav";
 import { ScheduleNotificationButton } from "@/components/schedule-notification-button";
 import type { NotifiableUser } from "@/components/schedule-notification-modal";
@@ -29,13 +30,13 @@ export default async function AdminNotifications({ searchParams }: { searchParam
       <section className="card">
         <h2>שליחת הודעה לכל העובדים</h2>
         <p className="muted">ההודעה תישלח כהתראה בתוך האפליקציה, וכהתראת דחיפה למכשירים שהפעילו זאת, לכל {workerCount} העובדים הפעילים.</p>
-        <form className="stack" method="post" action="/api/actions">
+        <ActionForm className="stack" resetOnSuccess>
           <input type="hidden" name="csrf" value={csrf} />
           <input type="hidden" name="action" value="broadcastNotification" />
           <div className="field"><label>כותרת<input className="input" name="title" required maxLength={100} /></label></div>
           <div className="field"><label>תוכן ההודעה<textarea className="input" name="body" required maxLength={1000} rows={5} /></label></div>
           <button className="btn" disabled={workerCount === 0}>שליחה לכל העובדים</button>
-        </form>
+        </ActionForm>
       </section>
 
       <section className="card">
@@ -52,12 +53,12 @@ export default async function AdminNotifications({ searchParams }: { searchParam
               <article className="card" key={s.id}>
                 <div className="page-header">
                   <h2>{s.title}</h2>
-                  <form action="/api/actions" method="post">
+                  <ActionForm>
                     <input type="hidden" name="action" value="cancelScheduledNotification" />
                     <input type="hidden" name="csrf" value={csrf} />
                     <input type="hidden" name="scheduledNotificationId" value={s.id} />
                     <button className="btn secondary btn-sm">ביטול</button>
-                  </form>
+                  </ActionForm>
                 </div>
                 <p>{s.body}</p>
                 <small className="muted">{formatHebrewDate(s.sendAt.slice(0, 10))} · {s.sendAt.slice(11, 16)} · {s.recipientCount} נמענים</small>
@@ -70,11 +71,11 @@ export default async function AdminNotifications({ searchParams }: { searchParam
       <div className="page-header">
         <h2>ההתראות שלי</h2>
         {hasUnread && (
-          <form action="/api/actions" method="post">
+          <ActionForm>
             <input type="hidden" name="action" value="readAllNotifications" />
             <input type="hidden" name="csrf" value={csrf} />
             <button className="btn secondary btn-sm">סימון הכל כנקרא</button>
-          </form>
+          </ActionForm>
         )}
       </div>
       <div className="stack">
@@ -87,12 +88,12 @@ export default async function AdminNotifications({ searchParams }: { searchParam
             <p>{x.body}</p>
             <small className="muted">{formatHebrewDateTime(x.created_at)}</small>
             {!x.read_at && (
-              <form action="/api/actions" method="post">
+              <ActionForm>
                 <input type="hidden" name="action" value="readNotification" />
                 <input type="hidden" name="csrf" value={csrf} />
                 <input type="hidden" name="notificationId" value={x.id} />
                 <button className="btn secondary btn-sm">סימון כנקראה</button>
-              </form>
+              </ActionForm>
             )}
           </article>
         ))}

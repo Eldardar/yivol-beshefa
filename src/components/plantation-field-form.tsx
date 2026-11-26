@@ -1,3 +1,4 @@
+import { ActionForm } from "@/components/action-form";
 import { CoordinatesField } from "./location-value";
 import { UNITS, UNIT_LABEL, type Unit } from "@/lib/units";
 
@@ -5,7 +6,7 @@ export type EditablePlantationField = { id: number; name: string; fruit_type: st
 
 export function PlantationFieldForm({ csrf, farmId, farmName, field }: { csrf: string; farmId: number; farmName?: string; field?: EditablePlantationField }) {
   return (
-    <form className="stack" method="post" action="/api/actions">
+    <ActionForm className="stack">
       <input type="hidden" name="csrf" value={csrf} />
       <input type="hidden" name="action" value={field ? "plantationFieldUpdate" : "plantationFieldCreate"} />
       <input type="hidden" name="farmId" value={farmId} />
@@ -38,6 +39,6 @@ export function PlantationFieldForm({ csrf, farmId, farmName, field }: { csrf: s
         </div>
       </fieldset>
       <button className="btn">{field ? "שמירת שינויים" : "הוספת חלקה"}</button>
-    </form>
+    </ActionForm>
   );
 }

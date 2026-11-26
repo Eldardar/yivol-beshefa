@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Modal } from "./modal";
 import { ShiftForm, type EditableShift, type Picker, type FarmOption, type PlantationFieldsByFarm } from "./shift-form";
 import { PencilIcon } from "./icons";
@@ -28,7 +27,6 @@ export function EditShiftButton({
   existingPersonalGoalUnits: Unit[];
 }) {
   const [open, setOpen] = useState(false);
-  const router = useRouter();
   return (
     <>
       <button type="button" className="icon-btn" title="עריכת משמרת" aria-label="עריכת משמרת" onClick={() => setOpen(true)}><PencilIcon size={18} /></button>
@@ -44,7 +42,6 @@ export function EditShiftButton({
             existingVehicleIds={existingVehicleIds}
             existingGoals={existingGoals}
             existingPersonalGoalUnits={existingPersonalGoalUnits}
-            onSuccess={redirectTo => { setOpen(false); router.push(redirectTo); }}
           />
         </Modal>
       )}

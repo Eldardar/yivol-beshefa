@@ -4,6 +4,7 @@ import "./globals.css";
 import { cookies } from "next/headers";
 import { currentUser } from "@/lib/server";
 import { THEME_COOKIE, THEME_SCRIPT, parseThemePreference } from "@/lib/sun-theme";
+import { Toaster } from "@/components/toaster";
 
 const heebo = Heebo({ subsets: ["hebrew", "latin"], weight: ["400", "500", "600", "700"], variable: "--font-heebo", display: "swap" });
 
@@ -27,7 +28,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {/* Picks the palette before first paint: the admin's pinned choice, else dark between local sunset and sunrise. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <Toaster />
+      </body>
     </html>
   );
 }

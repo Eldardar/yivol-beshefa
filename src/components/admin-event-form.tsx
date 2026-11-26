@@ -1,4 +1,5 @@
 "use client";
+import { ActionForm } from "@/components/action-form";
 import { useState } from "react";
 
 export type EditableAdminEvent = { id: number; name: string; startDate: string; endDate: string; isPublished: boolean; details: string };
@@ -14,7 +15,7 @@ export function AdminEventForm({ csrf, date, event }: { csrf: string; date: stri
   }
 
   return (
-    <form className="stack" method="post" action="/api/actions">
+    <ActionForm className="stack">
       <input type="hidden" name="csrf" value={csrf} />
       <input type="hidden" name="action" value={event ? "adminEventUpdate" : "adminEventCreate"} />
       {event && <input type="hidden" name="eventId" value={event.id} />}
@@ -27,6 +28,6 @@ export function AdminEventForm({ csrf, date, event }: { csrf: string; date: stri
       </label>
       <div className="field"><label>פרטים<textarea className="input" name="details" maxLength={2000} defaultValue={event?.details} /></label></div>
       <button className="btn">{event ? "שמירת שינויים" : "יצירת אירוע"}</button>
-    </form>
+    </ActionForm>
   );
 }

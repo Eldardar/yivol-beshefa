@@ -13,6 +13,8 @@ import { AssignmentPieChart } from "./assignment-pie-chart";
 import { ChevronDownIcon, TrashIcon, AlertTriangleIcon } from "./icons";
 import { LEADER_CONFLICT_MARKER, type Picker, type FarmOption, type PlantationFieldsByFarm } from "./shift-form";
 import { Modal } from "./modal";
+import { useAction } from "@/lib/use-action";
+import { toast } from "./toaster";
 import { formatMoney } from "@/lib/format";
 import { unitAmount, type UnitPricing, type UnitPricingByField } from "@/lib/pricing";
 
@@ -532,24 +534,14 @@ function ShiftDetails({ units, pickerNames, totalPickers, pickerHours, unitRates
 }
 
 function Transition({ csrf, id, target, label, danger, icon }: { csrf: string; id: number; target: string; label: string; danger?: boolean; icon?: React.ReactNode }) {
-  const [busy, setBusy] = useState(false);
+  const { run, busy } = useAction();
   const [conflict, setConflict] = useState<{ message: string; formData: FormData } | null>(null);
 
   async function submit(formData: FormData) {
-    setBusy(true);
-    try {
-      const res = await fetch("/api/actions", { method: "POST", body: formData });
-      const url = new URL(res.url);
-      const message = url.searchParams.get("error");
-      if (message && message.includes(LEADER_CONFLICT_MARKER)) {
-        setConflict({ message, formData });
-        setBusy(false);
-        return;
-      }
-      window.location.href = res.url;
-    } catch {
-      setBusy(false);
-    }
+    const result = await run(formData);
+    if (result.ok) return;
+    if (result.error.includes(LEADER_CONFLICT_MARKER)) setConflict({ message: result.error, formData });
+    else toast(result.error, "error");
   }
 
   function confirmConflict() {
@@ -591,7 +583,7 @@ function Transition({ csrf, id, target, label, danger, icon }: { csrf: string; i
 
 function CompleteShiftButton({ csrf, id, units, workerTotals }: { csrf: string; id: number; units: UnitInfo[]; workerTotals: Array<{ unit: Unit; quantity: number }> }) {
   const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const { run, busy } = useAction();
   const [values, setValues] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
 
@@ -603,27 +595,20 @@ function CompleteShiftButton({ csrf, id, units, workerTotals }: { csrf: string; 
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setBusy(true);
+    if (busy) return;
     setError("");
-    try {
-      const formData = new FormData();
-      formData.set("csrf", csrf);
-      formData.set("action", "shiftTransition");
-      formData.set("shiftId", String(id));
-      formData.set("target", "COMPLETED");
-      for (const u of units) {
-        formData.append("resultUnit", u.unit);
-        formData.append("resultQty", values[u.unit] ?? "");
-      }
-      const res = await fetch("/api/actions", { method: "POST", body: formData });
-      const url = new URL(res.url);
-      const message = url.searchParams.get("error");
-      if (message) { setError(message); setBusy(false); return; }
-      window.location.href = res.url;
-    } catch {
-      setError("שגיאת תקשורת, נסו שוב");
-      setBusy(false);
+    const formData = new FormData();
+    formData.set("csrf", csrf);
+    formData.set("action", "shiftTransition");
+    formData.set("shiftId", String(id));
+    formData.set("target", "COMPLETED");
+    for (const u of units) {
+      formData.append("resultUnit", u.unit);
+      formData.append("resultQty", values[u.unit] ?? "");
     }
+    const result = await run(formData);
+    if (result.ok) setOpen(false);
+    else setError(result.error);
   }
 
   return (
