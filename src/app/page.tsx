@@ -4,6 +4,7 @@ import { OnboardingChecklist } from "@/components/onboarding";
 import { csrfValue, db, requireUser } from "@/lib/server";
 import { currentJerusalemMonth, currentJerusalemYear, formatHebrewDate, jerusalemDate, jerusalemHour, jerusalemInstant, timeOfDayGreeting, timeOfDayWish } from "@/lib/dates";
 import { PickerService } from "@/lib/services/picker";
+import { AvatarService } from "@/lib/services/avatars";
 import { DayCheckIn } from "@/components/day-checkin";
 import { HeroGallery } from "@/components/hero-gallery";
 import { SiteContentService } from "@/lib/services/site-content";
@@ -105,10 +106,12 @@ export default async function Home() {
 
   const personalDetails = new PickerService(database).personalDetails(user.id);
   const profileComplete = Boolean(personalDetails?.dateOfBirth) && Boolean(personalDetails?.favoriteFruit?.trim());
+  const hasAvatar = Boolean(new AvatarService(database).version(user.id));
   const pushEnabled = (database.prepare("SELECT count(*) n FROM push_subscriptions WHERE user_id=?").get(user.id) as { n: number }).n > 0;
   const hasAvailability = (database.prepare("SELECT count(*) n FROM availability WHERE user_id=?").get(user.id) as { n: number }).n > 0;
   const onboardingSteps = [
     { key: "profile", title: "מילוי פרטים אישיים", description: "השלימו תאריך לידה ופרי אהוב בעמוד החשבון שלכם", href: "/account", done: profileComplete },
+    { key: "avatar", title: "הוספת תמונת פרופיל", description: "העלו תמונה שלכם בעמוד החשבון כדי שהצוות יזהה אתכם", href: "/account#avatar", done: hasAvatar },
     { key: "push", title: "הפעלת התראות דחיפה", description: "קבלו התראה במכשיר בכל פעם שאתם משובצים למשמרת", href: "/notifications", done: pushEnabled },
     { key: "availability", title: "עדכון זמינות", description: "דווחו זמינות ליום אחד לפחות מתוך 60 הימים הקרובים", href: "/availability", done: hasAvailability },
   ];

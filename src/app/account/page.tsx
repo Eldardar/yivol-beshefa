@@ -23,7 +23,7 @@ export default async function Account({ searchParams }: { searchParams: Promise<
   return (
     <AppShell user={user}>
       <h1>החשבון שלי</h1>
-      <section className="card">
+      <section className="card" id="avatar">
         <div className="record-card-body">
           <span className="record-card-name">{user.name}</span>
           <span className="muted">{user.email}</span>
