@@ -1,2 +1,7 @@
 [phases.setup]
 aptPkgs = ["python3", "make", "g++"]
+
+# NODE_ENV=production is set on the service, which makes plain `npm ci` skip
+# devDependencies; `next build` needs typescript and @types/* from them.
+[phases.install]
+cmds = ["npm ci --include=dev"]
