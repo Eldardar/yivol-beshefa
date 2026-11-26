@@ -12,8 +12,9 @@ export default async function Users({ searchParams }: { searchParams: Promise<{ 
   const { saved, error } = await searchParams;
   const database = db();
 
-  const users = database.prepare("SELECT id,name,email,phone,national_id,notes,role,active,avatar_version,date_of_birth,favorite_fruit,bank_account_holder,bank_number,bank_name,bank_branch_number,bank_branch_name,bank_account_number FROM users ORDER BY id").all() as WorkerRow[];
+  const users = database.prepare("SELECT id,name,email,phone,national_id,notes,role,active,avatar_version,date_of_birth,favorite_fruit,bank_account_holder,bank_number,bank_name,bank_branch_number,bank_branch_name,bank_account_number,signup_pending,email_verified_at,approved_at FROM users ORDER BY signup_pending DESC,id").all() as WorkerRow[];
 
+  const pendingCount = users.filter(row => row.signup_pending).length;
   const today = jerusalemDate();
   const shiftRows = database.prepare(`
     SELECT sp.user_id user_id,s.id id,s.date date,s.start_time start_time,s.end_time end_time,s.status status,f.name farm,pf.fruit_type crop
@@ -47,6 +48,11 @@ export default async function Users({ searchParams }: { searchParams: Promise<{ 
       <h1>ניהול עובדים</h1>
       {saved && <p className="alert" role="status">הפעולה הושלמה</p>}
       {error && <p className="alert" role="alert">{error}</p>}
+      {pendingCount > 0 && (
+        <p className="alert pending-banner" role="status">
+          <span><strong>{pendingCount === 1 ? "עובד אחד ממתין" : `${pendingCount} עובדים ממתינים`} לאישור הרשמה.</strong> הם מופיעים בראש הטבלה; החשבון נפתח לאחר אישורך ואימות הדוא״ל.</span>
+        </p>
+      )}
       <section className="card">
         <WorkersTable users={users} shiftsByUser={shiftsByUser} csrf={csrf} currentUserId={user.id} />
       </section>

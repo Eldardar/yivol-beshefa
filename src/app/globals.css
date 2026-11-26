@@ -1168,10 +1168,13 @@ button.bottom-nav-link { border: 0; background: transparent; }
   height: 100dvh;
   overflow: hidden;
   display: grid;
+  grid-template-rows: minmax(0, 1fr);
   background: var(--color-bg);
 }
-.auth-panel { display: grid; align-content: center; justify-items: stretch; padding: var(--space-6) var(--space-4); overflow: hidden; }
-.auth-card { width: 100%; max-width: 400px; margin-inline: auto; display: grid; gap: var(--space-5); }
+/* The panel scrolls on its own when a form is taller than the screen (e.g. signup);
+   auto block margins center the card and collapse to 0 once it overflows, so its top is never cut off. */
+.auth-panel { display: flex; flex-direction: column; min-height: 0; padding: var(--space-6) var(--space-4); overflow-y: auto; overscroll-behavior: contain; }
+.auth-card { width: 100%; max-width: 400px; margin: auto; display: grid; gap: var(--space-5); }
 .auth-brand { display: grid; justify-items: center; gap: var(--space-3); text-align: center; }
 .auth-brand-name { font: var(--text-title); }
 .auth-brand-tag { color: var(--color-text-secondary); }
@@ -1575,3 +1578,14 @@ button.bottom-nav-link { border: 0; background: transparent; }
 .multi-date-chip::before { display: none; }
 
 .theme-option { display: inline-flex; align-items: center; gap: var(--space-2); }
+
+/* Self-signup pending page */
+.signup-steps { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-3, 0.75rem); }
+.signup-steps > li { border: 1px solid var(--color-border, var(--neutral-200)); border-radius: var(--radius-md, 0.75rem); padding: 0.75rem 1rem; display: grid; gap: 0.5rem; }
+.signup-steps > li.is-done { background: var(--color-success-surface, var(--neutral-100)); }
+.signup-step-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.pending-banner { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+.invite-link { display: flex; gap: 0.5rem; align-items: stretch; }
+.invite-link .input { flex: 1; min-width: 0; }
+.signup-status { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 0.25rem; }
+.table tr.is-pending-signup > td { background: var(--color-warning-surface); }

@@ -3,6 +3,7 @@ import type { SessionUser } from "@/lib/services/auth";
 import { csrfValue, db } from "@/lib/server";
 import { PickerService } from "@/lib/services/picker";
 import { AvatarService } from "@/lib/services/avatars";
+import { SignupService } from "@/lib/services/signup";
 import { UserAvatar } from "./user-avatar";
 import { BrandLockup } from "./brand-logo";
 import { SidebarNavLinks, BottomNavLinks } from "./nav-links";
@@ -30,13 +31,13 @@ function TopBar({ user, avatarVersion, csrf, hasUnread, notificationsHref }: { u
   );
 }
 
-function Sidebar({ user, avatarVersion, csrf, hasUnread, notificationsHref }: { user: SessionUser; avatarVersion: string | null; csrf: string; hasUnread: boolean; notificationsHref: string }) {
+function Sidebar({ user, avatarVersion, csrf, hasUnread, notificationsHref, badges }: { user: SessionUser; avatarVersion: string | null; csrf: string; hasUnread: boolean; notificationsHref: string; badges: string[] }) {
   return (
     <aside className="sidebar" aria-label="ניווט ראשי">
       <Link href="/" className="sidebar-brand" aria-label="יבול בשפע · דף הבית">
         <BrandLockup size="md" />
       </Link>
-      <SidebarNavLinks role={user.role} />
+      <SidebarNavLinks role={user.role} badges={badges} />
       <div className="sidebar-footer">
         <Link href={notificationsHref} className="sidebar-nav-link">
           <span className="notif-icon-wrap">
@@ -78,17 +79,19 @@ export async function AppShell({ user, children }: { user: SessionUser; children
   const hasUnread = new PickerService(db()).unreadCount(user.id) > 0;
   const avatarVersion = new AvatarService(db()).version(user.id);
   const notificationsHref = user.role === "ADMIN" ? "/admin/notifications" : "/notifications";
+  // נקודה על "עובדים" כשיש הרשמות שממתינות לאישור
+  const badges = user.role === "ADMIN" && new SignupService(db()).pendingCount() > 0 ? ["/admin/users"] : [];
   return (
     <div className="app-shell">
       <TopBar user={user} avatarVersion={avatarVersion} csrf={csrf} hasUnread={hasUnread} notificationsHref={notificationsHref} />
       <div className="app-body">
-        <Sidebar user={user} avatarVersion={avatarVersion} csrf={csrf} hasUnread={hasUnread} notificationsHref={notificationsHref} />
+        <Sidebar user={user} avatarVersion={avatarVersion} csrf={csrf} hasUnread={hasUnread} notificationsHref={notificationsHref} badges={badges} />
         <div className="content-area">
           <main className="shell main">{children}</main>
           <footer className="footer">יבול בשפע</footer>
         </div>
       </div>
-      <BottomNavLinks role={user.role} />
+      <BottomNavLinks role={user.role} badges={badges} />
     </div>
   );
 }

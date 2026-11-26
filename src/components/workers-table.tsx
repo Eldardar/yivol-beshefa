@@ -13,11 +13,14 @@ import { ChevronDownIcon } from "./icons";
 import { DeleteRecordButton } from "./delete-record-button";
 import { ExportExcelButton } from "./export-excel-button";
 import { UserAvatar } from "./user-avatar";
+import { InviteWorkerButton } from "./invite-worker-button";
+import { CheckIcon } from "./icons";
 
 export type WorkerRow = {
   id: number; name: string; email: string; phone: string; national_id: string | null; notes: string; role: "ADMIN" | "PICKER"; active: number; avatar_version: string | null;
   date_of_birth: string | null; favorite_fruit: string;
   bank_account_holder: string; bank_number: string; bank_name: string; bank_branch_number: string; bank_branch_name: string; bank_account_number: string;
+  signup_pending: number; email_verified_at: string | null; approved_at: string | null;
 };
 export type WorkerShiftRow = { id: number; date: string; start_time: string; end_time: string; status: string; farm: string; crop: string; lines: Array<{ quantity: number; unit: Unit }> };
 export type ShiftsByUser = Record<number, { past: WorkerShiftRow[]; future: WorkerShiftRow[] }>;
@@ -61,7 +64,7 @@ export function WorkersTable({ users, shiftsByUser, csrf, currentUserId }: { use
   const [showArchived, setShowArchived] = useState(false);
 
   const query = search.trim().toLowerCase();
-  const visible = showArchived ? users : users.filter(row => Boolean(row.active));
+  const visible = showArchived ? users : users.filter(row => Boolean(row.active) || Boolean(row.signup_pending));
   const filtered = query
     ? visible.filter(row => row.name.toLowerCase().includes(query) || row.email.toLowerCase().includes(query) || row.phone.toLowerCase().includes(query))
     : visible;
@@ -71,6 +74,7 @@ export function WorkersTable({ users, shiftsByUser, csrf, currentUserId }: { use
       <div className="table-toolbar">
         <input className="input search-input" type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="חיפוש לפי שם, דוא״ל או טלפון" aria-label="חיפוש עובדים" />
         <ShowArchivedToggle checked={showArchived} onChange={setShowArchived} />
+        <InviteWorkerButton csrf={csrf} />
         <AddWorkerButton csrf={csrf} />
         {filtered.length > 0 && <ExportExcelButton fileName="עובדים" sheets={() => workerSheets(filtered, shiftsByUser)} />}
       </div>
@@ -101,11 +105,18 @@ export function WorkersTable({ users, shiftsByUser, csrf, currentUserId }: { use
                   </button>
                 )}
               </div>
-              <div className="record-card-actions">
-                <ActiveSwitch csrf={csrf} entity="USER" id={row.id} active={Boolean(row.active)} disabled={row.id === currentUserId} disabledTitle="לא ניתן להשבית את החשבון שלך" />
-                <EditWorkerButton csrf={csrf} worker={row} />
-                {row.role === "PICKER" && Boolean(row.active) && <ResetPickerPassword csrf={csrf} userId={row.id} />}
-              </div>
+              {row.signup_pending ? (
+                <div className="record-card-actions">
+                  <SignupStatus worker={row} />
+                  <SignupActions csrf={csrf} worker={row} />
+                </div>
+              ) : (
+                <div className="record-card-actions">
+                  <ActiveSwitch csrf={csrf} entity="USER" id={row.id} active={Boolean(row.active)} disabled={row.id === currentUserId} disabledTitle="לא ניתן להשבית את החשבון שלך" />
+                  <EditWorkerButton csrf={csrf} worker={row} />
+                  {row.role === "PICKER" && Boolean(row.active) && <ResetPickerPassword csrf={csrf} userId={row.id} />}
+                </div>
+              )}
               {isOpen && (
                 <div className="record-card-details">
                   <WorkerDetails csrf={csrf} worker={row} past={shifts?.past ?? []} future={shifts?.future ?? []} />
@@ -129,7 +140,7 @@ export function WorkersTable({ users, shiftsByUser, csrf, currentUserId }: { use
               const shifts = shiftsByUser[row.id];
               return (
                 <Fragment key={row.id}>
-                  <tr>
+                  <tr className={row.signup_pending ? "is-pending-signup" : undefined}>
                     <td>
                       {canExpand && (
                         <button type="button" className={`expand-btn${isOpen ? " is-open" : ""}`} aria-expanded={isOpen} aria-label={isOpen ? "סגירת פרטי עובד" : "פתיחת פרטי עובד"} onClick={() => setExpanded(isOpen ? null : row.id)}>
@@ -142,11 +153,15 @@ export function WorkersTable({ users, shiftsByUser, csrf, currentUserId }: { use
                     <td>{row.role === "ADMIN" ? "מנהל" : "עובד"}</td>
                     <td>{row.email}</td>
                     <td><span dir="ltr" className="ltr-field">{row.phone}</span></td>
-                    <td><ActiveSwitch csrf={csrf} entity="USER" id={row.id} active={Boolean(row.active)} disabled={row.id === currentUserId} disabledTitle="לא ניתן להשבית את החשבון שלך" /></td>
+                    <td>{row.signup_pending ? <SignupStatus worker={row} /> : <ActiveSwitch csrf={csrf} entity="USER" id={row.id} active={Boolean(row.active)} disabled={row.id === currentUserId} disabledTitle="לא ניתן להשבית את החשבון שלך" />}</td>
                     <td>
                       <div className="actions-cell">
-                        <EditWorkerButton csrf={csrf} worker={row} />
-                        {row.role === "PICKER" && Boolean(row.active) && <ResetPickerPassword csrf={csrf} userId={row.id} />}
+                        {row.signup_pending ? <SignupActions csrf={csrf} worker={row} /> : (
+                          <>
+                            <EditWorkerButton csrf={csrf} worker={row} />
+                            {row.role === "PICKER" && Boolean(row.active) && <ResetPickerPassword csrf={csrf} userId={row.id} />}
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -192,12 +207,38 @@ function WorkerDetails({ csrf, worker, past, future }: { csrf: string; worker: W
       </div>
       <ShiftsList title="משמרות עתידיות" rows={future} empty="אין שיבוצים עתידיים" />
       <ShiftsList title="משמרות קודמות" rows={past} empty="אין משמרות קודמות" />
-      {!active && (
+      {!active && !worker.signup_pending && (
         <div className="actions">
           <DeleteRecordButton csrf={csrf} entity="USER" id={id} name={name} />
         </div>
       )}
     </div>
+  );
+}
+
+/** מצב הרשמה עצמית: אימות דוא״ל ואישור מנהל. החשבון נפתח רק כששניהם הושלמו */
+function SignupStatus({ worker }: { worker: WorkerRow }) {
+  return (
+    <div className="signup-status">
+      <span className="tag warn">{worker.approved_at ? "אושר · ממתין לאימות דוא״ל" : "ממתין לאישור"}</span>
+      {!worker.approved_at && <small className="muted">{worker.email_verified_at ? "הדוא״ל אומת" : "הדוא״ל טרם אומת"}</small>}
+    </div>
+  );
+}
+
+function SignupActions({ csrf, worker }: { csrf: string; worker: WorkerRow }) {
+  return (
+    <>
+      {!worker.approved_at && (
+        <form action="/api/actions" method="post">
+          <input type="hidden" name="csrf" value={csrf} />
+          <input type="hidden" name="action" value="approveSignup" />
+          <input type="hidden" name="userId" value={worker.id} />
+          <button className="btn btn-sm btn-icon-leading" type="submit"><CheckIcon size={16} /> אישור</button>
+        </form>
+      )}
+      <DeleteRecordButton csrf={csrf} entity="USER" id={worker.id} name={worker.name} label="דחייה" prompt={`לדחות את ההרשמה של "${worker.name}"? החשבון יימחק לצמיתות.`} />
+    </>
   );
 }
 

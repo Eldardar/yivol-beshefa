@@ -65,6 +65,16 @@ const ADMIN_NAV: NavItem[] = [
   },
 ];
 
+function NavIcon({ item, badge }: { item: NavItem; badge: boolean }) {
+  if (!badge) return <item.icon size={22} />;
+  return (
+    <span className="notif-icon-wrap">
+      <item.icon size={22} />
+      <span className="notif-dot" aria-hidden="true" />
+    </span>
+  );
+}
+
 function itemsFor(role: Role): NavItem[] {
   return role === "ADMIN" ? ADMIN_NAV : PICKER_NAV;
 }
@@ -82,7 +92,7 @@ function groupActive(pathname: string, item: NavItem) {
   return item.children ? item.children.some(child => isChildActive(pathname, child.href)) : isActive(pathname, item.href);
 }
 
-export function SidebarNavLinks({ role }: { role: Role }) {
+export function SidebarNavLinks({ role, badges = [] }: { role: Role; badges?: string[] }) {
   const pathname = usePathname();
   const items = itemsFor(role);
   const [open, setOpen] = useState<Set<string>>(
@@ -136,7 +146,7 @@ export function SidebarNavLinks({ role }: { role: Role }) {
         }
         return (
           <Link key={item.href} href={item.href} className={`sidebar-nav-link${active ? " is-active" : ""}`} aria-current={active ? "page" : undefined}>
-            <item.icon size={22} />
+            <NavIcon item={item} badge={badges.includes(item.href)} />
             <span>{item.label}</span>
           </Link>
         );
@@ -145,7 +155,7 @@ export function SidebarNavLinks({ role }: { role: Role }) {
   );
 }
 
-export function BottomNavLinks({ role }: { role: Role }) {
+export function BottomNavLinks({ role, badges = [] }: { role: Role; badges?: string[] }) {
   const pathname = usePathname();
   const items = itemsFor(role);
   const [openHref, setOpenHref] = useState<string | null>(null);
@@ -197,7 +207,7 @@ export function BottomNavLinks({ role }: { role: Role }) {
         }
         return (
           <Link key={item.href} href={item.href} className={`bottom-nav-link${active ? " is-active" : ""}`} aria-current={active ? "page" : undefined}>
-            <item.icon size={22} />
+            <NavIcon item={item} badge={badges.includes(item.href)} />
             <span>{item.label}</span>
           </Link>
         );

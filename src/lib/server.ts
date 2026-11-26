@@ -11,6 +11,8 @@ export async function currentUser(): Promise<SessionUser|undefined> {
  const token=(await cookies()).get("yivol_session")?.value ?? "";
  return new AuthService(db()).authenticate(token);
 }
-export async function requireUser():Promise<SessionUser>{const user=await currentUser();if(!user)redirect("/login");if(user.mustChangePassword)redirect("/change-password");return user;}
+/** חשבון בהרשמה עצמית שעדיין ממתין לאימות דוא״ל או לאישור מנהל */
+export async function pendingUser(){const token=(await cookies()).get("yivol_session")?.value ?? "";return new AuthService(db()).authenticatePending(token);}
+export async function requireUser():Promise<SessionUser>{const user=await currentUser();if(!user){if(await pendingUser())redirect("/pending");redirect("/login");}if(user.mustChangePassword)redirect("/change-password");return user;}
 export async function requireAdmin():Promise<SessionUser>{const user=await requireUser();if(user.role!=="ADMIN")redirect("/");return user;}
 export async function csrfValue():Promise<string>{return (await cookies()).get("yivol_csrf")?.value ?? "";}

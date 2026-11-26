@@ -108,3 +108,12 @@ export const villageSchema=z.object({name:text(150),description:z.string().trim(
 export const adminEventSchema=z.object({name:text(150),startDate:isoDate,endDate:isoDate,isPublished:z.boolean(),details:z.string().trim().max(2000).default("")}).strict().refine(x=>x.endDate>=x.startDate,{message:"תאריך הסיום חייב להיות אחרי תאריך ההתחלה",path:["endDate"]});
 export const storeProductSchema=z.object({name:text(150),description:z.string().trim().max(2000).default(""),price:z.coerce.number({invalid_type_error:"המחיר אינו תקין"}).finite("המחיר אינו תקין").nonnegative("המחיר אינו יכול להיות שלילי").max(1_000_000)}).strict();
 export const quoteSchema=z.object({text:text(300),cite:text(100)}).strict();
+export const selfSignupSchema=z.object({
+ token:z.string().min(1).max(512),
+ name:text(100),
+ email:z.string().trim().toLowerCase().email("כתובת הדוא״ל אינה תקינה").max(254),
+ phone:text(30),
+ nationalId:israeliIdSchema,
+ password:passwordSchema,
+ confirmation:z.string()
+}).strict().refine(x=>x.password===x.confirmation,{message:"הסיסמאות אינן זהות",path:["confirmation"]});

@@ -60,3 +60,26 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
     console.log(`[dev] לא הוגדר שירות דוא״ל (RESEND_API_KEY או SMTP_HOST); קישור איפוס הסיסמה עבור ${to}: ${resetUrl}`);
   }
 }
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+}
+
+export async function sendEmailVerificationEmail(to: string, name: string, verifyUrl: string): Promise<void> {
+  const sent = await sendEmail({
+    to,
+    subject: "אימות כתובת הדוא״ל — יבול בשפע",
+    text: `שלום ${name},\n\nתודה שנרשמת ליבול בשפע. לאימות כתובת הדוא״ל, פתחו את הקישור הבא (בתוקף ל-48 שעות):\n${verifyUrl}\n\nלאחר האימות ואישור המנהל החשבון ייפתח לשימוש.\nאם לא נרשמתם, ניתן להתעלם מהודעה זו.`,
+    html: `<p>שלום ${escapeHtml(name)},</p><p>תודה שנרשמת ליבול בשפע.</p><p><a href="${escapeHtml(verifyUrl)}">לחצו כאן לאימות כתובת הדוא״ל</a> (בתוקף ל-48 שעות).</p><p>לאחר האימות ואישור המנהל החשבון ייפתח לשימוש.</p><p>אם לא נרשמתם, ניתן להתעלם מהודעה זו.</p>`,
+  });
+  if (!sent) console.log(`[dev] לא הוגדר שירות דוא״ל (RESEND_API_KEY או SMTP_HOST); קישור אימות הדוא״ל עבור ${to}: ${verifyUrl}`);
+}
+
+export async function sendAccountApprovedEmail(to: string, name: string, loginUrl: string): Promise<void> {
+  await sendEmail({
+    to,
+    subject: "החשבון שלך אושר — יבול בשפע",
+    text: `שלום ${name},\n\nהחשבון שלך ביבול בשפע אושר ופעיל. ניתן להתחבר כאן:\n${loginUrl}`,
+    html: `<p>שלום ${escapeHtml(name)},</p><p>החשבון שלך ביבול בשפע אושר ופעיל.</p><p><a href="${escapeHtml(loginUrl)}">כניסה למערכת</a></p>`,
+  });
+}

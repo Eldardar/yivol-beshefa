@@ -10,6 +10,9 @@ import { SchedulingService } from "@/lib/services/scheduling";
 import { VillageService } from "@/lib/services/villages";
 import { AdminEventService } from "@/lib/services/admin-events";
 import { ShiftService } from "@/lib/services/shifts";
+import { SignupService } from "@/lib/services/signup";
+import { pushToUsers } from "@/lib/push";
+import { sendAccountApprovedEmail } from "@/lib/email";
 import { farmSchema, plantationFieldSchema, shiftReportSchema, shiftResultSchema, shiftSchema, unitSchema, userUpdateSchema, vehicleSchema, workerGoalSchema, workerHoursSchema } from "@/lib/schemas";
 import { UNITS, type Unit } from "@/lib/units";
 import { requestBodyIssue, requestUrl } from "@/lib/http";
@@ -40,7 +43,7 @@ function saveCompanyRates(database:AppDb,fieldId:number,rates:Array<{unit:Unit;r
 function destination(action:string,form:FormData):string {
   if(action==="setActive"||action==="delete"){const entity=form.get("entity");if(entity==="USER")return "/admin/users?saved=1";if(entity==="VEHICLE")return "/admin/transport?saved=1";if(entity==="VILLAGE")return "/admin/villages?saved=1";return "/admin/resources?saved=1";}
   if(action.startsWith("adminEvent")){const match=/^(\d{4})-(\d{2})-\d{2}$/.exec(String(form.get("startDate")??""));return match?`/calendar?saved=1&y=${match[1]}&m=${Number(match[2])}`:"/calendar?saved=1";}
-  if(action==="userUpdate")return "/admin/users?saved=1";
+  if(action==="userUpdate"||action==="approveSignup")return "/admin/users?saved=1";
   if(action.startsWith("vehicle"))return "/admin/transport?saved=1";
   if(action.startsWith("village"))return "/admin/villages?saved=1";
   if(action.startsWith("farm")||action.startsWith("plantationField"))return "/admin/resources?saved=1";
@@ -121,6 +124,11 @@ export async function POST(req:Request){
     }else if(action==="setActive"){
       const entity=entitySchema.parse(form.get("entity")) as ManagedEntity;const entityId=positiveId.parse(form.get("entityId"));const active=activeSchema.parse(form.get("active"))==="1";
       new AdminService(database).setActive(user.id,entity,entityId,active);
+    }else if(action==="approveSignup"){
+      const targetId=positiveId.parse(form.get("userId"));
+      const result=new SignupService(database).approve(user.id,targetId);
+      await pushToUsers(database,result.push);
+      if(result.activated)await sendAccountApprovedEmail(result.email,result.name,requestUrl("/login",req).toString()).catch(error=>console.error("שליחת דוא״ל אישור חשבון נכשלה",error));
     }else if(action==="delete"){
       const entity=entitySchema.parse(form.get("entity")) as ManagedEntity;const entityId=positiveId.parse(form.get("entityId"));
       new AdminService(database).deleteEntity(user.id,entity,entityId);

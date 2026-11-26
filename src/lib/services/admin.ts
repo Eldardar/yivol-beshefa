@@ -32,6 +32,7 @@ export class AdminService {
               :this.db.prepare(`SELECT 1 FROM shifts s JOIN shift_vehicles sv ON sv.shift_id=s.id WHERE s.status IN ('DRAFT','PUBLISHED') AND sv.vehicle_id=? LIMIT 1`).get(entityId);
         if(operational)throw new Error("לא ניתן להעביר לארכיון משאב המשובץ במשמרת פעילה");
       }
+      if(entity==="USER"&&active&&(this.db.prepare("SELECT signup_pending FROM users WHERE id=?").get(entityId) as {signup_pending:number}|undefined)?.signup_pending)throw new Error("העובד ממתין לאישור הרשמה — יש לאשר אותו במקום להפעיל ידנית");
       const result=this.db.prepare(`UPDATE ${table} SET active=? WHERE id=?`).run(active?1:0,entityId);
       if(result.changes!==1) throw new Error("הרשומה לא נמצאה");
       if(entity==="USER"){
@@ -54,7 +55,8 @@ export class AdminService {
       if(!row) throw new Error("הרשומה לא נמצאה");
       if(row.active) throw new Error("ניתן למחוק רק רשומות בארכיון");
       if(entity==="USER"){
-        for(const t of ["sessions","availability","notifications","password_reset_tokens","push_subscriptions","journal_entries","shift_report_reminders","scheduled_notification_recipients","admin_goals"]){
+        this.db.prepare("UPDATE user_invites SET used_by_user_id=NULL WHERE used_by_user_id=?").run(entityId);
+        for(const t of ["sessions","availability","notifications","password_reset_tokens","email_verification_tokens","push_subscriptions","journal_entries","shift_report_reminders","scheduled_notification_recipients","admin_goals"]){
           this.db.prepare(`DELETE FROM ${t} WHERE user_id=?`).run(entityId);
         }
       }
