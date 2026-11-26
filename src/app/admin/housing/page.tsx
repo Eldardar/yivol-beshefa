@@ -25,12 +25,12 @@ export default async function AdminHousing({ searchParams }: { searchParams: Pro
 
   const rows = database
     .prepare(
-      `SELECT h.date,h.user_id,h.status,o.id option_id,o.name option_name,v.name village_name,o.cost_per_day
+      `SELECT h.date,h.user_id,h.status,o.id option_id,o.name option_name,v.name village_name,o.cost_per_day,h.price_override
        FROM housing_status h JOIN users u ON u.id=h.user_id
        LEFT JOIN village_sleeping_options o ON o.id=h.sleeping_option_id LEFT JOIN villages v ON v.id=o.village_id
        WHERE u.role='PICKER' AND u.active=1 AND h.date>=? AND h.date<?`
     )
-    .all(range.start, range.end) as Array<{ date: string; user_id: number; status: "IN_VILLAGE" | "MAYBE" | "AWAY"; option_id: number | null; option_name: string | null; village_name: string | null; cost_per_day: number | null }>;
+    .all(range.start, range.end) as Array<{ date: string; user_id: number; status: "IN_VILLAGE" | "MAYBE" | "AWAY"; option_id: number | null; option_name: string | null; village_name: string | null; cost_per_day: number | null; price_override: number | null }>;
 
   const statusByDateUser = new Map<string, Map<number, "IN_VILLAGE" | "MAYBE" | "AWAY">>();
   const housingByWorker: HousingByWorker = {};
@@ -39,7 +39,7 @@ export default async function AdminHousing({ searchParams }: { searchParams: Pro
     byUser.set(row.user_id, row.status);
     statusByDateUser.set(row.date, byUser);
     const option = row.option_id != null ? { id: row.option_id, name: row.option_name!, villageName: row.village_name!, costPerDay: row.cost_per_day! } : null;
-    (housingByWorker[row.user_id] ??= {})[row.date] = { status: row.status, option };
+    (housingByWorker[row.user_id] ??= {})[row.date] = { status: row.status, option, priceOverride: row.price_override };
   }
   const villages = bookableVillages(database, month);
 

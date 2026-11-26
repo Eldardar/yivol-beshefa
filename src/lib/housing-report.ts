@@ -47,8 +47,8 @@ export type HousingReportRow = { user_id: number; name: string; active: number; 
 export function getHousingReport(db: Database.Database, range: { start?: string; end?: string }): HousingReportRow[] {
   return db
     .prepare(
-      `SELECT u.id user_id,u.name,u.active,COUNT(*) nights,COALESCE(SUM(o.cost_per_day),0) cost,
-         SUM(CASE WHEN o.id IS NULL THEN 1 ELSE 0 END) unpriced_nights
+      `SELECT u.id user_id,u.name,u.active,COUNT(*) nights,COALESCE(SUM(COALESCE(h.price_override,o.cost_per_day)),0) cost,
+         SUM(CASE WHEN o.id IS NULL AND h.price_override IS NULL THEN 1 ELSE 0 END) unpriced_nights
        FROM housing_status h JOIN users u ON u.id=h.user_id
        LEFT JOIN village_sleeping_options o ON o.id=h.sleeping_option_id
        WHERE h.status='IN_VILLAGE' AND h.date>=? AND h.date<?
@@ -65,7 +65,7 @@ export type HousingNightsByWorker = Record<number, HousingNight[]>;
 export function getHousingNights(db: Database.Database, range: { start?: string; end?: string }): HousingNightsByWorker {
   const rows = db
     .prepare(
-      `SELECT h.user_id,h.date,v.name village,o.name sleeping_option,o.cost_per_day cost
+      `SELECT h.user_id,h.date,v.name village,o.name sleeping_option,COALESCE(h.price_override,o.cost_per_day) cost
        FROM housing_status h
        LEFT JOIN village_sleeping_options o ON o.id=h.sleeping_option_id
        LEFT JOIN villages v ON v.id=o.village_id

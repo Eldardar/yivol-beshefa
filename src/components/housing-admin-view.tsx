@@ -5,8 +5,9 @@ import { WorkerPicker, type WorkerOption } from "./worker-picker";
 import { UserAvatar } from "./user-avatar";
 import { CalendarMonthNav } from "./calendar-month-nav";
 import { Modal } from "./modal";
-import { VillagePicker, initialOptionId, nightCost, sleepsInVillage, statusLabel, type BookableVillage, type BookedOption, type HousingEntry, type Status } from "./housing-calendar";
+import { VillagePicker, baseNightCost, carryPriceOverride, hasPriceOverride, initialOptionId, nightCost, sleepsInVillage, statusLabel, type BookableVillage, type BookedOption, type HousingEntry, type Status } from "./housing-calendar";
 import { formatHebrewDate } from "@/lib/dates";
+import { formatMoney } from "@/lib/format";
 
 export type { WorkerOption } from "./worker-picker";
 
@@ -89,6 +90,92 @@ function HousingOverviewCalendar({ label, days }: { label: string; days: Housing
   );
 }
 
+type PriceChange = { price: number; isReset: boolean };
+
+/** Lets an admin set a custom price for one saved night of one worker; asks for confirmation before saving a changed price. */
+function NightPriceModal({ worker, date, entry, csrf, onClose, onSaved }: { worker: WorkerOption; date: string; entry: HousingEntry; csrf: string; onClose: () => void; onSaved: (priceOverride: number | null) => void }) {
+  const basePrice = baseNightCost(entry);
+  const currentPrice = nightCost(entry);
+  const [value, setValue] = useState(String(currentPrice));
+  const [pending, setPending] = useState<PriceChange | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const parsed = value.trim() === "" ? NaN : Number(value);
+  const valid = Number.isFinite(parsed) && parsed >= 0 && parsed <= 1_000_000;
+  const changed = valid && parsed !== currentPrice;
+  const dateLabel = formatHebrewDate(date);
+
+  function review(e?: React.FormEvent) {
+    e?.preventDefault();
+    if (!valid) return setError("יש להזין מחיר תקין (0 ומעלה)");
+    if (!changed) return;
+    setError("");
+    setPending({ price: parsed, isReset: false });
+  }
+
+  async function confirm() {
+    if (!pending) return;
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/housing/price", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ userId: worker.id, date, price: pending.isReset ? null : pending.price, csrf })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "עדכון המחיר נכשל");
+      onSaved(pending.isReset || pending.price === basePrice ? null : pending.price);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "עדכון המחיר נכשל");
+      setBusy(false);
+    }
+  }
+
+  const close = () => (busy ? null : onClose());
+  if (pending) {
+    return (
+      <Modal title="אישור שינוי מחיר" onClose={close}>
+        <div className="stack">
+          <p>
+            לשנות את מחיר הלילה של {worker.name} ב{dateLabel} מ-<strong>{formatMoney(currentPrice)}</strong> ל-<strong>{formatMoney(pending.price)}</strong>
+            {pending.isReset ? " (המחיר הרגיל)" : ""}?
+          </p>
+          <p className="muted">{worker.name} יקבלו התראה על שינוי המחיר.</p>
+          {error && <p className="alert" role="alert">{error}</p>}
+          <div className="actions">
+            <button type="button" className="btn" disabled={busy} onClick={confirm}>{busy ? "שומר…" : "אישור שינוי המחיר"}</button>
+            <button type="button" className="btn secondary" disabled={busy} onClick={() => { setPending(null); setError(""); }}>חזרה</button>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal title={`מחיר לילה — ${worker.name}`} onClose={close}>
+      <form className="stack" onSubmit={review}>
+        <p className="muted">
+          {dateLabel}{entry.option ? ` · ${entry.option.villageName} · ${entry.option.name}` : ""}
+          <br />מחיר רגיל: {formatMoney(basePrice)}{hasPriceOverride(entry) ? ` · מחיר נוכחי: ${formatMoney(currentPrice)}` : ""}
+        </p>
+        <label className="field">
+          <span>מחיר ללילה הזה (₪)</span>
+          <input type="number" inputMode="decimal" min={0} max={1_000_000} step="any" value={value} onChange={e => { setValue(e.target.value); setError(""); }} autoFocus required />
+        </label>
+        {error && <p className="alert" role="alert">{error}</p>}
+        <div className="actions">
+          <button type="submit" className="btn" disabled={!changed}>שמירת מחיר</button>
+          {hasPriceOverride(entry) && (
+            <button type="button" className="btn secondary" onClick={() => { setError(""); setPending({ price: basePrice, isReset: true }); }}>החזרה למחיר הרגיל</button>
+          )}
+          <button type="button" className="btn secondary" onClick={onClose}>ביטול</button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 function WorkerHousingCalendar({ worker, label, days, entries: initial, villages, csrf }: { worker: WorkerOption; label: string; days: HousingDay[]; entries: Record<string, HousingEntry>; villages: BookableVillage[]; csrf: string }) {
   const router = useRouter();
   const leadingPad = days.length ? days[0]!.weekday : 0;
@@ -96,6 +183,7 @@ function WorkerHousingCalendar({ worker, label, days, entries: initial, villages
   const [draft, setDraft] = useState<Record<string, HousingEntry>>(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [priceDate, setPriceDate] = useState<string | null>(null);
   const [optionId, setOptionId] = useState<number | null>(() => initialOptionId(days.map(d => ({ ...d, locked: false, status: null, option: initial[d.date]?.option ?? null })), villages));
   const [villageId, setVillageId] = useState<number | null>(() => villages.find(v => v.options.some(o => o.id === optionId))?.id ?? (villages.length === 1 ? villages[0]!.id : null));
 
@@ -113,7 +201,7 @@ function WorkerHousingCalendar({ worker, label, days, entries: initial, villages
 
   function toggle(date: string, status: Status) {
     const current = draft[date] ?? EMPTY;
-    const set = (next: HousingEntry) => { setError(""); setDraft(prev => ({ ...prev, [date]: next })); };
+    const set = (next: HousingEntry) => { setError(""); setDraft(prev => ({ ...prev, [date]: carryPriceOverride(current, next) })); };
     if (!sleepsInVillage(status)) return set(current.status === status ? EMPTY : { status, option: null });
     // Re-clicking the same choice clears it, unless a different sleeping option was picked meanwhile.
     if (current.status === status && (!selected || current.option?.id === selected.id)) return set(EMPTY);
@@ -166,6 +254,8 @@ function WorkerHousingCalendar({ worker, label, days, entries: initial, villages
             ? (status ? ` calendar-day--locked-${STATUS_CSS_KEY[status]}` : " calendar-day--locked")
             : (status ? ` calendar-day--${STATUS_CSS_KEY[status]}` : "");
           const cost = sleepsInVillage(status) ? nightCost(entry) : selected?.costPerDay ?? null;
+          // The price can only be changed for a saved night in the village with no pending edits.
+          const saved = sleepsInVillage(map[d.date]?.status ?? null) && sameEntry(entry, map[d.date] ?? EMPTY);
           return (
             <div className={`calendar-day${statusClass}${d.isToday ? " calendar-day--today" : ""}`} key={d.date} role="gridcell">
               <span className="calendar-day-number">{d.day}</span>
@@ -185,10 +275,32 @@ function WorkerHousingCalendar({ worker, label, days, entries: initial, villages
                 ))}
               </div>
               {sleepsInVillage(status) && entry.option && <span className="calendar-day-booking">{entry.option.villageName} · {entry.option.name}</span>}
+              {hasPriceOverride(entry) && <span className="calendar-day-booking calendar-day-price-override">מחיר מיוחד · במקום {formatMoney(baseNightCost(entry))}</span>}
+              {saved && (
+                <button type="button" className="btn btn-sm secondary calendar-day-price-button" disabled={busy} onClick={() => setPriceDate(d.date)} aria-label={`שינוי מחיר הלילה של ${worker.name} ל-${d.day} ב${label}`}>
+                  שינוי מחיר
+                </button>
+              )}
             </div>
           );
         })}
       </div>
+      {priceDate && map[priceDate] && (
+        <NightPriceModal
+          worker={worker}
+          date={priceDate}
+          entry={map[priceDate]!}
+          csrf={csrf}
+          onClose={() => setPriceDate(null)}
+          onSaved={priceOverride => {
+            const date = priceDate;
+            setMap(prev => ({ ...prev, [date]: { ...prev[date]!, priceOverride } }));
+            setDraft(prev => ({ ...prev, [date]: { ...prev[date]!, priceOverride } }));
+            setPriceDate(null);
+            router.refresh();
+          }}
+        />
+      )}
       {days.length > 0 && (
         <div className="actions">
           <button type="button" className="btn" onClick={save} disabled={changed.length === 0 || busy}>{busy ? "שומר…" : "שמירת שינויים"}</button>

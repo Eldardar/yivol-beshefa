@@ -74,7 +74,8 @@ export class PickerService{
    const bookable=this.db.prepare(`SELECT 1 FROM village_sleeping_options o JOIN villages v ON v.id=o.village_id
      JOIN village_available_months m ON m.village_id=v.id WHERE o.id=? AND v.active=1 AND m.month=?`);
    const upsert=this.db.prepare(`INSERT INTO housing_status(user_id,date,status,sleeping_option_id) VALUES(?,?,?,?)
-     ON CONFLICT(user_id,date) DO UPDATE SET status=excluded.status,sleeping_option_id=excluded.sleeping_option_id`);
+     ON CONFLICT(user_id,date) DO UPDATE SET status=excluded.status,sleeping_option_id=excluded.sleeping_option_id,
+       price_override=CASE WHEN excluded.sleeping_option_id IS housing_status.sleeping_option_id AND excluded.status<>'AWAY' THEN housing_status.price_override ELSE NULL END`);
    const clear=this.db.prepare("DELETE FROM housing_status WHERE user_id=? AND date=?");
    for(const entry of input.entries){
     if(entry.status===null){clear.run(actorId,entry.date);continue;}

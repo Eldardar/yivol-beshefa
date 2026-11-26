@@ -2,15 +2,15 @@
 import { useState } from "react";
 import { CalendarMonthNav } from "./calendar-month-nav";
 import { formatMoney } from "@/lib/format";
+import { LEGACY_NIGHT_COST } from "@/lib/housing-pricing";
 
 export type Status = "IN_VILLAGE" | "MAYBE" | "AWAY";
 export type BookedOption = { id: number; name: string; villageName: string; costPerDay: number };
 export type BookableVillage = { id: number; name: string; location: string; description: string; options: { id: number; name: string; description: string; costPerDay: number }[] };
-export type HousingDay = { date: string; day: number; weekday: number; isToday: boolean; locked: boolean; status: Status | null; option: BookedOption | null };
-export type HousingEntry = { status: Status | null; option: BookedOption | null };
+export type HousingDay = { date: string; day: number; weekday: number; isToday: boolean; locked: boolean; status: Status | null; option: BookedOption | null; priceOverride?: number | null };
+// priceOverride: מחיר שמנהל/ת קבע/ה ללילה הזה במקום מחיר אפשרות הלינה
+export type HousingEntry = { status: Status | null; option: BookedOption | null; priceOverride?: number | null };
 
-// Nightly cost for days saved before workers picked a village + sleeping option.
-const LEGACY_NIGHT_COST = 25;
 const WEEKDAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 const OPTIONS: { status: Status; cssKey: "available" | "maybe" | "unavailable" }[] = [
   { status: "IN_VILLAGE", cssKey: "available" },
@@ -19,7 +19,12 @@ const OPTIONS: { status: Status; cssKey: "available" | "maybe" | "unavailable" }
 ];
 const STATUS_CSS_KEY = Object.fromEntries(OPTIONS.map(o => [o.status, o.cssKey])) as Record<Status, "available" | "maybe" | "unavailable">;
 export const sleepsInVillage = (status: Status | null) => status === "IN_VILLAGE" || status === "MAYBE";
-export const nightCost = (entry: HousingEntry) => entry.option?.costPerDay ?? LEGACY_NIGHT_COST;
+export const baseNightCost = (entry: HousingEntry) => entry.option?.costPerDay ?? LEGACY_NIGHT_COST;
+export const nightCost = (entry: HousingEntry) => entry.priceOverride ?? baseNightCost(entry);
+export const hasPriceOverride = (entry: HousingEntry) => entry.priceOverride != null && sleepsInVillage(entry.status);
+/** The server keeps a night's custom price only while its sleeping option stays the same and the worker may sleep in the village. */
+export const carryPriceOverride = (previous: HousingEntry, next: HousingEntry): HousingEntry =>
+  ({ ...next, priceOverride: sleepsInVillage(next.status) && (previous.option?.id ?? null) === (next.option?.id ?? null) ? previous.priceOverride ?? null : null });
 
 export function statusLabel(status: Status, cost: number | null) {
   if (status === "IN_VILLAGE") return cost === null ? "ישן בכפר" : `ישן בכפר ${cost} 🪙`;
@@ -89,7 +94,7 @@ export function VillagePicker({ villages, villageId, optionId, onVillage, onOpti
 }
 
 export function HousingCalendar({ csrf, year, month, label, days, villages }: { csrf: string; year: number; month: number; label: string; days: HousingDay[]; villages: BookableVillage[] }) {
-  const [entries, setEntries] = useState<Record<string, HousingEntry>>(() => Object.fromEntries(days.map(d => [d.date, { status: d.status, option: d.option }])));
+  const [entries, setEntries] = useState<Record<string, HousingEntry>>(() => Object.fromEntries(days.map(d => [d.date, { status: d.status, option: d.option, priceOverride: d.priceOverride ?? null }])));
   const [pending, setPending] = useState<Record<string, boolean>>({});
   const [error, setError] = useState("");
   const [optionId, setOptionId] = useState<number | null>(() => initialOptionId(days, villages));
@@ -107,8 +112,9 @@ export function HousingCalendar({ csrf, year, month, label, days, villages }: { 
     setOptionId(options.length === 1 ? options[0]!.id : null);
   }
 
-  function apply(date: string, next: HousingEntry) {
+  function apply(date: string, requested: HousingEntry) {
     const previous = entries[date] ?? { status: null, option: null };
+    const next = carryPriceOverride(previous, requested);
     if (previous.status === next.status && previous.option?.id === next.option?.id) return;
     setEntries(s => ({ ...s, [date]: next }));
     setPending(p => ({ ...p, [date]: true }));
@@ -147,7 +153,7 @@ export function HousingCalendar({ csrf, year, month, label, days, villages }: { 
           {days.map(d => {
             const entry = entries[d.date] ?? { status: null, option: null };
             const status = entry.status;
-            const booking = sleepsInVillage(status) && entry.option ? <span className="calendar-day-booking">{entry.option.villageName} · {entry.option.name}</span> : null;
+            const booking = sleepsInVillage(status) && (entry.option || hasPriceOverride(entry)) ? <span className="calendar-day-booking">{entry.option ? `${entry.option.villageName} · ${entry.option.name}` : null}{hasPriceOverride(entry) && <span className="calendar-day-price-override">{entry.option ? " · " : ""}מחיר מיוחד</span>}</span> : null;
             if (d.locked) {
               const lockedClass = status ? ` calendar-day--locked-${STATUS_CSS_KEY[status]}` : " calendar-day--locked";
               return (

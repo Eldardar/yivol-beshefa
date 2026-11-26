@@ -1,8 +1,10 @@
 import type Database from "better-sqlite3";
 import { generatePassword, hashPassword } from "@/lib/security";
-import { adminAvailabilityUpdateSchema, adminGoalSchema, adminHousingUpdateSchema, broadcastNotificationSchema, fieldUnitRatesSchema, notificationTargetSchema } from "@/lib/schemas";
+import { adminAvailabilityUpdateSchema, adminGoalSchema, adminHousingNightPriceSchema, adminHousingUpdateSchema, broadcastNotificationSchema, fieldUnitRatesSchema, notificationTargetSchema } from "@/lib/schemas";
 import { pushToUsers } from "@/lib/push";
-import { jerusalemInstant } from "@/lib/dates";
+import { formatHebrewDate, jerusalemInstant } from "@/lib/dates";
+import { formatMoney } from "@/lib/format";
+import { LEGACY_NIGHT_COST } from "@/lib/housing-pricing";
 import type { Unit } from "@/lib/units";
 import { parseTiers, type PriceTier } from "@/lib/pricing";
 import fs from "node:fs";
@@ -156,9 +158,11 @@ export class AdminService {
         JOIN village_available_months m ON m.village_id=v.id WHERE o.id=? AND v.active=1 AND m.month=?`);
       // Without sleepingOptionId the worker's existing booking is kept (cleared for AWAY).
       const keepOption=this.db.prepare(`INSERT INTO housing_status(user_id,date,status) VALUES(?,?,?)
-        ON CONFLICT(user_id,date) DO UPDATE SET status=excluded.status,sleeping_option_id=CASE WHEN excluded.status='AWAY' THEN NULL ELSE housing_status.sleeping_option_id END`);
+        ON CONFLICT(user_id,date) DO UPDATE SET status=excluded.status,sleeping_option_id=CASE WHEN excluded.status='AWAY' THEN NULL ELSE housing_status.sleeping_option_id END,
+          price_override=CASE WHEN excluded.status='AWAY' THEN NULL ELSE housing_status.price_override END`);
       const setOption=this.db.prepare(`INSERT INTO housing_status(user_id,date,status,sleeping_option_id) VALUES(?,?,?,?)
-        ON CONFLICT(user_id,date) DO UPDATE SET status=excluded.status,sleeping_option_id=excluded.sleeping_option_id`);
+        ON CONFLICT(user_id,date) DO UPDATE SET status=excluded.status,sleeping_option_id=excluded.sleeping_option_id,
+          price_override=CASE WHEN excluded.sleeping_option_id IS housing_status.sleeping_option_id AND excluded.status<>'AWAY' THEN housing_status.price_override ELSE NULL END`);
       const clear=this.db.prepare("DELETE FROM housing_status WHERE user_id=? AND date=?");
       for(const entry of input.entries){
         if(entry.status===null){clear.run(input.userId,entry.date);continue;}
@@ -171,6 +175,35 @@ export class AdminService {
       this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)").run(actorId,"UPDATE","HOUSING",input.userId,JSON.stringify({dates:input.entries.map(e=>e.date)}));
     }).immediate();
     await pushToUsers(this.db,[{userId:input.userId,title,body}]);
+  }
+
+  /** משנה את המחיר של לילה בודד לעובד/ת (null = חזרה למחיר הרגיל) ומיידע אותם בהתראה. מחזיר false אם המחיר לא השתנה. */
+  async setHousingNightPrice(actorId:number, raw:unknown):Promise<boolean> {
+    const input=adminHousingNightPriceSchema.parse(raw);
+    const actor=this.db.prepare("SELECT role,active FROM users WHERE id=?").get(actorId) as {role:string;active:number}|undefined;
+    if(!actor?.active || actor.role!=="ADMIN") throw new Error("אין הרשאה");
+    const target=this.db.prepare("SELECT role,active FROM users WHERE id=?").get(input.userId) as {role:string;active:number}|undefined;
+    if(!target?.active || target.role!=="PICKER") throw new Error("עובד לא נמצא");
+    const night=this.db.prepare(`SELECT h.status,h.price_override,o.cost_per_day FROM housing_status h
+      LEFT JOIN village_sleeping_options o ON o.id=h.sleeping_option_id WHERE h.user_id=? AND h.date=?`).get(input.userId,input.date) as {status:string;price_override:number|null;cost_per_day:number|null}|undefined;
+    if(!night || (night.status!=="IN_VILLAGE" && night.status!=="MAYBE")) throw new Error("לא נמצא לילה בכפר בתאריך זה");
+    const basePrice=night.cost_per_day??LEGACY_NIGHT_COST;
+    const oldPrice=night.price_override??basePrice;
+    // מחיר זהה למחיר הרגיל נשמר כ-NULL, כך ששינוי עתידי במחיר האפשרות יחול גם עליו
+    const override=input.price===null||input.price===basePrice?null:input.price;
+    const newPrice=override??basePrice;
+    if(override===night.price_override) return false;
+    const title="עדכון מחיר לילה";
+    const body=oldPrice===newPrice
+      ? `מחיר הלילה שלך ב${formatHebrewDate(input.date)} עודכן ל-${formatMoney(newPrice)}.`
+      : `מחיר הלילה שלך ב${formatHebrewDate(input.date)} עודכן מ-${formatMoney(oldPrice)} ל-${formatMoney(newPrice)}.`;
+    this.db.transaction(()=>{
+      this.db.prepare("UPDATE housing_status SET price_override=? WHERE user_id=? AND date=?").run(override,input.userId,input.date);
+      this.db.prepare("INSERT INTO notifications(user_id,title,body) VALUES(?,?,?)").run(input.userId,title,body);
+      this.db.prepare("INSERT INTO audit_events(actor_id,action,entity_type,entity_id,metadata) VALUES(?,?,?,?,?)").run(actorId,"UPDATE","HOUSING_PRICE",input.userId,JSON.stringify({date:input.date,from:oldPrice,to:newPrice}));
+    }).immediate();
+    await pushToUsers(this.db,[{userId:input.userId,title,body}]);
+    return true;
   }
 
   async broadcastNotification(actorId:number, raw:unknown):Promise<number> {

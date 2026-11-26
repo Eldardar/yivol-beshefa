@@ -1333,6 +1333,8 @@ button.bottom-nav-link { border: 0; background: transparent; }
 .housing-choice input[type="radio"] { width: 1.15rem; height: 1.15rem; margin-top: 0.15rem; accent-color: var(--color-primary); flex: none; }
 .housing-choice-body { display: grid; gap: 0.15rem; min-width: 0; }
 .calendar-day-booking { font-size: 0.72rem; color: var(--color-text-secondary); overflow-wrap: anywhere; }
+.calendar-day-price-override { color: var(--color-success); font-weight: 600; }
+.calendar-day-price-button { align-self: flex-start; margin-top: auto; }
 .housing-cost-lines { display: grid; gap: var(--space-2); margin: 0; }
 .housing-cost-lines > div { display: flex; justify-content: space-between; gap: var(--space-3); }
 .housing-cost-lines dd { margin: 0; font-variant-numeric: tabular-nums; }

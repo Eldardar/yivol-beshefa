@@ -3,6 +3,7 @@ import Database from "better-sqlite3";
 import fs from "node:fs";
 import { createTestDb, migrate } from "@/lib/db";
 import { AdminService } from "@/lib/services/admin";
+import { getHousingReport } from "@/lib/housing-report";
 import { SchedulingService } from "@/lib/services/scheduling";
 
 let db: Database.Database;
@@ -164,6 +165,57 @@ describe("עריכת מגורים על ידי מנהל", () => {
     await expect(service.setWorkerHousing(x.p2, { userId: x.p1, entries: [{ date: "2026-08-12", status: "AWAY" }] })).rejects.toThrow(/אין הרשאה/);
     await expect(service.setWorkerHousing(x.admin, { userId: x.admin, entries: [{ date: "2026-08-12", status: "AWAY" }] })).rejects.toThrow(/עובד לא נמצא/);
     expect(db.prepare("SELECT COUNT(*) AS n FROM housing_status").get()).toEqual({ n: 0 });
+  });
+});
+
+describe("שינוי מחיר לילה בודד על ידי מנהל", () => {
+  const book = () => {
+    const x = setup();
+    const village = Number(db.prepare("INSERT INTO villages(name,description,location) VALUES(?,?,?)").run("כפר", "", "").lastInsertRowid);
+    const option = Number(db.prepare("INSERT INTO village_sleeping_options(village_id,name,description,cost_per_day) VALUES(?,?,?,?)").run(village, "אוהל", "", 40).lastInsertRowid);
+    const other = Number(db.prepare("INSERT INTO village_sleeping_options(village_id,name,description,cost_per_day) VALUES(?,?,?,?)").run(village, "קרוואן", "", 80).lastInsertRowid);
+    db.prepare("INSERT INTO village_available_months(village_id,month) VALUES(?,?)").run(village, 8);
+    db.prepare("INSERT INTO housing_status(user_id,date,status,sleeping_option_id) VALUES(?,?,?,?)").run(x.p1, "2026-08-10", "IN_VILLAGE", option);
+    return { ...x, option, other };
+  };
+  const override = (userId: number) => (db.prepare("SELECT price_override FROM housing_status WHERE user_id=? AND date='2026-08-10'").get(userId) as { price_override: number | null } | undefined)?.price_override;
+
+  it("שומר מחיר מותאם, מעדכן את דוח המגורים ושולח התראה לעובד/ת", async () => {
+    const x = book();
+    expect(await new AdminService(db).setHousingNightPrice(x.admin, { userId: x.p1, date: "2026-08-10", price: 15 })).toBe(true);
+    expect(override(x.p1)).toBe(15);
+    expect(getHousingReport(db, {}).find(r => r.user_id === x.p1)).toMatchObject({ nights: 1, cost: 15 });
+    const note = db.prepare("SELECT title,body FROM notifications WHERE user_id=?").get(x.p1) as { title: string; body: string };
+    expect(note.title).toBe("עדכון מחיר לילה");
+    expect(note.body).toContain("₪40");
+    expect(note.body).toContain("₪15");
+    expect(db.prepare("SELECT entity_type FROM audit_events WHERE actor_id=? AND entity_type='HOUSING_PRICE'").get(x.admin)).toBeTruthy();
+  });
+  it("לא שולח התראה כשהמחיר לא השתנה, ומחיר רגיל נשמר כ-NULL", async () => {
+    const x = book();
+    const service = new AdminService(db);
+    expect(await service.setHousingNightPrice(x.admin, { userId: x.p1, date: "2026-08-10", price: 40 })).toBe(false);
+    await service.setHousingNightPrice(x.admin, { userId: x.p1, date: "2026-08-10", price: 15 });
+    expect(await service.setHousingNightPrice(x.admin, { userId: x.p1, date: "2026-08-10", price: null })).toBe(true);
+    expect(override(x.p1)).toBeNull();
+    expect(db.prepare("SELECT COUNT(*) n FROM notifications WHERE user_id=?").get(x.p1)).toEqual({ n: 2 });
+  });
+  it("מאפס את המחיר המותאם כשאפשרות הלינה משתנה, ושומר אותו כשרק הסטטוס משתנה", async () => {
+    const x = book();
+    const service = new AdminService(db);
+    await service.setHousingNightPrice(x.admin, { userId: x.p1, date: "2026-08-10", price: 15 });
+    await service.setWorkerHousing(x.admin, { userId: x.p1, entries: [{ date: "2026-08-10", status: "MAYBE", sleepingOptionId: x.option }] });
+    expect(override(x.p1)).toBe(15);
+    await service.setWorkerHousing(x.admin, { userId: x.p1, entries: [{ date: "2026-08-10", status: "IN_VILLAGE", sleepingOptionId: x.other }] });
+    expect(override(x.p1)).toBeNull();
+  });
+  it("דוחה לילה שאינו בכפר, מחיר שלילי ומשתמש שאינו מנהל", async () => {
+    const x = book();
+    const service = new AdminService(db);
+    await expect(service.setHousingNightPrice(x.admin, { userId: x.p1, date: "2026-08-11", price: 10 })).rejects.toThrow(/לא נמצא לילה/);
+    await expect(service.setHousingNightPrice(x.admin, { userId: x.p1, date: "2026-08-10", price: -1 })).rejects.toThrow();
+    await expect(service.setHousingNightPrice(x.p2, { userId: x.p1, date: "2026-08-10", price: 10 })).rejects.toThrow(/אין הרשאה/);
+    expect(override(x.p1)).toBeNull();
   });
 });
 

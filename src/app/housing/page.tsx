@@ -6,7 +6,7 @@ import { bookableVillages } from "@/lib/housing";
 
 export const dynamic = "force-dynamic";
 
-type HousingRow = { date: string; status: "IN_VILLAGE" | "MAYBE" | "AWAY"; option_id: number | null; option_name: string | null; village_name: string | null; cost_per_day: number | null };
+type HousingRow = { date: string; status: "IN_VILLAGE" | "MAYBE" | "AWAY"; option_id: number | null; option_name: string | null; village_name: string | null; cost_per_day: number | null; price_override: number | null };
 
 export default async function Housing({ searchParams }: { searchParams: Promise<{ y?: string; m?: string }> }) {
   const user = await requireUser();
@@ -26,7 +26,7 @@ export default async function Housing({ searchParams }: { searchParams: Promise<
   const label = new Intl.DateTimeFormat("he-IL", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${monthStart}T12:00:00Z`));
 
   const database = db();
-  const rows = database.prepare(`SELECT h.date,h.status,o.id option_id,o.name option_name,v.name village_name,o.cost_per_day
+  const rows = database.prepare(`SELECT h.date,h.status,o.id option_id,o.name option_name,v.name village_name,o.cost_per_day,h.price_override
     FROM housing_status h LEFT JOIN village_sleeping_options o ON o.id=h.sleeping_option_id LEFT JOIN villages v ON v.id=o.village_id
     WHERE h.user_id=? AND h.date>=? AND h.date<?`).all(user.id, monthStart, monthEnd) as HousingRow[];
   const map = new Map(rows.map(r => [r.date, r]));
@@ -39,7 +39,7 @@ export default async function Housing({ searchParams }: { searchParams: Promise<
     const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
     const row = map.get(date);
     const option: BookedOption | null = row?.option_id != null ? { id: row.option_id, name: row.option_name!, villageName: row.village_name!, costPerDay: row.cost_per_day! } : null;
-    return { date, day, weekday, isToday: date === today, locked: !housingEditable(date), status: row?.status ?? null, option };
+    return { date, day, weekday, isToday: date === today, locked: !housingEditable(date), status: row?.status ?? null, option, priceOverride: row?.price_override ?? null };
   });
 
   return (

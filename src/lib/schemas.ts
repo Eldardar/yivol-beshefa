@@ -59,6 +59,12 @@ export const adminHousingUpdateSchema = z.object({
   userId: id,
   entries: z.array(housingStatusSchema).min(1)
 }).strict();
+export const adminHousingNightPriceSchema = z.object({
+  userId: id,
+  date: isoDate,
+  // null מחזיר את הלילה למחיר הרגיל של אפשרות הלינה
+  price: z.coerce.number().finite().nonnegative("המחיר אינו יכול להיות שלילי").max(1_000_000).nullable()
+}).strict();
 
 const goalLineSchema = z.object({
   unit: unitSchema,
