@@ -10,6 +10,7 @@ export async function register(): Promise<void> {
   const { sendDueScheduledNotifications } = await import("@/lib/services/scheduled-notifications");
   const { sendAdminReportSummaries } = await import("@/lib/services/admin-report-summaries");
   const { sendHousingStatusReminders } = await import("@/lib/services/housing-reminders");
+  const { sendAvailabilityReminders } = await import("@/lib/services/availability-reminders");
 
   const run = () => {
     const database = db();
@@ -17,6 +18,7 @@ export async function register(): Promise<void> {
     sendDueScheduledNotifications(database).catch(error => console.error("שגיאה בבדיקת הודעות מתוזמנות", error));
     sendAdminReportSummaries(database).catch(error => console.error("שגיאה בשליחת סיכום דיווחים למנהלים", error));
     sendHousingStatusReminders(database).catch(error => console.error("שגיאה בשליחת תזכורת לינה", error));
+    sendAvailabilityReminders(database).catch(error => console.error("שגיאה בשליחת תזכורת זמינות", error));
   };
   run();
   g.__yivolReminderTimer = setInterval(run, CHECK_INTERVAL_MS);
